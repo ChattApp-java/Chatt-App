@@ -6,52 +6,54 @@ import java.sql.SQLException;
 
 public class DatabaseConnection {
 
-    // Paramètres de connexion
-    private static final String URL      = "jdbc:mysql://localhost:3307/chatapp"+ "?useSSL=false"+ "&serverTimezone=UTC"+ "&allowPublicKeyRetrieval=true";
+    private static final String URL =
+            "jdbc:mysql://localhost:3307/chatapp"
+            + "?useSSL=false"
+            + "&serverTimezone=UTC"
+            + "&allowPublicKeyRetrieval=true";
     private static final String USER     = "root";
-    private static final String PASSWORD = ""; 
+    private static final String PASSWORD = "";
 
-    // Instance unique (Singleton) 
     private static Connection instance = null;
 
-    // Constructeur privé → on ne peut pas faire new DatabaseConnection()
     private DatabaseConnection() {}
 
-    // Méthode principale : obtenir la connexion 
-   
-    public static Connection getConnection() {
+    // ✅ CORRECTION : synchronized → thread-safe, plus de race condition
+    public static synchronized Connection getConnection() {
         try {
             if (instance == null || instance.isClosed()) {
-
                 Class.forName("com.mysql.cj.jdbc.Driver");
-
                 instance = DriverManager.getConnection(URL, USER, PASSWORD);
-
-                System.out.println("[DB] ✅ Connexion MySQL établie avec succès.");
+                System.out.println("[DB] ✅ Connexion MySQL établie.");
             }
         } catch (ClassNotFoundException e) {
-            System.err.println("[DB] ❌ Driver MySQL introuvable : " + e.getMessage());
-            instance = null; 
+            System.err.println("[DB] ❌ Driver introuvable : " + e.getMessage());
+            instance = null;
         } catch (SQLException e) {
-            System.err.println("[DB] ❌ Erreur connexion MySQL : " + e.getMessage());
-            instance = null; 
+            System.err.println("[DB] ❌ Erreur connexion : " + e.getMessage());
+            instance = null;
         }
+
+        // ✅ CORRECTION : lever une exception claire au lieu de retourner null
+        if (instance == null) {
+            throw new RuntimeException("[DB] ❌ Impossible d'obtenir une connexion MySQL !");
+        }
+
         return instance;
     }
 
-    // Fermer la connexion 
-    public static void closeConnection() {
+    public static synchronized void closeConnection() {
         try {
             if (instance != null && !instance.isClosed()) {
                 instance.close();
-                System.out.println("[DB] Connexion MySQL fermée.");
+                instance = null;
+                System.out.println("[DB] Connexion fermée.");
             }
         } catch (SQLException e) {
             System.err.println("[DB] Erreur fermeture : " + e.getMessage());
         }
     }
 
-    // Test de connexion 
     public static boolean isConnected() {
         try {
             return instance != null && !instance.isClosed();

@@ -25,6 +25,13 @@
             <scope>compile</scope>
         </dependency>
 
+        <!-- ✅ BCrypt : hashage des mots de passe -->
+        <dependency>
+            <groupId>org.mindrot</groupId>
+            <artifactId>jbcrypt</artifactId>
+            <version>0.4</version>
+        </dependency>
+
     </dependencies>
 
     <build>
@@ -37,7 +44,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>com.example.Main</mainClass>
+                            <mainClass>com.example.server.ServerMain</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

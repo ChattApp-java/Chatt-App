@@ -30,8 +30,8 @@ public class Server {
             log("╔══════════════════════════════════════════╗");
             log("║     Serveur CHATAPP-like démarré        ║");
             log("║  Port TCP (signalisation) : " + Protocol.PORT_SIGNALING + "         ║");
-            log("║  Port TCP (audio)         : " + Protocol.PORT_AUDIO  + "         ║");
-            log("║  Port TCP (vidéo)         : " + Protocol.PORT_VIDEO  + "         ║");
+            log("║  Port UDP (audio)         : " + Protocol.PORT_AUDIO  + "         ║");
+            log("║  Port UDP (vidéo)         : " + Protocol.PORT_VIDEO  + "         ║");
             log("╚══════════════════════════════════════════╝");
 
             // 2. Boucle d'acceptation

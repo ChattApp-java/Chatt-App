@@ -1,6 +1,7 @@
 package com.example.database;
 
 import com.example.model.User;
+import org.mindrot.jbcrypt.BCrypt; // ← ajouter dans pom.xml : org.mindrot:jbcrypt:0.4
 
 import java.sql.*;
 import java.time.LocalDateTime;
@@ -9,16 +10,19 @@ import java.util.List;
 
 public class UserDAO {
 
-    public UserDAO() {
-    }
+    public UserDAO() {}
 
+    // ✅ CORRECTION : hash le mot de passe avant de l'enregistrer
     public boolean inscrire(User user) {
         String sql = "INSERT INTO users (username, password, email) VALUES (?, ?, ?)";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
+            // Hash du mot de passe avec BCrypt (jamais stocker en clair !)
+            String hashedPassword = BCrypt.hashpw(user.getPassword(), BCrypt.gensalt());
+
             stmt.setString(1, user.getUsername());
-            stmt.setString(2, user.getPassword());
+            stmt.setString(2, hashedPassword);   // ← mot de passe hashé
             stmt.setString(3, user.getEmail());
 
             int rows = stmt.executeUpdate();
@@ -31,21 +35,30 @@ public class UserDAO {
         }
     }
 
+    // ✅ CORRECTION : vérifier le mot de passe avec BCrypt.checkpw()
     public User connecter(String username, String password) {
-        String sql = "SELECT * FROM users WHERE username = ? AND password = ?";
+        // On récupère l'utilisateur par son nom, SANS comparer le mot de passe en SQL
+        String sql = "SELECT * FROM users WHERE username = ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setString(1, username);
-            stmt.setString(2, password);
-
             ResultSet rs = stmt.executeQuery();
+
             if (rs.next()) {
-                setStatut(username, true);
-                System.out.println("[DB] Connexion réussie : " + username);
-                return extraireUser(rs);
+                String hashStocke = rs.getString("password");
+
+                // Vérification sécurisée du mot de passe
+                if (BCrypt.checkpw(password, hashStocke)) {
+                    setStatut(username, true);
+                    System.out.println("[DB] Connexion réussie : " + username);
+                    return extraireUser(rs);
+                } else {
+                    System.out.println("[DB] Mot de passe incorrect : " + username);
+                    return null;
+                }
             } else {
-                System.out.println("[DB] Connexion échouée : " + username);
+                System.out.println("[DB] Utilisateur introuvable : " + username);
                 return null;
             }
 
@@ -62,9 +75,7 @@ public class UserDAO {
 
             stmt.setString(1, username);
             ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                return rs.getInt(1) > 0;
-            }
+            if (rs.next()) return rs.getInt(1) > 0;
 
         } catch (SQLException e) {
             System.err.println("[DB] Erreur vérification : " + e.getMessage());
@@ -125,9 +136,7 @@ public class UserDAO {
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             ResultSet rs = stmt.executeQuery();
-            while (rs.next()) {
-                liste.add(extraireUser(rs));
-            }
+            while (rs.next()) liste.add(extraireUser(rs));
 
         } catch (SQLException e) {
             System.err.println("[DB] Erreur getTousConnectes : " + e.getMessage());
