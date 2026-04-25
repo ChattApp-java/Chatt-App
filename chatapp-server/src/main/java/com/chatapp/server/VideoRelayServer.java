@@ -3,83 +3,103 @@ package com.chatapp.server;
 import com.chatapp.protocol.Protocol;
 
 import java.net.*;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-
+/**
+ * VideoRelayServer.java
+ * Relais UDP vidéo avec routage par session.
+ * Supporte plusieurs appels vidéo simultanés via ConcurrentHashMap.
+ */
 public class VideoRelayServer implements Runnable {
 
     private static final int BUFFER_SIZE = 65535;
+    private static final int MAX_SESSION_ID_LEN = 64;
 
-    private DatagramSocket   udpSocket;
+    private DatagramSocket udpSocket;
     private volatile boolean running = true;
+    private final Map<String, SessionVideo> sessions = new ConcurrentHashMap<>();
 
-    private InetAddress addr1;
-    private int         port1;
-    private InetAddress addr2;
-    private int         port2;
-    private boolean     firstRegistered = false;
+    private static class SessionVideo {
+        InetAddress addr1; int port1;
+        InetAddress addr2; int port2;
+        boolean peer1Ready = false;
+        boolean peer2Ready = false;
 
+        SessionVideo(InetAddress a1, int p1) {
+            this.addr1 = a1;
+            this.port1 = p1;
+            this.peer1Ready = true;
+        }
+    }
 
     @Override
     public void run() {
         try {
             udpSocket = new DatagramSocket(Protocol.PORT_VIDEO);
-            System.out.println("[VIDEO RELAY] En écoute sur UDP port "
-                    + Protocol.PORT_VIDEO);
-
+            System.out.println("[VIDEO RELAY] En écoute sur UDP port " + Protocol.PORT_VIDEO);
             byte[] buffer = new byte[BUFFER_SIZE];
 
             while (running) {
-                DatagramPacket packet =
-                        new DatagramPacket(buffer, buffer.length);
+                DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
                 udpSocket.receive(packet);
 
+                byte[] data = packet.getData();
+                int len = packet.getLength();
                 InetAddress senderAddr = packet.getAddress();
-                int         senderPort = packet.getPort();
+                int senderPort = packet.getPort();
 
-                // Enregistrement participant 1
-                if (!firstRegistered) {
-                    addr1 = senderAddr;
-                    port1 = senderPort;
-                    firstRegistered = true;
-                    System.out.println("[VIDEO RELAY] Participant 1 : "
-                            + addr1.getHostAddress() + ":" + port1);
+                if (len < 1) continue;
+
+                // Format binaire : [sessionIdLen][sessionId][videoData]
+                int sessionIdLen = data[0] & 0xFF;
+                if (sessionIdLen > MAX_SESSION_ID_LEN || len < 1 + sessionIdLen) {
+                    System.err.println("[VIDEO RELAY] Paquet malformé (len=" + len + ", sidLen=" + sessionIdLen + ")");
                     continue;
                 }
 
-                // Enregistrement participant 2
-                if (addr2 == null
-                        && (!senderAddr.equals(addr1) || senderPort != port1)) {
-                    addr2 = senderAddr;
-                    port2 = senderPort;
-                    System.out.println("[VIDEO RELAY] Participant 2 : "
-                            + addr2.getHostAddress() + ":" + port2);
+                String sessionId = new String(data, 1, sessionIdLen, java.nio.charset.StandardCharsets.UTF_8);
+                int videoOffset = 1 + sessionIdLen;
+                int videoLen = len - videoOffset;
+
+                SessionVideo session = sessions.get(sessionId);
+                if (session == null) {
+                    sessions.put(sessionId, new SessionVideo(senderAddr, senderPort));
+                    System.out.println("[VIDEO RELAY] Session [" + sessionId + "] — Participant 1 : "
+                            + senderAddr.getHostAddress() + ":" + senderPort);
+                    continue;
                 }
 
-                // Relais : envoyer à l'autre participant
-                if (addr2 != null) {
-                    InetAddress destAddr;
-                    int         destPort;
+                if (!session.peer2Ready && (!senderAddr.equals(session.addr1) || senderPort != session.port1)) {
+                    session.addr2 = senderAddr;
+                    session.port2 = senderPort;
+                    session.peer2Ready = true;
+                    System.out.println("[VIDEO RELAY] Session [" + sessionId + "] — Participant 2 : "
+                            + senderAddr.getHostAddress() + ":" + senderPort);
+                    continue;
+                }
 
-                    if (senderAddr.equals(addr1) && senderPort == port1) {
-                        destAddr = addr2;
-                        destPort = port2;
+                if (videoLen > 0 && session.peer2Ready) {
+                    InetAddress destAddr;
+                    int destPort;
+                    if (senderAddr.equals(session.addr1) && senderPort == session.port1) {
+                        destAddr = session.addr2;
+                        destPort = session.port2;
                     } else {
-                        destAddr = addr1;
-                        destPort = port1;
+                        destAddr = session.addr1;
+                        destPort = session.port1;
                     }
 
-                    DatagramPacket relay = new DatagramPacket(
-                            packet.getData(),
-                            packet.getLength(),
-                            destAddr, destPort);
+                    byte[] videoData = new byte[videoLen];
+                    System.arraycopy(data, videoOffset, videoData, 0, videoLen);
+                    DatagramPacket relay = new DatagramPacket(videoData, videoData.length, destAddr, destPort);
                     udpSocket.send(relay);
                 }
             }
 
         } catch (Exception e) {
             if (running) {
-                System.err.println("[VIDEO RELAY] Erreur : "
-                        + e.getMessage());
+                System.err.println("[VIDEO RELAY] Erreur : " + e.getMessage());
             }
         } finally {
             if (udpSocket != null && !udpSocket.isClosed()) {
@@ -88,17 +108,16 @@ public class VideoRelayServer implements Runnable {
         }
     }
 
-
-    public void resetParticipants() {
-        addr1 = null; port1 = 0;
-        addr2 = null; port2 = 0;
-        firstRegistered = false;
-        System.out.println("[VIDEO RELAY] Session réinitialisée.");
+    public void endSession(String sessionId) {
+        sessions.remove(sessionId);
+        System.out.println("[VIDEO RELAY] Session [" + sessionId + "] terminée.");
     }
 
     public void stop() {
         running = false;
-        if (udpSocket != null) udpSocket.close();
+        if (udpSocket != null && !udpSocket.isClosed()) {
+            udpSocket.close();
+        }
     }
 }
 

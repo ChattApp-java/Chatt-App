@@ -8,8 +8,7 @@ import java.util.List;
 
 public class MessageDAO {
 
-    public MessageDAO() {
-    }
+    public MessageDAO() {}
 
     public int sauvegarderMessage(Message msg) {
         String sql = "INSERT INTO messages (id_sender, id_receiver, contenu, statut) VALUES (?, ?, ?, 'non_lu')";
@@ -41,7 +40,6 @@ public class MessageDAO {
                    + "WHERE (id_sender = ? AND id_receiver = ?) "
                    + "   OR (id_sender = ? AND id_receiver = ?) "
                    + "ORDER BY date_envoi ASC";
-
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
@@ -67,7 +65,6 @@ public class MessageDAO {
         String sql = "SELECT * FROM messages "
                    + "WHERE id_receiver = ? AND statut = 'non_lu' "
                    + "ORDER BY date_envoi ASC";
-
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
@@ -126,6 +123,33 @@ public class MessageDAO {
             System.err.println("[DB] Erreur suppression : " + e.getMessage());
             return false;
         }
+    }
+
+    /**
+     * Exécute une opération atomique dans une transaction.
+     * Utile pour les opérations multi-étapes (ex: sauvegarder message + mettre à jour statut).
+     */
+    public boolean executeInTransaction(TransactionOperation op) {
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                boolean result = op.execute(conn);
+                conn.commit();
+                return result;
+            } catch (SQLException e) {
+                conn.rollback();
+                System.err.println("[DB] Transaction annulée : " + e.getMessage());
+                return false;
+            }
+        } catch (SQLException e) {
+            System.err.println("[DB] Erreur transaction : " + e.getMessage());
+            return false;
+        }
+    }
+
+    @FunctionalInterface
+    public interface TransactionOperation {
+        boolean execute(Connection conn) throws SQLException;
     }
 
     private Message extraireMessage(ResultSet rs) throws SQLException {
