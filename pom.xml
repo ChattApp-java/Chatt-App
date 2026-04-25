@@ -16,7 +16,6 @@
         <module>chatapp-protocol</module>
         <module>chatapp-audio</module>
         <module>chatapp-server</module>
-        <module>chatapp-client-classic</module>
         <module>chatapp-client-modern</module>
     </modules>
 
