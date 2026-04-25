@@ -1,95 +1,113 @@
 package projet.java;
 
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import java.awt.*;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.text.*;
+import javafx.scene.control.Label;
 
 /**
- * A chat bubble with:
+ * A chat bubble (JavaFX) with:
  *  - avatar circle on the left  (received)
  *  - no avatar, right-aligned   (sent)
  *  - sender name + time as subtitle
  *  - rounded bubble background
  */
-public class MessageBubble extends JPanel {
+public class MessageBubble extends HBox {
 
-    private static final int  AVATAR_SIZE = 34;
-    private static final int  ARC         = 20;
-    private static final int  MAX_WIDTH   = 260;
-
-    private final boolean mine;
+    private static final int MAX_WIDTH   = 260;
+    private static final int AVATAR_SIZE = 34;
+    private static final int ARC         = 20;
 
     public MessageBubble(String sender, String text, String time, boolean mine) {
-        this.mine = mine;
+        setSpacing(8);
+        setPadding(new Insets(4, 6, 4, 6));
+        setAlignment(Pos.BOTTOM_LEFT);
 
-        setLayout(new BorderLayout(8, 0));
-        setOpaque(false);
-        setBorder(new EmptyBorder(4, 6, 4, 6));
-
-        // ── Avatar (only for received) ──────────────────────
+        // ── Avatar (received only) ───────────────────────────
         if (!mine) {
-            JPanel avatar = Utils.makeAvatar(sender, AVATAR_SIZE);
-            JPanel avatarWrap = new JPanel(new BorderLayout());
-            avatarWrap.setOpaque(false);
-            avatarWrap.add(avatar, BorderLayout.SOUTH); // align to bottom of bubble
-            add(avatarWrap, BorderLayout.WEST);
+            StackPane avatar = Utils.makeAvatar(sender, AVATAR_SIZE);
+            getChildren().add(avatar);
         }
 
-        // ── Bubble content ──────────────────────────────────
-        JPanel bubble = new JPanel() {
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-                        RenderingHints.VALUE_ANTIALIAS_ON);
-                // Shadow (subtle)
-                g2.setColor(new Color(0, 0, 0, 40));
-                g2.fillRoundRect(2, 3, getWidth() - 2, getHeight() - 2, ARC, ARC);
-                // Bubble body
-                g2.setColor(mine ? UIConstants.MSG_SENT : UIConstants.MSG_RECV);
-                g2.fillRoundRect(0, 0, getWidth() - 2, getHeight() - 2, ARC, ARC);
-                // Subtle border on received
-                if (!mine) {
-                    g2.setColor(UIConstants.BORDER_COLOR);
-                    g2.setStroke(new BasicStroke(1f));
-                    g2.drawRoundRect(0, 0, getWidth() - 3, getHeight() - 3, ARC, ARC);
-                }
-                g2.dispose();
-            }
-        };
-        bubble.setLayout(new BoxLayout(bubble, BoxLayout.Y_AXIS));
-        bubble.setOpaque(false);
-        bubble.setBorder(new EmptyBorder(10, 14, 10, 14));
+        // ── Bubble ───────────────────────────────────────────
+        VBox bubble = new VBox(4);
+        bubble.setPadding(new Insets(10, 14, 10, 14));
+        bubble.setMaxWidth(MAX_WIDTH + 28);
 
-        // Sender name (received only) or "Vous" (sent)
+        Color bubbleColor = mine
+                ? UIConstants.MSG_SENT  // ✅
+                : UIConstants.MSG_RECV; // ✅
+
+        bubble.setBackground(new Background(new BackgroundFill(
+                bubbleColor,
+                new CornerRadii(ARC),
+                Insets.EMPTY
+        )));
+
+        // Subtle border on received
         if (!mine) {
-            JLabel nameLabel = Utils.styledLabel(sender, Font.BOLD, 11, UIConstants.TEXT_ACCENT);
-            nameLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-            bubble.add(nameLabel);
-            bubble.add(Box.createVerticalStrut(4));
+            bubble.setBorder(new Border(new BorderStroke(
+                    UIConstants.BORDER_COLOR,   // ✅
+                    BorderStrokeStyle.SOLID,
+                    new CornerRadii(ARC),
+                    new BorderWidths(1)
+            )));
         }
 
-        // Message text
-        String safe = Utils.escapeHtml(text);
-        JLabel msg = new JLabel(
-                "<html><body style='width:" + MAX_WIDTH + "px; font-family:SansSerif; font-size:14px;'>"
-                        + safe + "</body></html>"
-        );
-        msg.setForeground(UIConstants.TEXT_PRIMARY);
-        msg.setAlignmentX(Component.LEFT_ALIGNMENT);
-        bubble.add(msg);
+        // Drop shadow simulation via wrapper
+        StackPane bubbleWrap = new StackPane();
 
-        // Time stamp
-        bubble.add(Box.createVerticalStrut(5));
-        JLabel timeLabel = Utils.styledLabel(time, Font.PLAIN, 10, UIConstants.TEXT_MUTED);
-        timeLabel.setAlignmentX(mine ? Component.RIGHT_ALIGNMENT : Component.LEFT_ALIGNMENT);
-        bubble.add(timeLabel);
+        VBox shadow = new VBox();
+        shadow.setBackground(new Background(new BackgroundFill(
+                Color.color(0, 0, 0, 0.15),
+                new CornerRadii(ARC),
+                new Insets(-2, -2, 2, 2)
+        )));
+        shadow.setMaxWidth(MAX_WIDTH + 28);
+        shadow.setMaxHeight(Region.USE_COMPUTED_SIZE);
 
-        add(bubble, BorderLayout.CENTER);
+        bubbleWrap.getChildren().addAll(shadow, bubble);
+        bubbleWrap.setAlignment(Pos.CENTER);
 
-        // Spacer on right for received messages (keeps bubbles from stretching)
+        // ── Sender name (received only) ──────────────────────
         if (!mine) {
-            add(Box.createHorizontalStrut(40), BorderLayout.EAST);
+            Label nameLabel = new Label(sender);
+            nameLabel.setFont(Font.font("SansSerif", FontWeight.BOLD, 11));
+            nameLabel.setTextFill(UIConstants.TEXT_ACCENT);     // ✅
+            bubble.getChildren().add(nameLabel);
+        }
+
+        // ── Message text ─────────────────────────────────────
+        Label msg = new Label(text);
+        msg.setFont(Font.font("SansSerif", FontWeight.NORMAL, 14));
+        msg.setTextFill(UIConstants.TEXT_PRIMARY);              // ✅
+        msg.setWrapText(true);
+        msg.setMaxWidth(MAX_WIDTH);
+        bubble.getChildren().add(msg);
+
+        // ── Timestamp ────────────────────────────────────────
+        Label timeLabel = new Label(time);
+        timeLabel.setFont(Font.font("SansSerif", FontWeight.NORMAL, 10));
+        timeLabel.setTextFill(UIConstants.TEXT_MUTED);          // ✅
+        if (mine) {
+            bubble.setAlignment(Pos.CENTER_RIGHT);
+            timeLabel.setAlignment(Pos.CENTER_RIGHT);
+        } else {
+            timeLabel.setAlignment(Pos.CENTER_LEFT);
+        }
+        bubble.getChildren().add(timeLabel);
+
+        getChildren().add(bubbleWrap);
+
+        // Spacer on right for received
+        if (!mine) {
+            Region spacer = new Region();
+            spacer.setMinWidth(40);
+            getChildren().add(spacer);
         }
     }
+
+    // ✅ toFxColor() locale supprimée
 }

@@ -1,70 +1,77 @@
 package projet.java;
 
-import javax.swing.*;
-import java.awt.*;
+import javafx.application.Application;
+import javafx.geometry.Insets;
+import javafx.scene.Scene;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.paint.Color;
+import javafx.stage.Stage;
+
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
 /**
- * Main chat window.
- *  - Sets up the frame with TopBar / ChatPanel / BottomBar
+ * Main chat window (JavaFX).
+ *  - Sets up the Stage with TopBar / ChatPanel / BottomBar
  *  - Wires call buttons → NotificationAppel → AudioCallUI / VideoCallUI
  */
-public class Clientui {
+public class Clientui extends Application {
 
-    private final String    username    = "Lina";
-    private final String    currentUser = "Alice Dupont";
-    private ChatPanel       chatPanel;
-    private BottomBar       bottomBar;
+    private final String username    = "Lina";
+    private final String currentUser = "Utilis";
 
-    public Clientui() {
-        JFrame frame = new JFrame("Chat");
-        frame.setSize(720, 620);
-        frame.setMinimumSize(new Dimension(480, 400));
-        frame.setLayout(new BorderLayout());
-        frame.getContentPane().setBackground(UIConstants.BG_DARK);
+    private ChatPanel chatPanel;
+    private BottomBar bottomBar;
 
-        // Top bar
+    @Override
+    public void start(Stage primaryStage) {
+        primaryStage.setTitle("Chat");
+        primaryStage.setMinWidth(480);
+        primaryStage.setMinHeight(400);
+
+        // ── Root layout ──────────────────────────────────────
+        BorderPane root = new BorderPane();
+        root.setStyle("-fx-background-color: " + UIConstants.toHex(UIConstants.BG_DARK) + ";");
+
+        // ── Top bar ──────────────────────────────────────────
         TopBar topBar = new TopBar(currentUser);
-        frame.add(topBar, BorderLayout.NORTH);
+        root.setTop(topBar);
 
-        // Chat area
+        // ── Chat area ────────────────────────────────────────
         chatPanel = new ChatPanel();
-        frame.add(chatPanel, BorderLayout.CENTER);
+        root.setCenter(chatPanel);
 
-        // Input bar
+        // ── Input bar ────────────────────────────────────────
         bottomBar = new BottomBar(this::sendMessage);
-        frame.add(bottomBar, BorderLayout.SOUTH);
+        root.setBottom(bottomBar);
 
-        // Welcome
+        // ── Welcome message ──────────────────────────────────
         chatPanel.addSystemMessage("Bienvenue " + username + " 👋");
 
         // ── Call button wiring ───────────────────────────────
-
-        topBar.btnVideo.addActionListener(e -> {
-            NotificationAppel popup = new NotificationAppel(frame, currentUser, "Vidéo");
-            popup.setVisible(true);
+        topBar.btnVideo.setOnAction(e -> {
+            NotificationAppel popup = new NotificationAppel(primaryStage, currentUser, "Vidéo");
+            popup.showAndWait();
             if (popup.isAccepte()) {
                 new VideoCallUI(username, currentUser);
             }
         });
 
-        topBar.btnAudio.addActionListener(e -> {
-            new AudioCallUI(currentUser);
-        });
+        topBar.btnAudio.setOnAction(e -> new AudioCallUI(currentUser));
 
-        // ── Frame settings ───────────────────────────────────
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setLocationRelativeTo(null);
-        frame.setVisible(true);
+        // ── Scene ────────────────────────────────────────────
+        Scene scene = new Scene(root, 720, 620);
+        primaryStage.setScene(scene);
+        primaryStage.show();
 
-        // Test messages so the UI looks populated on launch
+        // ── Test messages ────────────────────────────────────
         String now = new SimpleDateFormat("HH:mm").format(new Date());
-        chatPanel.addMessage(currentUser, "Bonjour ! Comment tu vas ?", now, false);
-        chatPanel.addMessage(username, "Très bien merci ! Et toi ?", now, true);
+        chatPanel.addMessage(currentUser, "Bonjour ! Comment tu vas ?",   now, false);
+        chatPanel.addMessage(username,    "Très bien merci ! Et toi ?",    now, true);
         chatPanel.addMessage(currentUser, "Super ! On se retrouve à 18h ?", now, false);
     }
 
+    // ── Send message ─────────────────────────────────────────
     private void sendMessage() {
         String msg = bottomBar.getMessage().trim();
         if (msg.isEmpty()) return;
@@ -73,12 +80,13 @@ public class Clientui {
         bottomBar.clear();
     }
 
+    // ── Entry point ──────────────────────────────────────────
     public static void main(String[] args) {
-        // Set system look defaults (still override with custom colours)
-        try {
-            UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
-        } catch (Exception ignored) {}
+        launch(args);
+    }
 
-        SwingUtilities.invokeLater(Clientui::new);
+    // ── Helper ───────────────────────────────────────────────
+    private static String toHex(java.awt.Color c) {
+        return String.format("#%02x%02x%02x", c.getRed(), c.getGreen(), c.getBlue());
     }
 }

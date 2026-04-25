@@ -1,91 +1,99 @@
 package projet.java;
 
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import java.awt.*;
+import javafx.application.Platform;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontPosture;
+import javafx.scene.text.Text;
 
 /**
- * Scrollable chat message area.
+ * Scrollable chat message area (JavaFX).
  * Messages are added via addMessage() / addSystemMessage().
  */
-public class ChatPanel extends JScrollPane {
+public class ChatPanel extends ScrollPane {
 
-    private final JPanel content;
+    private final VBox content;
 
     public ChatPanel() {
-        content = new JPanel();
-        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
-        content.setBackground(UIConstants.BG_DARK);
-        content.setBorder(new EmptyBorder(16, 8, 16, 8));
+        content = new VBox(4);
+        content.setPadding(new Insets(16, 8, 16, 8));
+        content.setBackground(new Background(new BackgroundFill(
+                UIConstants.BG_DARK,        // ✅ déjà javafx.scene.paint.Color
+                CornerRadii.EMPTY,
+                Insets.EMPTY
+        )));
 
-        setViewportView(content);
-        setBorder(null);
-        getViewport().setBackground(UIConstants.BG_DARK);
+        content.setFillWidth(true);
 
-        // Slim, dark scrollbar
-        JScrollBar vBar = getVerticalScrollBar();
-        vBar.setPreferredSize(new Dimension(5, 0));
-        vBar.setUnitIncrement(16);
-        vBar.setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
-            @Override protected void configureScrollBarColors() {
-                thumbColor       = UIConstants.BORDER_COLOR;
-                trackColor       = UIConstants.BG_DARK;
-            }
-            @Override protected JButton createDecreaseButton(int o) { return zeroButton(); }
-            @Override protected JButton createIncreaseButton(int o) { return zeroButton(); }
-            private JButton zeroButton() {
-                JButton b = new JButton();
-                b.setPreferredSize(new Dimension(0, 0));
-                return b;
-            }
-        });
-        setHorizontalScrollBarPolicy(HORIZONTAL_SCROLLBAR_NEVER);
+        setContent(content);
+        setFitToWidth(true);
+        setBorder(Border.EMPTY);
+        setHbarPolicy(ScrollBarPolicy.NEVER);
+        setVbarPolicy(ScrollBarPolicy.AS_NEEDED);
+
+        setBackground(new Background(new BackgroundFill(
+                UIConstants.BG_DARK,        // ✅
+                CornerRadii.EMPTY,
+                Insets.EMPTY
+        )));
+
+        setStyle(
+                "-fx-background: "       + UIConstants.toHex(UIConstants.BG_DARK) + ";" +
+                        "-fx-background-color: " + UIConstants.toHex(UIConstants.BG_DARK) + ";" +
+                        "-fx-padding: 0;"
+        );
+
+        if (getClass().getResource("/chat_scroll.css") != null) {
+            getStylesheets().add(getClass().getResource("/chat_scroll.css").toExternalForm());
+        }
     }
 
-    public void addMessage(String sender, String text, String time, boolean mine) {
-        JPanel wrapper = new JPanel(
-                new FlowLayout(mine ? FlowLayout.RIGHT : FlowLayout.LEFT, 0, 0)
-        );
-        wrapper.setOpaque(false);
-        wrapper.add(new MessageBubble(sender, text, time, mine));
+    // ── Public API ────────────────────────────────────────────
 
-        content.add(wrapper);
-        content.add(Box.createVerticalStrut(4));
-        revalidate();
-        repaint();
+    public void addMessage(String sender, String text, String time, boolean mine) {
+        HBox wrapper = new HBox();
+        wrapper.setAlignment(mine ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
+        wrapper.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(wrapper, Priority.ALWAYS);
+        wrapper.getChildren().add(new MessageBubble(sender, text, time, mine));
+        content.getChildren().add(wrapper);
         scrollBottom();
     }
 
     public void addSystemMessage(String text) {
-        JPanel wrapper = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        wrapper.setOpaque(false);
+        HBox wrapper = new HBox();
+        wrapper.setAlignment(Pos.CENTER);
+        wrapper.setMaxWidth(Double.MAX_VALUE);
+        wrapper.setPadding(new Insets(4, 0, 4, 0));
 
-        // Pill-shaped system message
-        JPanel pill = new JPanel() {
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(UIConstants.BG_SURFACE);
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 14, 14);
-                g2.dispose();
-            }
-        };
-        pill.setOpaque(false);
-        pill.setBorder(new EmptyBorder(4, 14, 4, 14));
+        StackPane pill = new StackPane();
+        pill.setPadding(new Insets(4, 14, 4, 14));
+        pill.setBackground(new Background(new BackgroundFill(
+                UIConstants.BG_SURFACE,     // ✅
+                new CornerRadii(14),
+                Insets.EMPTY
+        )));
 
-        JLabel label = Utils.styledLabel(text, Font.ITALIC, 11, UIConstants.TEXT_MUTED);
-        pill.add(label);
-        wrapper.add(pill);
+        Text label = new Text(text);
+        label.setFont(Font.font("SansSerif", FontPosture.ITALIC, 11));
+        label.setFill(UIConstants.TEXT_MUTED); // ✅
 
-        content.add(wrapper);
-        content.add(Box.createVerticalStrut(8));
+        pill.getChildren().add(label);
+        wrapper.getChildren().add(pill);
+        content.getChildren().add(wrapper);
     }
+
+    // ── Helpers ───────────────────────────────────────────────
 
     private void scrollBottom() {
-        SwingUtilities.invokeLater(() -> {
-            JScrollBar bar = getVerticalScrollBar();
-            bar.setValue(bar.getMaximum());
-        });
+        Platform.runLater(() -> setVvalue(1.0));
     }
+
+    // ✅ toFxColor() et toHex() locaux supprimés
+    //    UIConstants retourne déjà javafx.scene.paint.Color
+    //    et UIConstants.toHex() prend un javafx Color
 }

@@ -1,134 +1,136 @@
 package projet.java;
 
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import java.awt.*;
-import java.awt.event.*;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Scene;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.*;
+import javafx.scene.paint.*;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+import javafx.stage.Stage;
 
 /**
- * Video call window with:
+ * Video call window (JavaFX) with:
  *  - Two side-by-side video panels (placeholder)
  *  - Camera-off placeholder with avatar initials
  *  - Bottom control bar: Mute / Cam / Hang-up
  */
-public class VideoCallUI extends JFrame {
+public class VideoCallUI extends Stage {
 
-    private JLabel ecranMoi;
-    private JLabel ecranAutre;
-    private boolean camOn   = true;
-    private boolean micOn   = true;
+    private final ImageView ecranMoi   = new ImageView();
+    private final ImageView ecranAutre = new ImageView();
+
+    private boolean camOn = true;
+    private boolean micOn = true;
 
     public VideoCallUI(String me, String other) {
         setTitle("Appel Vidéo");
-        setSize(820, 520);
         setResizable(true);
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        getContentPane().setBackground(UIConstants.BG_DARK);
-        setLayout(new BorderLayout(0, 0));
-        setLocationRelativeTo(null);
 
-        // ── Video panels ─────────────────────────────────────
-        JPanel videosPanel = new JPanel(new GridLayout(1, 2, 3, 0));
-        videosPanel.setBackground(UIConstants.BG_DARK);
+        // ── Video panels ──────────────────────────────────────
+        HBox videosPanel = new HBox(3);
+        videosPanel.setBackground(new Background(new BackgroundFill(
+                UIConstants.BG_DARK, CornerRadii.EMPTY, Insets.EMPTY
+        )));
 
-        JPanel myPanel    = makeVideoPanel(me,    true);
-        JPanel otherPanel = makeVideoPanel(other, false);
+        StackPane otherPanel = makeVideoPanel(other, false, ecranAutre);
+        StackPane myPanel    = makeVideoPanel(me,    true,  ecranMoi);
 
-        JPanel holderMoi = (JPanel) myPanel.getClientProperty("label");
-        ecranMoi = (JLabel) holderMoi.getClientProperty("label");
+        HBox.setHgrow(otherPanel, Priority.ALWAYS);
+        HBox.setHgrow(myPanel,    Priority.ALWAYS);
 
-        JPanel holderAutre = (JPanel) otherPanel.getClientProperty("label");
-        ecranAutre = (JLabel) holderAutre.getClientProperty("label");
+        videosPanel.getChildren().addAll(otherPanel, myPanel);
 
-        videosPanel.add(otherPanel); // other is bigger / primary
-        videosPanel.add(myPanel);
+        // ── Controls bar ──────────────────────────────────────
+        HBox controls = new HBox(16);
+        controls.setAlignment(Pos.CENTER);
+        controls.setPadding(new Insets(14, 0, 14, 0));
+        controls.setBackground(new Background(new BackgroundFill(
+                UIConstants.BG_PANEL, CornerRadii.EMPTY, Insets.EMPTY
+        )));
 
-        add(videosPanel, BorderLayout.CENTER);
+        Button btnMic = Utils.pillButton("🎙️  Micro",    UIConstants.BG_SURFACE, 50);
+        Button btnCam = Utils.pillButton("📷  Caméra",   UIConstants.BG_SURFACE, 50);
+        Button btnEnd = Utils.pillButton("📵  Terminer", UIConstants.DANGER,     50);
 
-        // ── Controls bar ─────────────────────────────────────
-        JPanel controls = new JPanel(new FlowLayout(FlowLayout.CENTER, 16, 0));
-        controls.setBackground(UIConstants.BG_PANEL);
-        controls.setBorder(new EmptyBorder(14, 0, 14, 0));
-
-        JButton btnMic = Utils.pillButton("🎙️  Micro", UIConstants.BG_SURFACE, 50);
-        btnMic.setBorder(new EmptyBorder(10, 18, 10, 18));
-        btnMic.addActionListener(e -> {
+        btnMic.setOnAction(e -> {
             micOn = !micOn;
             btnMic.setText(micOn ? "🎙️  Micro" : "🔇  Micro");
         });
 
-        JButton btnCam = Utils.pillButton("📷  Caméra", UIConstants.BG_SURFACE, 50);
-        btnCam.setBorder(new EmptyBorder(10, 18, 10, 18));
-        btnCam.addActionListener(e -> {
+        btnCam.setOnAction(e -> {
             camOn = !camOn;
             btnCam.setText(camOn ? "📷  Caméra" : "🚫  Caméra");
         });
 
-        JButton btnEnd = Utils.pillButton("📵  Terminer", UIConstants.DANGER, 50);
-        btnEnd.setBorder(new EmptyBorder(10, 24, 10, 24));
-        btnEnd.addActionListener(e -> dispose());
+        btnEnd.setOnAction(e -> close());
 
-        controls.add(btnMic);
-        controls.add(btnCam);
-        controls.add(btnEnd);
-        add(controls, BorderLayout.SOUTH);
+        controls.getChildren().addAll(btnMic, btnCam, btnEnd);
 
-        setVisible(true);
+        // ── Root ──────────────────────────────────────────────
+        BorderPane root = new BorderPane();
+        root.setCenter(videosPanel);
+        root.setBottom(controls);
+
+        Scene scene = new Scene(root, 820, 520);
+        setScene(scene);
+        show();
     }
 
-    private JPanel makeVideoPanel(String name, boolean isMe) {
-        // Outer dark panel
-        JPanel outer = new JPanel(new BorderLayout()) {
-            @Override protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                // Subtle gradient
-                GradientPaint gp = new GradientPaint(
-                        0, 0, new Color(22, 23, 40),
-                        0, getHeight(), new Color(10, 10, 20)
-                );
-                g2.setPaint(gp);
-                g2.fillRect(0, 0, getWidth(), getHeight());
-                g2.dispose();
-            }
-        };
-        outer.setOpaque(false);
+    // ── Video panel builder ───────────────────────────────────
 
-        // Avatar placeholder (replaced by real camera feed later)
-        JPanel centre = new JPanel();
-        centre.setLayout(new BoxLayout(centre, BoxLayout.Y_AXIS));
-        centre.setOpaque(false);
+    private StackPane makeVideoPanel(String name, boolean isMe, ImageView screen) {
+        StackPane outer = new StackPane();
+        outer.setMinWidth(0);
 
-        JPanel avatar = Utils.makeAvatar(name, 72);
-        avatar.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        JLabel nameLabel = Utils.styledLabel(
-                name + (isMe ? "  (Vous)" : ""), Font.BOLD, 15, UIConstants.TEXT_PRIMARY
+        // Gradient background
+        LinearGradient gradient = new LinearGradient(
+                0, 0, 0, 1, true, CycleMethod.NO_CYCLE,
+                new Stop(0.0, Color.rgb(22, 23, 40)),
+                new Stop(1.0, Color.rgb(10, 10, 20))
         );
-        nameLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        outer.setBackground(new Background(new BackgroundFill(
+                gradient, CornerRadii.EMPTY, Insets.EMPTY
+        )));
 
-        centre.add(Box.createVerticalGlue());
-        centre.add(avatar);
-        centre.add(Box.createVerticalStrut(14));
-        centre.add(nameLabel);
-        centre.add(Box.createVerticalGlue());
+        // ImageView fills panel when camera is active
+        screen.setPreserveRatio(true);
+        screen.setSmooth(true);
+        screen.fitWidthProperty().bind(outer.widthProperty());
+        screen.fitHeightProperty().bind(outer.heightProperty());
 
-        outer.add(centre, BorderLayout.CENTER);
+        // ── Avatar placeholder (centre) ───────────────────────
+        VBox centre = new VBox(14);
+        centre.setAlignment(Pos.CENTER);
 
-        // Name overlay at top-left
-        JLabel overlay = Utils.styledLabel(name, Font.BOLD, 12, UIConstants.TEXT_MUTED);
-        overlay.setBorder(new EmptyBorder(8, 10, 0, 0));
-        outer.add(overlay, BorderLayout.NORTH);
+        StackPane avatar = Utils.makeAvatar(name, 72);
 
-        // Store label ref in client property for getEcranMoi/Autre
-        JPanel labelHolder = new JPanel();
-        labelHolder.putClientProperty("label", overlay);
-        outer.putClientProperty("label", labelHolder);
+        Label nameLabel = new Label(name + (isMe ? "  (Vous)" : ""));
+        nameLabel.setFont(Font.font("SansSerif", FontWeight.BOLD, 15));
+        nameLabel.setTextFill(UIConstants.TEXT_PRIMARY);
+
+        centre.getChildren().addAll(avatar, nameLabel);
+
+        // ── Name overlay (top-left) ───────────────────────────
+        Label overlay = new Label(name);
+        overlay.setFont(Font.font("SansSerif", FontWeight.BOLD, 12));
+        overlay.setTextFill(UIConstants.TEXT_MUTED);
+        overlay.setPadding(new Insets(8, 0, 0, 10));
+        StackPane.setAlignment(overlay, Pos.TOP_LEFT);
+
+        outer.getChildren().addAll(screen, centre, overlay);
 
         return outer;
     }
 
-    /** For camera integration: returns label in "Vous" panel. */
-    public JLabel getEcranMoi()   { return ecranMoi; }
-    /** For camera integration: returns label in contact panel. */
-    public JLabel getEcranAutre() { return ecranAutre; }
+    // ── For camera integration ────────────────────────────────
+
+    /** ImageView in "Vous" panel — set its image to display your camera feed. */
+    public ImageView getEcranMoi()   { return ecranMoi; }
+
+    /** ImageView in contact panel — set its image to display remote feed. */
+    public ImageView getEcranAutre() { return ecranAutre; }
 }

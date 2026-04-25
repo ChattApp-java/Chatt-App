@@ -1,100 +1,150 @@
 package projet.java;
 
-import javax.swing.*;
-import javax.swing.border.*;
-import java.awt.*;
-import java.awt.event.*;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.control.Button;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
 
 /**
- * Bottom input bar:
+ * Bottom input bar (JavaFX):
  *  - Rounded input container (dark surface)
  *  - Placeholder text hint
  *  - Send button (accent colour, pill shape)
  *  - Top separator line
  */
-public class BottomBar extends JPanel {
+public class BottomBar extends HBox {
 
-    private final JTextField field;
+    private static final String PLACEHOLDER = "Écrire un message…";
+
+    private final TextField field;
 
     public BottomBar(Runnable sendAction) {
-        setLayout(new BorderLayout(10, 0));
-        setBackground(UIConstants.BG_PANEL);
-        setBorder(new CompoundBorder(
-                new MatteBorder(1, 0, 0, 0, UIConstants.BORDER_COLOR),
-                new EmptyBorder(12, 16, 12, 16)
-        ));
+        setSpacing(10);
+        setAlignment(Pos.CENTER);
+        setPadding(new Insets(12, 16, 12, 16));
+
+        // Top border separator
+        setBorder(new Border(new BorderStroke(
+                UIConstants.BORDER_COLOR,       // ✅ déjà javafx Color
+                Color.TRANSPARENT,
+                Color.TRANSPARENT,
+                Color.TRANSPARENT,
+                BorderStrokeStyle.SOLID,
+                BorderStrokeStyle.NONE,
+                BorderStrokeStyle.NONE,
+                BorderStrokeStyle.NONE,
+                CornerRadii.EMPTY,
+                new BorderWidths(1, 0, 0, 0),
+                Insets.EMPTY
+        )));
+
+        setBackground(new Background(new BackgroundFill(
+                UIConstants.BG_PANEL,           // ✅
+                CornerRadii.EMPTY,
+                Insets.EMPTY
+        )));
 
         // ── Input container (rounded) ────────────────────────
-        JPanel inputContainer = new JPanel(new BorderLayout(8, 0)) {
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(UIConstants.BG_INPUT);
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 24, 24);
-                // Focus ring
-                if (field.hasFocus()) {
-                    g2.setColor(Utils.withAlpha(UIConstants.ACCENT, 120));
-                    g2.setStroke(new BasicStroke(2f));
-                    g2.drawRoundRect(1, 1, getWidth() - 2, getHeight() - 2, 24, 24);
-                }
-                g2.dispose();
-            }
-        };
-        inputContainer.setOpaque(false);
-        inputContainer.setBorder(new EmptyBorder(0, 16, 0, 12));
+        StackPane inputContainer = new StackPane();
+        inputContainer.setPadding(new Insets(0, 12, 0, 16));
+        inputContainer.setBackground(new Background(new BackgroundFill(
+                UIConstants.BG_INPUT,           // ✅
+                new CornerRadii(24),
+                Insets.EMPTY
+        )));
+        HBox.setHgrow(inputContainer, Priority.ALWAYS);
 
-        field = new JTextField();
-        field.setBackground(new Color(0, 0, 0, 0));
-        field.setForeground(UIConstants.TEXT_PRIMARY);
-        field.setCaretColor(UIConstants.ACCENT_LIGHT);
-        field.setFont(new Font("SansSerif", Font.PLAIN, 14));
-        field.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
-        field.setOpaque(false);
+        field = new TextField();
+        field.setFont(Font.font("SansSerif", FontWeight.NORMAL, 14));
+        field.setStyle(
+                "-fx-background-color: transparent;" +
+                        "-fx-text-fill: "         + UIConstants.toHex(UIConstants.TEXT_MUTED) + ";" +
+                        "-fx-prompt-text-fill: "  + UIConstants.toHex(UIConstants.TEXT_MUTED) + ";" +
+                        "-fx-padding: 10 0 10 0;" +
+                        "-fx-border-width: 0;"    +
+                        "-fx-background-insets: 0;"
+        );
+        field.setPromptText(PLACEHOLDER);
+        field.setText(PLACEHOLDER);
 
-        // Placeholder simulation
-        String placeholder = "Écrire un message…";
-        field.setText(placeholder);
-        field.setForeground(UIConstants.TEXT_MUTED);
-
-        field.addFocusListener(new FocusAdapter() {
-            @Override public void focusGained(FocusEvent e) {
-                if (field.getText().equals(placeholder)) {
+        // Placeholder behaviour
+        field.focusedProperty().addListener((obs, wasFocused, isFocused) -> {
+            if (isFocused) {
+                if (field.getText().equals(PLACEHOLDER)) {
                     field.setText("");
-                    field.setForeground(UIConstants.TEXT_PRIMARY);
                 }
-                inputContainer.repaint();
-            }
-            @Override public void focusLost(FocusEvent e) {
+                field.setStyle(
+                        "-fx-background-color: transparent;" +
+                                "-fx-text-fill: "         + UIConstants.toHex(UIConstants.TEXT_PRIMARY) + ";" +
+                                "-fx-padding: 10 0 10 0;" +
+                                "-fx-border-width: 0;"    +
+                                "-fx-background-insets: 0;"
+                );
+                // Focus ring
+                inputContainer.setBorder(new Border(new BorderStroke(
+                        UIConstants.ACCENT.deriveColor(0, 1, 1, 0.47), // ✅
+                        BorderStrokeStyle.SOLID,
+                        new CornerRadii(24),
+                        new BorderWidths(2)
+                )));
+            } else {
                 if (field.getText().isEmpty()) {
-                    field.setText(placeholder);
-                    field.setForeground(UIConstants.TEXT_MUTED);
+                    field.setText(PLACEHOLDER);
+                    field.setStyle(
+                            "-fx-background-color: transparent;" +
+                                    "-fx-text-fill: "         + UIConstants.toHex(UIConstants.TEXT_MUTED) + ";" +
+                                    "-fx-padding: 10 0 10 0;" +
+                                    "-fx-border-width: 0;"    +
+                                    "-fx-background-insets: 0;"
+                    );
                 }
-                inputContainer.repaint();
+                inputContainer.setBorder(Border.EMPTY);
             }
         });
 
-        field.addActionListener(e -> sendAction.run());
+        field.setOnAction(e -> sendAction.run());
 
-        inputContainer.add(field, BorderLayout.CENTER);
+        StackPane.setAlignment(field, Pos.CENTER_LEFT);
+        inputContainer.getChildren().add(field);
 
         // ── Send button ──────────────────────────────────────
-        JButton send = Utils.pillButton("Envoyer  ›", UIConstants.ACCENT, 22);
-        send.setFont(new Font("SansSerif", Font.BOLD, 13));
-        send.setBorder(new EmptyBorder(10, 20, 10, 20));
-        send.addActionListener(e -> sendAction.run());
+        Button send = pillButton("Envoyer  ›", UIConstants.ACCENT);
+        send.setOnAction(e -> sendAction.run());
 
-        add(inputContainer, BorderLayout.CENTER);
-        add(send, BorderLayout.EAST);
+        getChildren().addAll(inputContainer, send);
     }
+
+    // ── Public API ────────────────────────────────────────────
 
     public String getMessage() {
         String txt = field.getText();
-        // Don't return placeholder
-        return txt.equals("Écrire un message…") ? "" : txt;
+        return txt.equals(PLACEHOLDER) ? "" : txt;
     }
 
     public void clear() {
         field.setText("");
     }
+
+    // ── Helpers ───────────────────────────────────────────────
+
+    private static Button pillButton(String text, Color bg) {  // ✅ javafx Color
+        Button btn = new Button(text);
+        btn.setFont(Font.font("SansSerif", FontWeight.BOLD, 13));
+        btn.setTextFill(Color.WHITE);
+        btn.setStyle(
+                "-fx-background-color: " + UIConstants.toHex(bg) + ";" +
+                        "-fx-background-radius: 50;" +
+                        "-fx-padding: 10 20 10 20;" +
+                        "-fx-cursor: hand;"
+        );
+        btn.setOnMouseEntered(e -> btn.setOpacity(0.85));
+        btn.setOnMouseExited(e  -> btn.setOpacity(1.0));
+        return btn;
+    }
+
+    // ✅ toFxColor() et toHex() locaux supprimés
 }
