@@ -1,7 +1,7 @@
-package com.chatapp.database;
+package com.example.database;
 
-import com.chatapp.model.User;
-import org.mindrot.jbcrypt.BCrypt;
+import com.example.model.User;
+import org.mindrot.jbcrypt.BCrypt; // ← ajouter dans pom.xml : org.mindrot:jbcrypt:0.4
 
 import java.sql.*;
 import java.time.LocalDateTime;
@@ -162,4 +162,3 @@ public class UserDAO {
         );
     }
 }
-
