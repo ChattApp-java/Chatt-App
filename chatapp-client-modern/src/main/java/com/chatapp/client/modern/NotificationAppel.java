@@ -1,97 +1,127 @@
-package com.chatapp.client.modern;
+package projet.java;
 
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import java.awt.*;
-import java.awt.event.*;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Scene;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontPosture;
+import javafx.scene.text.FontWeight;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 
 /**
- * Incoming call notification dialog.
- * Shows a pulsing avatar, contact name, call type.
+ * Incoming call notification dialog (JavaFX).
+ * Shows contact name, call type.
  * Accept / Decline buttons set isAccepte().
  */
-public class NotificationAppel extends JDialog {
+public class NotificationAppel extends Stage {
 
     private boolean accepte = false;
 
-    public NotificationAppel(JFrame parent, String contact, String typeAppel) {
-        super(parent, "Appel entrant", true);
-        setUndecorated(true);
-        setSize(340, 210);
-        setLocationRelativeTo(parent);
+    public NotificationAppel(Stage parent, String contact, String typeAppel) {
+        initOwner(parent);
+        initModality(Modality.APPLICATION_MODAL);
+        initStyle(StageStyle.TRANSPARENT);
+        setTitle("Appel entrant");
+        setResizable(false);
 
-        JPanel root = new JPanel(new BorderLayout()) {
-            @Override protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(UIConstants.BG_SURFACE);
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
-                // Border
-                g2.setColor(UIConstants.BORDER_COLOR);
-                g2.setStroke(new BasicStroke(1f));
-                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 20, 20);
-                g2.dispose();
-            }
-        };
-        root.setOpaque(false);
-        root.setBorder(new EmptyBorder(24, 24, 20, 24));
-        setContentPane(root);
-        getContentPane().setBackground(new Color(0,0,0,0));
+        // ── Root ─────────────────────────────────────────────
+        BorderPane root = new BorderPane();
+        root.setPadding(new Insets(24, 24, 20, 24));
+        root.setBackground(new Background(new BackgroundFill(
+                UIConstants.BG_SURFACE,         // ✅
+                new CornerRadii(20),
+                Insets.EMPTY
+        )));
+        root.setBorder(new Border(new BorderStroke(
+                UIConstants.BORDER_COLOR,        // ✅
+                BorderStrokeStyle.SOLID,
+                new CornerRadii(20),
+                new BorderWidths(1)
+        )));
 
-        // ── TOP: Icon + call type label ──────────────────────
-        JPanel topRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
-        topRow.setOpaque(false);
+        // ── TOP: Icon + call type + contact name ──────────────
+        HBox topRow = new HBox(10);
+        topRow.setAlignment(Pos.CENTER_LEFT);
 
         String typeIcon = typeAppel.equalsIgnoreCase("Vidéo") ? "📹" : "📞";
-        JLabel iconLabel = new JLabel(typeIcon);
-        iconLabel.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 22));
+        Label iconLabel = new Label(typeIcon);
+        iconLabel.setFont(Font.font("Segoe UI Emoji", 22));
 
-        JPanel typeCol = new JPanel();
-        typeCol.setLayout(new BoxLayout(typeCol, BoxLayout.Y_AXIS));
-        typeCol.setOpaque(false);
+        VBox typeCol = new VBox(2);
 
-        JLabel incoming = Utils.styledLabel("Appel " + typeAppel, Font.PLAIN, 11, UIConstants.TEXT_MUTED);
-        JLabel contactLabel = new JLabel(contact);
-        contactLabel.setFont(new Font("SansSerif", Font.BOLD, 17));
-        contactLabel.setForeground(UIConstants.TEXT_PRIMARY);
+        Label incoming = new Label("Appel " + typeAppel);
+        incoming.setFont(Font.font("SansSerif", FontWeight.NORMAL, 11));
+        incoming.setTextFill(UIConstants.TEXT_MUTED);           // ✅
 
-        typeCol.add(incoming);
-        typeCol.add(contactLabel);
+        Label contactLabel = new Label(contact);
+        contactLabel.setFont(Font.font("SansSerif", FontWeight.BOLD, 17));
+        contactLabel.setTextFill(UIConstants.TEXT_PRIMARY);     // ✅
 
-        topRow.add(iconLabel);
-        topRow.add(typeCol);
-        root.add(topRow, BorderLayout.NORTH);
+        typeCol.getChildren().addAll(incoming, contactLabel);
+        topRow.getChildren().addAll(iconLabel, typeCol);
+        root.setTop(topRow);
 
-        // ── CENTER: Sub-label ────────────────────────────────
-        JPanel center = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        center.setOpaque(false);
-        JLabel sub = Utils.styledLabel("souhaite vous parler…", Font.ITALIC, 13, UIConstants.TEXT_MUTED);
-        center.add(sub);
-        root.add(center, BorderLayout.CENTER);
+        // ── CENTER: Sub-label ─────────────────────────────────
+        Label sub = new Label("souhaite vous parler…");
+        sub.setFont(Font.font("SansSerif", FontPosture.ITALIC, 13));
+        sub.setTextFill(UIConstants.TEXT_MUTED);                // ✅
+        sub.setPadding(new Insets(10, 0, 10, 0));
+        root.setCenter(sub);
 
-        // ── BOTTOM: Buttons ──────────────────────────────────
-        JPanel btnPanel = new JPanel(new GridLayout(1, 2, 12, 0));
-        btnPanel.setOpaque(false);
-        btnPanel.setBorder(new EmptyBorder(4, 0, 0, 0));
+        // ── BOTTOM: Buttons ───────────────────────────────────
+        HBox btnPanel = new HBox(12);
+        btnPanel.setAlignment(Pos.CENTER);
+        btnPanel.setPadding(new Insets(4, 0, 0, 0));
 
-        JButton btnRefuser  = Utils.dangerButton("✖  Refuser");
-        JButton btnAccepter = Utils.successButton("✔  Accepter");
+        Button btnRefuser  = styledButton("✖  Refuser",  UIConstants.DANGER);   // ✅
+        Button btnAccepter = styledButton("✔  Accepter", UIConstants.SUCCESS);  // ✅
 
-        btnRefuser.setBorder(new EmptyBorder(10, 0, 10, 0));
-        btnAccepter.setBorder(new EmptyBorder(10, 0, 10, 0));
+        btnRefuser.setMaxWidth(Double.MAX_VALUE);
+        btnAccepter.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(btnRefuser,  Priority.ALWAYS);
+        HBox.setHgrow(btnAccepter, Priority.ALWAYS);
 
-        btnRefuser.addActionListener(e -> { accepte = false; dispose(); });
-        btnAccepter.addActionListener(e -> { accepte = true;  dispose(); });
+        btnRefuser.setOnAction(e  -> { accepte = false; close(); });
+        btnAccepter.setOnAction(e -> { accepte = true;  close(); });
 
-        btnPanel.add(btnRefuser);
-        btnPanel.add(btnAccepter);
-        root.add(btnPanel, BorderLayout.SOUTH);
+        btnPanel.getChildren().addAll(btnRefuser, btnAccepter);
+        root.setBottom(btnPanel);
 
-        // Make dialog background transparent so rounded corners show
-        setBackground(new Color(0, 0, 0, 0));
-        getRootPane().putClientProperty("apple.awt.windowShadow.revalidateNow", true);
+        // ── Scene (transparent background) ───────────────────
+        Scene scene = new Scene(root, 340, 210);
+        scene.setFill(Color.TRANSPARENT);
+        setScene(scene);
+
+        if (parent != null) {
+            setX(parent.getX() + parent.getWidth()  / 2 - 170);
+            setY(parent.getY() + parent.getHeight() / 2 - 105);
+        }
     }
 
     public boolean isAccepte() { return accepte; }
-}
 
+    // ── Helpers ───────────────────────────────────────────────
+
+    private static Button styledButton(String text, Color bg) {  // ✅ javafx Color
+        Button btn = new Button(text);
+        btn.setFont(Font.font("SansSerif", FontWeight.BOLD, 13));
+        btn.setTextFill(Color.WHITE);
+        btn.setPadding(new Insets(10, 0, 10, 0));
+        btn.setStyle(
+                "-fx-background-color: " + UIConstants.toHex(bg) + ";" +  // ✅
+                        "-fx-background-radius: 10;" +
+                        "-fx-cursor: hand;"
+        );
+        btn.setOnMouseEntered(e -> btn.setOpacity(0.85));
+        btn.setOnMouseExited(e  -> btn.setOpacity(1.0));
+        return btn;
+    }
+
+    // ✅ toFxColor() et toHex() locaux supprimés
+}

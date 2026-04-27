@@ -1,118 +1,110 @@
-package com.chatapp.client.modern;
+package projet.java;
 
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import java.awt.*;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
 
 /**
- * Barre superieure WhatsApp avec:
- *  - Avatar + nom + statut dynamique
- *  - Boutons appel audio/video
- *  - Separator
+ * Top navigation bar (JavaFX) with:
+ *  - Avatar + name + "En ligne" status
+ *  - Audio & video call buttons
+ *  - Bottom separator line
  */
-public class TopBar extends JPanel {
+public class TopBar extends BorderPane {
 
-    public final JButton btnAudio;
-    public final JButton btnVideo;
-    private final JLabel statusLabel;
-    private final JPanel dot;
+    public final Button btnAudio;
+    public final Button btnVideo;
 
     public TopBar(String user) {
-        setLayout(new BorderLayout(12, 0));
-        setBackground(UIConstants.BG_PANEL);
-        setBorder(new EmptyBorder(10, 16, 10, 16));
+        setPadding(new Insets(12, 18, 12, 18));
+        setBackground(new Background(new BackgroundFill(
+                UIConstants.BG_PANEL,           // ✅
+                CornerRadii.EMPTY,
+                Insets.EMPTY
+        )));
 
-        // Gauche: avatar + nom + statut
-        JPanel leftPanel = new JPanel();
-        leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.X_AXIS));
-        leftPanel.setOpaque(false);
+        // Bottom separator line
+        setBorder(new Border(new BorderStroke(
+                Color.TRANSPARENT,
+                Color.TRANSPARENT,
+                UIConstants.BORDER_COLOR,        // ✅
+                Color.TRANSPARENT,
+                BorderStrokeStyle.NONE,
+                BorderStrokeStyle.NONE,
+                BorderStrokeStyle.SOLID,
+                BorderStrokeStyle.NONE,
+                CornerRadii.EMPTY,
+                new BorderWidths(0, 0, 1, 0),
+                Insets.EMPTY
+        )));
 
-        JPanel avatar = Utils.makeAvatar(user, 40);
-        leftPanel.add(avatar);
-        leftPanel.add(Box.createHorizontalStrut(12));
+        // ── LEFT : Avatar + Name + Status ────────────────────
+        HBox leftPanel = new HBox(12);
+        leftPanel.setAlignment(Pos.CENTER_LEFT);
 
-        JPanel nameCol = new JPanel();
-        nameCol.setLayout(new BoxLayout(nameCol, BoxLayout.Y_AXIS));
-        nameCol.setOpaque(false);
+        StackPane avatar = Utils.makeAvatar(user, 40);
 
-        JLabel nameLabel = new JLabel(user);
-        nameLabel.setFont(new Font("Segoe UI", Font.BOLD, 15));
-        nameLabel.setForeground(UIConstants.TEXT_PRIMARY);
-        nameLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        VBox nameCol = new VBox(2);
+        nameCol.setAlignment(Pos.CENTER_LEFT);
 
-        JPanel statusRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
-        statusRow.setOpaque(false);
+        Label nameLabel = new Label(user);
+        nameLabel.setFont(Font.font("SansSerif", FontWeight.BOLD, 15));
+        nameLabel.setTextFill(UIConstants.TEXT_PRIMARY);        // ✅
 
-        dot = new JPanel() {
-            @Override protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(UIConstants.ONLINE_GREEN);
-                g2.fillOval(0, 3, 8, 8);
-                g2.dispose();
-            }
-        };
-        dot.setOpaque(false);
-        dot.setPreferredSize(new Dimension(8, 14));
+        HBox statusRow = new HBox(4);
+        statusRow.setAlignment(Pos.CENTER_LEFT);
 
-        statusLabel = Utils.styledLabel("En ligne", Font.PLAIN, 11, UIConstants.ONLINE_GREEN);
+        Circle dot = new Circle(4, UIConstants.ONLINE_GREEN);  // ✅
 
-        statusRow.add(dot);
-        statusRow.add(statusLabel);
+        Label statusLabel = new Label("En ligne");
+        statusLabel.setFont(Font.font("SansSerif", FontWeight.NORMAL, 11));
+        statusLabel.setTextFill(UIConstants.ONLINE_GREEN);     // ✅
 
-        nameCol.add(nameLabel);
-        nameCol.add(statusRow);
-        leftPanel.add(nameCol);
+        statusRow.getChildren().addAll(dot, statusLabel);
+        nameCol.getChildren().addAll(nameLabel, statusRow);
+        leftPanel.getChildren().addAll(avatar, nameCol);
+        setLeft(leftPanel);
 
-        add(leftPanel, BorderLayout.WEST);
+        // ── RIGHT : Call buttons ──────────────────────────────
+        HBox btnPanel = new HBox(8);
+        btnPanel.setAlignment(Pos.CENTER_RIGHT);
 
-        // Droite: boutons appel
-        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        btnPanel.setOpaque(false);
+        btnAudio = new Button("📞  Audio");
+        btnAudio.setFont(Font.font("SansSerif", FontWeight.NORMAL, 13));
+        btnAudio.setTextFill(UIConstants.TEXT_PRIMARY);        // ✅
+        btnAudio.setStyle(
+                "-fx-background-color: " + UIConstants.toHex(UIConstants.BG_SURFACE)    + ";" +
+                        "-fx-background-radius: 10;"                                              +
+                        "-fx-border-color: "      + UIConstants.toHex(UIConstants.BORDER_COLOR) + ";" +
+                        "-fx-border-radius: 10;"  +
+                        "-fx-border-width: 1;"    +
+                        "-fx-padding: 6 14 6 14;" +
+                        "-fx-cursor: hand;"
+        );
+        btnAudio.setOnMouseEntered(e -> btnAudio.setOpacity(0.85));
+        btnAudio.setOnMouseExited(e  -> btnAudio.setOpacity(1.0));
 
-        btnAudio = Utils.pillButton("Appel", UIConstants.BG_SURFACE, 10);
-        btnAudio.setForeground(UIConstants.TEXT_PRIMARY);
-        btnAudio.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        btnAudio.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(UIConstants.BORDER_COLOR, 1, true),
-                new EmptyBorder(6, 14, 6, 14)
-        ));
+        btnVideo = new Button("📹  Vidéo");
+        btnVideo.setFont(Font.font("SansSerif", FontWeight.BOLD, 13));
+        btnVideo.setTextFill(Color.WHITE);
+        btnVideo.setStyle(
+                "-fx-background-color: " + UIConstants.toHex(UIConstants.ACCENT) + ";" +  // ✅
+                        "-fx-background-radius: 10;" +
+                        "-fx-padding: 7 15 7 15;"    +
+                        "-fx-cursor: hand;"
+        );
+        btnVideo.setOnMouseEntered(e -> btnVideo.setOpacity(0.85));
+        btnVideo.setOnMouseExited(e  -> btnVideo.setOpacity(1.0));
 
-        btnVideo = Utils.pillButton("Video", UIConstants.ACCENT, 10);
-        btnVideo.setBorder(new EmptyBorder(7, 15, 7, 15));
+        btnPanel.getChildren().addAll(btnAudio, btnVideo);
+        setRight(btnPanel);
 
-        btnPanel.add(btnAudio);
-        btnPanel.add(btnVideo);
-        add(btnPanel, BorderLayout.EAST);
-    }
-
-    public void setStatus(String text, Color color) {
-        statusLabel.setText(text);
-        statusLabel.setForeground(color);
-        dot.setVisible(!text.equals("Hors ligne"));
-        revalidate(); repaint();
-    }
-
-    public void setTyping() {
-        setStatus("en train d'ecrire...", UIConstants.ACCENT);
-    }
-
-    public void setOnline() {
-        setStatus("En ligne", UIConstants.ONLINE_GREEN);
-    }
-
-    public void setOffline() {
-        setStatus("Hors ligne", UIConstants.TEXT_MUTED);
-    }
-
-    @Override
-    protected void paintComponent(Graphics g) {
-        super.paintComponent(g);
-        Graphics2D g2 = (Graphics2D) g.create();
-        g2.setColor(UIConstants.DIVIDER);
-        g2.setStroke(new BasicStroke(1f));
-        g2.drawLine(0, getHeight() - 1, getWidth(), getHeight() - 1);
-        g2.dispose();
+        // ✅ toFxColor() et toHex() locaux supprimés
     }
 }
-

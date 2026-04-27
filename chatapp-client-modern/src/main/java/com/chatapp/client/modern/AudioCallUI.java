@@ -1,152 +1,174 @@
-package com.chatapp.client.modern;
+package projet.java;
 
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import java.awt.*;
-import java.awt.event.*;
+import javafx.animation.AnimationTimer;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Scene;
+import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.control.Button;
+import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+import javafx.scene.text.Text;
+import javafx.stage.Stage;
+import javafx.util.Duration;
 
-/**
- * Audio call window with:
- *  - Pulsing avatar ring
- *  - Contact name & live call timer
- *  - Mute + Hang-up buttons
- *  - onHangUp callback to notify Clientui
- */
-public class AudioCallUI extends JFrame {
+public class AudioCallUI extends Stage {
 
-    private int  seconds  = 0;
-    private boolean muted = false;
-    private Timer timer;
-    private final Runnable onHangUp;
+    private int     seconds = 0;
+    private boolean muted   = false;
 
-    public AudioCallUI(String other, Runnable onHangUp) {
-        this.onHangUp = onHangUp;
+    private Timeline      callTimer;
+    private AnimationTimer pulseTimer;
+
+    public AudioCallUI(String other) {
         setTitle("Appel Audio");
-        setSize(340, 420);
         setResizable(false);
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        getContentPane().setBackground(UIConstants.BG_DARK);
-        setLayout(new BorderLayout());
-        setLocationRelativeTo(null);
 
-        // ── CENTRE ──────────────────────────────────────────
-        JPanel centre = new JPanel();
-        centre.setLayout(new BoxLayout(centre, BoxLayout.Y_AXIS));
-        centre.setOpaque(false);
-        centre.setBorder(new EmptyBorder(50, 30, 20, 30));
+        // ── Root ──────────────────────────────────────────────
+        BorderPane root = new BorderPane();
+        root.setStyle("-fx-background-color: " + UIConstants.toHex(UIConstants.BG_DARK) + ";"); // ✅
 
-        // Pulsing ring + avatar
-        PulsingAvatar pulse = new PulsingAvatar(other, 90);
-        pulse.setAlignmentX(Component.CENTER_ALIGNMENT);
-        centre.add(pulse);
-        centre.add(Box.createVerticalStrut(24));
+        // ── CENTRE ────────────────────────────────────────────
+        VBox centre = new VBox(0);
+        centre.setAlignment(Pos.TOP_CENTER);
+        centre.setPadding(new Insets(50, 30, 20, 30));
 
-        // Name
-        JLabel nameLabel = Utils.styledLabel(other, Font.BOLD, 22, UIConstants.TEXT_PRIMARY);
-        nameLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        centre.add(nameLabel);
-        centre.add(Box.createVerticalStrut(8));
+        PulsingAvatarCanvas pulse = new PulsingAvatarCanvas(other, 90);
+        VBox.setMargin(pulse, new Insets(0, 0, 24, 0));
 
-        // Timer
-        JLabel timerLabel = Utils.styledLabel("00:00", Font.PLAIN, 14, UIConstants.ONLINE_GREEN);
-        timerLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        centre.add(timerLabel);
+        Text nameLabel = new Text(other);
+        nameLabel.setFont(Font.font("SansSerif", FontWeight.BOLD, 22));
+        nameLabel.setFill(UIConstants.TEXT_PRIMARY);  // ✅
 
-        // Start live timer
-        timer = new Timer(1000, e -> {
+        Text timerLabel = new Text("00:00");
+        timerLabel.setFont(Font.font("SansSerif", FontWeight.NORMAL, 14));
+        timerLabel.setFill(UIConstants.ONLINE_GREEN); // ✅
+        VBox.setMargin(timerLabel, new Insets(8, 0, 0, 0));
+
+        callTimer = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
             seconds++;
             timerLabel.setText(String.format("%02d:%02d", seconds / 60, seconds % 60));
-        });
-        timer.start();
+        }));
+        callTimer.setCycleCount(Timeline.INDEFINITE);
+        callTimer.play();
 
-        add(centre, BorderLayout.CENTER);
+        centre.getChildren().addAll(pulse, nameLabel, timerLabel);
+        root.setCenter(centre);
 
-        // ── BOTTOM: Controls ─────────────────────────────────
-        JPanel controls = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 20));
-        controls.setOpaque(false);
-        controls.setBorder(new EmptyBorder(0, 0, 24, 0));
+        // ── BOTTOM: Controls ──────────────────────────────────
+        HBox controls = new HBox(20);
+        controls.setAlignment(Pos.CENTER);
+        controls.setPadding(new Insets(0, 0, 24, 0));
 
-        JButton btnMute = Utils.pillButton("🎙️  Muet", UIConstants.BG_SURFACE, 50);
-        btnMute.setBorder(new EmptyBorder(12, 20, 12, 20));
-        btnMute.addActionListener(e -> {
+        Button btnMute   = pillButton("🎙️  Muet",       UIConstants.BG_SURFACE); // ✅
+        Button btnHangUp = pillButton("📵  Raccrocher",  UIConstants.DANGER);     // ✅
+
+        btnMute.setOnAction(e -> {
             muted = !muted;
             btnMute.setText(muted ? "🔇  Muet" : "🎙️  Muet");
         });
+        btnHangUp.setOnAction(e -> stopAndClose());
 
-        JButton btnHangUp = Utils.pillButton("📵  Raccrocher", UIConstants.DANGER, 50);
-        btnHangUp.setBorder(new EmptyBorder(12, 20, 12, 20));
-        btnHangUp.addActionListener(e -> endCall());
+        controls.getChildren().addAll(btnMute, btnHangUp);
+        root.setBottom(controls);
 
-        controls.add(btnMute);
-        controls.add(btnHangUp);
-        add(controls, BorderLayout.SOUTH);
+        setOnCloseRequest(e -> stopAndClose());
 
-        addWindowListener(new WindowAdapter() {
-            @Override public void windowClosing(WindowEvent e) { endCall(); }
-        });
-
-        setVisible(true);
+        Scene scene = new Scene(root, 340, 420);
+        setScene(scene);
+        show();
+        pulse.startAnimation();
     }
 
-    private void endCall() {
-        timer.stop();
-        if (onHangUp != null) onHangUp.run();
-        dispose();
+    // ── Helpers ───────────────────────────────────────────────
+
+    private void stopAndClose() {
+        if (callTimer  != null) callTimer.stop();
+        if (pulseTimer != null) pulseTimer.stop();
+        close();
     }
 
-    // ── Inner: pulsing avatar ring ────────────────────────────
-    private static class PulsingAvatar extends JPanel {
-        private float pulse = 0f;
+    /** Styled pill button — prend un javafx Color ✅ */
+    private static Button pillButton(String text, Color bg) {
+        Button btn = new Button(text);
+        btn.setFont(Font.font("SansSerif", FontWeight.BOLD, 13));
+        btn.setTextFill(Color.WHITE);
+        btn.setStyle(
+                "-fx-background-color: " + UIConstants.toHex(bg) + ";" +
+                        "-fx-background-radius: 50;"   +
+                        "-fx-padding: 12 20 12 20;"    +
+                        "-fx-cursor: hand;"
+        );
+        btn.setOnMouseEntered(e -> btn.setOpacity(0.85));
+        btn.setOnMouseExited(e  -> btn.setOpacity(1.0));
+        return btn;
+    }
+
+    // ── Inner class: Pulsing avatar ───────────────────────────
+    static class PulsingAvatarCanvas extends Canvas {
+
         private final String name;
-        private final int    size;
-        private Timer pulseTimer;
+        private final int    avatarSize;
+        private       double pulse = 0.0;
+        private AnimationTimer anim;
 
-        PulsingAvatar(String name, int size) {
-            this.name = name;
-            this.size = size;
-            int total = size + 30; // ring margin
-            setPreferredSize(new Dimension(total, total));
-            setMaximumSize(new Dimension(total, total));
-            setOpaque(false);
-
-            pulseTimer = new Timer(40, e -> {
-                pulse = (pulse + 0.05f) % ((float) Math.PI * 2);
-                repaint();
-            });
-            pulseTimer.start();
+        PulsingAvatarCanvas(String name, int avatarSize) {
+            super(avatarSize + 30, avatarSize + 30);
+            this.name       = name;
+            this.avatarSize = avatarSize;
         }
 
-        @Override protected void paintComponent(Graphics g) {
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-            int cx = getWidth() / 2;
-            int cy = getHeight() / 2;
-
-            // Outer pulse ring
-            float alpha = (float)(0.3 + 0.25 * Math.sin(pulse));
-            int   extra = (int)(6 + 5 * Math.sin(pulse));
-            int   r     = size / 2 + extra;
-            g2.setColor(new Color(
-                    UIConstants.ACCENT.getRed(),
-                    UIConstants.ACCENT.getGreen(),
-                    UIConstants.ACCENT.getBlue(),
-                    (int)(alpha * 255)
-            ));
-            g2.fillOval(cx - r, cy - r, r * 2, r * 2);
-
-            // Avatar circle
-            Color bg  = Utils.getAvatarColor(name);
-            String ini = Utils.getInitials(name);
-            g2.setColor(bg);
-            g2.fillOval(cx - size/2, cy - size/2, size, size);
-            g2.setColor(Color.WHITE);
-            g2.setFont(new Font("SansSerif", Font.BOLD, size / 3));
-            FontMetrics fm = g2.getFontMetrics();
-            g2.drawString(ini, cx - fm.stringWidth(ini)/2, cy + fm.getAscent()/2 - 1);
-
-            g2.dispose();
+        void startAnimation() {
+            anim = new AnimationTimer() {
+                @Override public void handle(long now) {
+                    pulse = (pulse + 0.05) % (Math.PI * 2);
+                    draw();
+                }
+            };
+            anim.start();
         }
+
+        private void draw() {
+            GraphicsContext gc = getGraphicsContext2D();
+            double w  = getWidth();
+            double h  = getHeight();
+            double cx = w / 2;
+            double cy = h / 2;
+
+            gc.clearRect(0, 0, w, h);
+
+            // ── Outer pulse ring ─────────────────────────────
+            double alpha = 0.3 + 0.25 * Math.sin(pulse);
+            double extra = 6   + 5    * Math.sin(pulse);
+            double r     = avatarSize / 2.0 + extra;
+
+            Color accent = UIConstants.ACCENT; // ✅ déjà javafx Color
+            gc.setFill(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), alpha));
+            gc.fillOval(cx - r, cy - r, r * 2, r * 2);
+
+            // ── Avatar circle ────────────────────────────────
+            gc.setFill(Utils.getAvatarColor(name)); // ✅ retourne déjà javafx Color
+            double half = avatarSize / 2.0;
+            gc.fillOval(cx - half, cy - half, avatarSize, avatarSize);
+
+            // ── Initials ─────────────────────────────────────
+            String ini     = Utils.getInitials(name);
+            int  fontSize  = avatarSize / 3;
+            gc.setFill(Color.WHITE);
+            gc.setFont(Font.font("SansSerif", FontWeight.BOLD, fontSize));
+
+            Text helper = new Text(ini);
+            helper.setFont(gc.getFont());
+            double textW = helper.getLayoutBounds().getWidth();
+            double textH = helper.getLayoutBounds().getHeight();
+            gc.fillText(ini, cx - textW / 2, cy + textH / 4);
+        }
+
+        // ✅ toFxColor() locale supprimée
     }
 }
-
