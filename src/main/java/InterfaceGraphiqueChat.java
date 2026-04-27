@@ -1,7 +1,5 @@
+import org.mindrot.jbcrypt.BCrypt;
 import javafx.application.Application;
-import javafx.application.Platform;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -9,47 +7,42 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLIntegrityConstraintViolationException;
 
 public class InterfaceGraphiqueChat extends Application {
 
-    private final ObservableList<String> contacts =
-            FXCollections.observableArrayList();
-
-    private final VBox zoneMessages = new VBox(10);
-
-    private String destinataireActuel = null;
-
-    /*
-       CONFIGURATION MYSQL
-    */
-    private static final String URL =
-            "jdbc:mysql://localhost:3306/chatapp"; // ⚠️ corrigé port standard
-
-    private static final String USER = "root";
-    private static final String PASSWORD = "";
+    private String utilisateurConnecte;
 
     @Override
     public void start(Stage stage) {
         montrerLogin(stage);
     }
 
-    /*
-       =========================
-       LOGIN
-       =========================
-    */
-
     private void montrerLogin(Stage stage) {
 
-        VBox racine = new VBox(18);
-        racine.setAlignment(Pos.CENTER);
-        racine.setPadding(new Insets(40));
+        VBox root = new VBox(18);
+        root.setAlignment(Pos.CENTER);
+        root.setPadding(new Insets(45));
+        root.setStyle("-fx-background-color: linear-gradient(to bottom, #f8fafc, #e0f2fe);");
 
-        racine.setStyle("-fx-background-color: linear-gradient(to bottom,#1e1e2f,#12121c);");
+        Label logo = new Label("💬");
+        logo.setStyle("-fx-font-size: 65px;");
 
-        Label titre = new Label("ChatSecure");
-        titre.setStyle("-fx-text-fill: white; -fx-font-size: 34px; -fx-font-weight: bold;");
+        Label titre = new Label("ChattApp");
+        titre.setStyle(
+                "-fx-text-fill: #0f172a;" +
+                        "-fx-font-size: 38px;" +
+                        "-fx-font-weight: bold;"
+        );
+
+        Label sousTitre = new Label("Connectez-vous pour continuer");
+        sousTitre.setStyle(
+                "-fx-text-fill: #64748b;" +
+                        "-fx-font-size: 15px;"
+        );
 
         TextField champUser = new TextField();
         champUser.setPromptText("Nom d'utilisateur");
@@ -59,205 +52,359 @@ public class InterfaceGraphiqueChat extends Application {
         champPass.setPromptText("Mot de passe");
         styleChamp(champPass);
 
-        Button btnLogin = new Button("Connexion");
-        styleBouton(btnLogin);
+        Button btnLogin = new Button("Se connecter");
+        styleBoutonPrincipal(btnLogin);
 
         btnLogin.setOnAction(e -> {
 
             String username = champUser.getText().trim();
             String password = champPass.getText().trim();
 
+            if (username.isEmpty() || password.isEmpty()) {
+                afficherErreur("Veuillez remplir tous les champs.");
+                return;
+            }
+
             if (verifierConnexion(username, password)) {
-
-                chargerUtilisateurs(username);
-                montrerChat(stage, username);
-
+                utilisateurConnecte = username;
+                montrerAccueil(stage, username);
             } else {
-                afficherErreur("Login incorrect");
+                afficherErreur("Nom d'utilisateur ou mot de passe incorrect.");
             }
         });
 
-        Hyperlink inscrire = new Hyperlink("Créer un compte");
-        inscrire.setOnAction(e -> montrerInscription(stage));
+        Hyperlink lienInscription = new Hyperlink("Créer un nouveau compte");
+        lienInscription.setStyle(
+                "-fx-text-fill: #2563eb;" +
+                        "-fx-font-size: 14px;" +
+                        "-fx-border-color: transparent;"
+        );
 
-        racine.getChildren().addAll(titre, champUser, champPass, btnLogin, inscrire);
+        lienInscription.setOnAction(e -> montrerInscription(stage));
 
-        stage.setScene(new Scene(racine, 420, 620));
-        stage.setTitle("ChatSecure");
+        root.getChildren().addAll(
+                logo,
+                titre,
+                sousTitre,
+                champUser,
+                champPass,
+                btnLogin,
+                lienInscription
+        );
+
+        Scene scene = new Scene(root, 430, 620);
+
+        stage.setTitle("ChattApp - Connexion");
+        stage.setScene(scene);
         stage.show();
     }
-
-    /*
-       =========================
-       INSCRIPTION CORRIGÉE
-       =========================
-    */
 
     private void montrerInscription(Stage stage) {
 
         VBox root = new VBox(18);
         root.setAlignment(Pos.CENTER);
-        root.setPadding(new Insets(40));
-        root.setStyle("-fx-background-color: #161625;");
+        root.setPadding(new Insets(45));
+        root.setStyle("-fx-background-color: linear-gradient(to bottom, #ffffff, #dbeafe);");
 
-        TextField username = new TextField();
-        username.setPromptText("Nom d'utilisateur");
-        styleChamp(username);
+        Label logo = new Label("✨");
+        logo.setStyle("-fx-font-size: 55px;");
 
-        PasswordField password = new PasswordField();
-        password.setPromptText("Mot de passe");
-        styleChamp(password);
+        Label titre = new Label("Créer un compte");
+        titre.setStyle(
+                "-fx-text-fill: #0f172a;" +
+                        "-fx-font-size: 32px;" +
+                        "-fx-font-weight: bold;"
+        );
 
-        Button creer = new Button("S'inscrire");
-        styleBouton(creer);
+        Label sousTitre = new Label("Bienvenue sur ChattApp");
+        sousTitre.setStyle(
+                "-fx-text-fill: #64748b;" +
+                        "-fx-font-size: 15px;"
+        );
 
-        creer.setOnAction(e -> {
+        TextField champUser = new TextField();
+        champUser.setPromptText("Nom d'utilisateur");
+        styleChamp(champUser);
 
-            String user = username.getText().trim();
-            String pass = password.getText().trim();
+        TextField champEmail = new TextField();
+        champEmail.setPromptText("Email");
+        styleChamp(champEmail);
 
-            if (user.isEmpty() || pass.isEmpty()) {
-                afficherErreur("Champs obligatoires");
+        PasswordField champPass = new PasswordField();
+        champPass.setPromptText("Mot de passe");
+        styleChamp(champPass);
+
+        Button btnCreer = new Button("S'inscrire");
+        styleBoutonPrincipal(btnCreer);
+
+        btnCreer.setOnAction(e -> {
+
+            String username = champUser.getText().trim();
+            String email = champEmail.getText().trim();
+            String password = champPass.getText().trim();
+
+            if (username.isEmpty() || password.isEmpty()) {
+                afficherErreur("Le nom d'utilisateur et le mot de passe sont obligatoires.");
                 return;
             }
 
-            if (utilisateurExiste(user)) {
-                afficherErreur("Utilisateur existe déjà");
-                return;
-            }
-
-            boolean ok = enregistrerUtilisateur(user, pass);
+            boolean ok = enregistrerUtilisateur(username, email, password);
 
             if (ok) {
-                Alert a = new Alert(Alert.AlertType.INFORMATION);
-                a.setContentText("Compte créé !");
-                a.showAndWait();
-
+                afficherInfo("Compte créé avec succès.");
                 montrerLogin(stage);
             }
         });
 
-        Button retour = new Button("Retour");
-        styleBouton(retour);
-        retour.setOnAction(e -> montrerLogin(stage));
+        Button btnRetour = new Button("Retour à la connexion");
+        styleBoutonSecondaire(btnRetour);
 
-        root.getChildren().addAll(username, password, creer, retour);
+        btnRetour.setOnAction(e -> montrerLogin(stage));
 
-        stage.setScene(new Scene(root, 420, 620));
+        root.getChildren().addAll(
+                logo,
+                titre,
+                sousTitre,
+                champUser,
+                champEmail,
+                champPass,
+                btnCreer,
+                btnRetour
+        );
+
+        Scene scene = new Scene(root, 430, 620);
+
+        stage.setTitle("ChattApp - Inscription");
+        stage.setScene(scene);
     }
 
-    /*
-       =========================
-       INSCRIPTION DB CORRIGÉE
-       =========================
-    */
+    private void montrerAccueil(Stage stage, String username) {
 
-    private boolean enregistrerUtilisateur(String username, String password) {
+        BorderPane root = new BorderPane();
+        root.setStyle("-fx-background-color: #f8fafc;");
 
-        String sql = "INSERT INTO utilisateurs(username, password) VALUES(?, ?)";
+        Label header = new Label("ChattApp");
+        header.setStyle(
+                "-fx-text-fill: white;" +
+                        "-fx-font-size: 24px;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-padding: 18;" +
+                        "-fx-background-color: #2563eb;"
+        );
 
-        try (Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
+        Label message = new Label("Bienvenue " + username + " ✅\nConnexion avec la base de données réussie.");
+        message.setStyle(
+                "-fx-text-fill: #1e293b;" +
+                        "-fx-font-size: 20px;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-text-alignment: center;"
+        );
+
+        Button btnDeconnexion = new Button("Déconnexion");
+        styleBoutonSecondaire(btnDeconnexion);
+
+        btnDeconnexion.setOnAction(e -> {
+            mettreStatutHorsLigne(username);
+            utilisateurConnecte = null;
+            montrerLogin(stage);
+        });
+
+        VBox center = new VBox(25, message, btnDeconnexion);
+        center.setAlignment(Pos.CENTER);
+
+        root.setTop(header);
+        root.setCenter(center);
+
+        Scene scene = new Scene(root, 900, 600);
+
+        stage.setTitle("ChattApp");
+        stage.setScene(scene);
+    }
+
+    private boolean enregistrerUtilisateur(String username, String email, String password) {
+
+        String sql = "INSERT INTO users(username, password, email, status) VALUES (?, ?, ?, false)";
+
+        try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
+            String passwordHash = BCrypt.hashpw(password, BCrypt.gensalt(12));
+
             ps.setString(1, username);
-            ps.setString(2, password);
+            ps.setString(2, passwordHash);
+            ps.setString(3, email);
 
             return ps.executeUpdate() > 0;
 
         } catch (SQLIntegrityConstraintViolationException e) {
-            afficherErreur("Nom déjà utilisé");
+            afficherErreur("Ce nom d'utilisateur existe déjà.");
             return false;
 
         } catch (Exception e) {
             e.printStackTrace();
-            afficherErreur("Erreur serveur");
+            afficherErreur("Erreur de base de données : " + e.getMessage());
             return false;
         }
     }
 
-    /*
-       =========================
-       UTILISATEUR EXISTE
-       =========================
-    */
+    private boolean verifierConnexion(String username, String password) {
 
-    private boolean utilisateurExiste(String username) {
+        String sql = "SELECT password FROM users WHERE username = ?";
 
-        String sql = "SELECT id FROM utilisateurs WHERE username=?";
-
-        try (Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
+        try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, username);
 
             ResultSet rs = ps.executeQuery();
-            return rs.next();
+
+            if (rs.next()) {
+                String passwordHash = rs.getString("password");
+
+                if (BCrypt.checkpw(password, passwordHash)) {
+                    mettreStatutEnLigne(username);
+                    return true;
+                }
+            }
+
+            return false;
 
         } catch (Exception e) {
             e.printStackTrace();
+            afficherErreur("Erreur de connexion à la base de données : " + e.getMessage());
             return false;
         }
     }
 
-    /*
-       =========================
-       LOGIN CHECK
-       =========================
-    */
+    private void mettreStatutEnLigne(String username) {
 
-    private boolean verifierConnexion(String username, String password) {
+        String sql = "UPDATE users SET status = true WHERE username = ?";
 
-        String sql = "SELECT id FROM utilisateurs WHERE username=? AND password=?";
-
-        try (Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
+        try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, username);
-            ps.setString(2, password);
-
-            return ps.executeQuery().next();
+            ps.executeUpdate();
 
         } catch (Exception e) {
             e.printStackTrace();
-            return false;
         }
     }
 
-    /*
-       =========================
-       UTILITAIRES UI
-       =========================
-    */
+    private void mettreStatutHorsLigne(String username) {
 
-    private void styleChamp(Control c) {
-        c.setStyle("-fx-background-color:#252b3b; -fx-text-fill:white; -fx-padding:10;");
+        String sql = "UPDATE users SET status = false WHERE username = ?";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, username);
+            ps.executeUpdate();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
-    private void styleBouton(Button b) {
-        b.setStyle("-fx-background-color:#6c63ff; -fx-text-fill:white;");
+    private void styleChamp(Control champ) {
+
+        champ.setMaxWidth(310);
+
+        champ.setStyle(
+                "-fx-background-color: white;" +
+                        "-fx-text-fill: #0f172a;" +
+                        "-fx-prompt-text-fill: #94a3b8;" +
+                        "-fx-background-radius: 14;" +
+                        "-fx-border-radius: 14;" +
+                        "-fx-border-color: #cbd5e1;" +
+                        "-fx-border-width: 1;" +
+                        "-fx-padding: 13;" +
+                        "-fx-font-size: 14px;"
+        );
     }
 
-    private void afficherErreur(String msg) {
-        Alert a = new Alert(Alert.AlertType.ERROR);
-        a.setContentText(msg);
-        a.showAndWait();
+    private void styleBoutonPrincipal(Button bouton) {
+
+        bouton.setMaxWidth(310);
+
+        bouton.setStyle(
+                "-fx-background-color: #2563eb;" +
+                        "-fx-text-fill: white;" +
+                        "-fx-font-size: 15px;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-background-radius: 14;" +
+                        "-fx-padding: 13 22 13 22;" +
+                        "-fx-cursor: hand;"
+        );
+
+        bouton.setOnMouseEntered(e ->
+                bouton.setStyle(
+                        "-fx-background-color: #1d4ed8;" +
+                                "-fx-text-fill: white;" +
+                                "-fx-font-size: 15px;" +
+                                "-fx-font-weight: bold;" +
+                                "-fx-background-radius: 14;" +
+                                "-fx-padding: 13 22 13 22;" +
+                                "-fx-cursor: hand;"
+                )
+        );
+
+        bouton.setOnMouseExited(e ->
+                bouton.setStyle(
+                        "-fx-background-color: #2563eb;" +
+                                "-fx-text-fill: white;" +
+                                "-fx-font-size: 15px;" +
+                                "-fx-font-weight: bold;" +
+                                "-fx-background-radius: 14;" +
+                                "-fx-padding: 13 22 13 22;" +
+                                "-fx-cursor: hand;"
+                )
+        );
     }
 
-    /*
-       =========================
-       CHAT (inchangé simplifié)
-       =========================
-    */
+    private void styleBoutonSecondaire(Button bouton) {
 
-    private void montrerChat(Stage stage, String user) {
-        BorderPane root = new BorderPane();
-        root.setCenter(new Label("Chat OK pour " + user));
+        bouton.setMaxWidth(310);
 
-        stage.setScene(new Scene(root, 900, 600));
+        bouton.setStyle(
+                "-fx-background-color: white;" +
+                        "-fx-text-fill: #2563eb;" +
+                        "-fx-font-size: 14px;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-background-radius: 14;" +
+                        "-fx-border-color: #2563eb;" +
+                        "-fx-border-radius: 14;" +
+                        "-fx-padding: 11 20 11 20;" +
+                        "-fx-cursor: hand;"
+        );
     }
 
-    private void chargerUtilisateurs(String monNom) {
-        contacts.clear();
+    private void afficherErreur(String message) {
+
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle("Erreur");
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    private void afficherInfo(String message) {
+
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Information");
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    @Override
+    public void stop() {
+
+        if (utilisateurConnecte != null) {
+            mettreStatutHorsLigne(utilisateurConnecte);
+        }
+
+        DatabaseConnection.closePool();
     }
 
     public static void main(String[] args) {

@@ -1,12 +1,9 @@
-
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-
 import java.sql.Connection;
 import java.sql.SQLException;
 
 public class DatabaseConnection {
-
     private static final int POOL_SIZE = 10;
     private static HikariDataSource dataSource;
     private static volatile boolean initialized = false;
@@ -18,11 +15,26 @@ public class DatabaseConnection {
         try {
             HikariConfig config = new HikariConfig();
 
-            // Configuration externalisée (sécurité : pas de credentials en dur)
+            // Configuration externalisée (sécurité : pas d'identifiants en dur)
+            /*
             String dbUrl  = System.getenv().getOrDefault("CHATAPP_DB_URL",
                     "jdbc:mysql://192.168.225.148:3307/chattapp?useSSL=true&serverTimezone=UTC&allowPublicKeyRetrieval=false");
             String dbUser = System.getenv().getOrDefault("CHATAPP_DB_USER", "root");
             String dbPass = System.getenv().getOrDefault("CHATAPP_DB_PASSWORD", "");
+            */
+
+            String dbUrl = System.getenv().getOrDefault(
+                    "CHATAPP_DB_URL",
+                    "jdbc:mysql://192.168.225.148:3307/chattapp?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true"
+            );
+            String dbUser = System.getenv().getOrDefault(
+                    "CHATAPP_DB_USER",
+                    "chatuser"
+            );
+            String dbPass = System.getenv().getOrDefault(
+                    "CHATAPP_DB_PASSWORD",
+                    "1234"
+            );
 
             config.setJdbcUrl(dbUrl);
             config.setUsername(dbUser);
@@ -44,10 +56,12 @@ public class DatabaseConnection {
 
             dataSource = new HikariDataSource(config);
             initialized = true;
+
             System.out.println("[DB] ✅ Pool HikariCP initialisé (max=" + POOL_SIZE + ")");
+
         } catch (Exception e) {
             lastError = e.getMessage();
-            System.err.println("[DB] ❌ Échec initialisation pool : " + e.getMessage());
+            System.err.println("[DB] ❌ Échec de l'initialisation du pool : " + e.getMessage());
             dataSource = null;
             initialized = false;
         }
@@ -61,9 +75,11 @@ public class DatabaseConnection {
         if (!initialized) {
             initializePool();
         }
+
         if (dataSource == null || dataSource.isClosed()) {
             throw new SQLException("[DB] ❌ DataSource non initialisée ou fermée. Dernière erreur : " + lastError);
         }
+
         return dataSource.getConnection();
     }
 
@@ -94,4 +110,3 @@ public class DatabaseConnection {
 
     private DatabaseConnection() {}
 }
-
