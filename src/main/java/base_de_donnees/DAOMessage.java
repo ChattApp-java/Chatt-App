@@ -13,13 +13,15 @@ public class DAOMessage {
     public DAOMessage() {}
 
     public int sauvegarderMessage(Message msg) {
-        String sql = "INSERT INTO messages (id_sender, id_receiver, contenu, statut) VALUES (?, ?, ?, 'non_lu')";
-        try (Connection conn = ConnexionBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        String sql = "INSERT INTO messages (id_sender, id_receiver, contenu, statut, type_message, file_path) VALUES (?, ?, ?, 'non_lu', ?, ?)";
+        Connection conn = ConnexionBD.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
             stmt.setInt(1, msg.getId_sender());
             stmt.setInt(2, msg.getId_receiver());
             stmt.setString(3, msg.getContenu());
+            stmt.setString(4, msg.getTypeMessage());
+            stmt.setString(5, msg.getFilePath());
 
             stmt.executeUpdate();
 
@@ -43,8 +45,8 @@ public class DAOMessage {
                 + "   OR (id_sender = ? AND id_receiver = ?) "
                 + "ORDER BY date_envoi ASC";
 
-        try (Connection conn = ConnexionBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+        Connection conn = ConnexionBD.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setInt(1, idUser1);
             stmt.setInt(2, idUser2);
@@ -67,8 +69,8 @@ public class DAOMessage {
         List<Message> liste = new ArrayList<>();
         String sql = "SELECT * FROM messages WHERE id_receiver = ? AND statut = 'non_lu' ORDER BY date_envoi ASC";
 
-        try (Connection conn = ConnexionBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+        Connection conn = ConnexionBD.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setInt(1, idReceiver);
             ResultSet rs = stmt.executeQuery();
@@ -85,8 +87,8 @@ public class DAOMessage {
 
     public void marquerCommeLu(int idMessage) {
         String sql = "UPDATE messages SET statut = 'lu' WHERE id_message = ?";
-        try (Connection conn = ConnexionBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+        Connection conn = ConnexionBD.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setInt(1, idMessage);
             stmt.executeUpdate();
@@ -98,8 +100,8 @@ public class DAOMessage {
 
     public void marquerTousLus(int idSender, int idReceiver) {
         String sql = "UPDATE messages SET statut = 'lu' WHERE id_sender = ? AND id_receiver = ?";
-        try (Connection conn = ConnexionBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+        Connection conn = ConnexionBD.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setInt(1, idSender);
             stmt.setInt(2, idReceiver);
@@ -113,8 +115,8 @@ public class DAOMessage {
 
     public boolean supprimerMessage(int idMessage) {
         String sql = "DELETE FROM messages WHERE id_message = ?";
-        try (Connection conn = ConnexionBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+        Connection conn = ConnexionBD.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setInt(1, idMessage);
             int rows = stmt.executeUpdate();
@@ -133,7 +135,9 @@ public class DAOMessage {
                 rs.getInt("id_receiver"),
                 rs.getString("contenu"),
                 rs.getTimestamp("date_envoi").toLocalDateTime(),
-                rs.getString("statut")
+                rs.getString("statut"),
+                rs.getString("type_message"),
+                rs.getString("file_path")
         );
     }
 }

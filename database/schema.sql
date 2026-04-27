@@ -1,0 +1,41 @@
+CREATE DATABASE IF NOT EXISTS chatapp;
+USE chatapp;
+
+CREATE TABLE IF NOT EXISTS users (
+    id_user INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    status BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS messages (
+    id_message INT AUTO_INCREMENT PRIMARY KEY,
+    id_sender INT NOT NULL,
+    id_receiver INT NOT NULL,
+    contenu TEXT NOT NULL,
+    statut VARCHAR(50) DEFAULT 'non_lu',
+    date_envoi TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_sender) REFERENCES users(id_user) ON DELETE CASCADE,
+    FOREIGN KEY (id_receiver) REFERENCES users(id_user) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS logs_connexion (
+    id_log INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(255) NOT NULL,
+    action VARCHAR(50) NOT NULL,
+    date_action TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+ALTER TABLE messages ADD COLUMN type_message VARCHAR(50) DEFAULT 'TEXT';
+ALTER TABLE messages ADD COLUMN file_path VARCHAR(500) DEFAULT NULL;
+
+CREATE TABLE IF NOT EXISTS appels_historique (
+    id_appel INT AUTO_INCREMENT PRIMARY KEY,
+    id_emetteur INT NOT NULL,
+    id_recepteur INT NOT NULL,
+    type_appel VARCHAR(20) NOT NULL,
+    date_debut TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    duree_sec INT DEFAULT 0,
+    FOREIGN KEY (id_emetteur) REFERENCES users(id_user) ON DELETE CASCADE,
+    FOREIGN KEY (id_recepteur) REFERENCES users(id_user) ON DELETE CASCADE
+);

@@ -31,6 +31,10 @@ public final class Protocole {
     public static final String CALL_END      = "CALL_END";
     public static final String CALL_ENDED    = "CALL_ENDED";
 
+    // ── Fichiers & Media ───────────────────────────────────────
+    public static final String FILE_INFO = "FILE_INFO"; // FILE_INFO|dest|filename|size|type
+    public static final String FILE_DATA = "FILE_DATA"; // Contenu binaire
+
     // ── Séparateur ─────────────────────────────────────────────
     public static final String SEP = "|";
 

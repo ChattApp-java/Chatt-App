@@ -15,8 +15,8 @@ public class DAOUtilisateur {
 
     public boolean inscrire(Utilisateur user) {
         String sql = "INSERT INTO users (username, password, email) VALUES (?, ?, ?)";
-        try (Connection conn = ConnexionBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+        Connection conn = ConnexionBD.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setString(1, user.getUsername());
             stmt.setString(2, user.getPassword());
@@ -34,8 +34,8 @@ public class DAOUtilisateur {
 
     public Utilisateur connecter(String username, String password) {
         String sql = "SELECT * FROM users WHERE username = ? AND password = ?";
-        try (Connection conn = ConnexionBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+        Connection conn = ConnexionBD.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setString(1, username);
             stmt.setString(2, password);
@@ -58,8 +58,8 @@ public class DAOUtilisateur {
 
     public boolean userExiste(String username) {
         String sql = "SELECT COUNT(*) FROM users WHERE username = ?";
-        try (Connection conn = ConnexionBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+        Connection conn = ConnexionBD.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setString(1, username);
             ResultSet rs = stmt.executeQuery();
@@ -75,8 +75,8 @@ public class DAOUtilisateur {
 
     public void setStatut(String username, boolean status) {
         String sql = "UPDATE users SET status = ? WHERE username = ?";
-        try (Connection conn = ConnexionBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+        Connection conn = ConnexionBD.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setBoolean(1, status);
             stmt.setString(2, username);
@@ -90,8 +90,8 @@ public class DAOUtilisateur {
 
     public Utilisateur getUserByUsername(String username) {
         String sql = "SELECT * FROM users WHERE username = ?";
-        try (Connection conn = ConnexionBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+        Connection conn = ConnexionBD.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setString(1, username);
             ResultSet rs = stmt.executeQuery();
@@ -105,8 +105,8 @@ public class DAOUtilisateur {
 
     public Utilisateur getUserById(int id) {
         String sql = "SELECT * FROM users WHERE id_user = ?";
-        try (Connection conn = ConnexionBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+        Connection conn = ConnexionBD.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setInt(1, id);
             ResultSet rs = stmt.executeQuery();
@@ -121,8 +121,8 @@ public class DAOUtilisateur {
     public List<Utilisateur> getTousConnectes() {
         List<Utilisateur> liste = new ArrayList<>();
         String sql = "SELECT * FROM users WHERE status = true";
-        try (Connection conn = ConnexionBD.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+        Connection conn = ConnexionBD.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
@@ -135,9 +135,53 @@ public class DAOUtilisateur {
         return liste;
     }
 
+    public Utilisateur getByUsername(String username) {
+        String sql = "SELECT * FROM users WHERE username = ?";
+        Connection conn = ConnexionBD.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, username);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return extraireUser(rs);
+            }
+        } catch (SQLException e) {
+            System.err.println("[DB] Erreur getByUsername : " + e.getMessage());
+        }
+        return null;
+    }
+
+    public List<Utilisateur> getTous() {
+        List<Utilisateur> liste = new ArrayList<>();
+        String sql = "SELECT * FROM users";
+        Connection conn = ConnexionBD.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                liste.add(extraireUser(rs));
+            }
+
+        } catch (SQLException e) {
+            System.err.println("[DB] Erreur getTous : " + e.getMessage());
+        }
+        return liste;
+    }
+
     public void deconnecter(String username) {
         setStatut(username, false);
         System.out.println("[DB] " + username + " déconnecté.");
+    }
+
+    public void logAction(String username, String action) {
+        String sql = "INSERT INTO logs_connexion (username, action) VALUES (?, ?)";
+        Connection conn = ConnexionBD.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, username);
+            stmt.setString(2, action);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            System.err.println("[DB] Erreur logAction : " + e.getMessage());
+        }
     }
 
     private Utilisateur extraireUser(ResultSet rs) throws SQLException {

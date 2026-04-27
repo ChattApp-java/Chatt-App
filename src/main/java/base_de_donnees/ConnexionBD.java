@@ -9,7 +9,7 @@ import java.sql.SQLException;
  */
 public class ConnexionBD {
 
-    private static final String URL = "jdbc:mysql://localhost:3307/chatapp"
+    private static final String URL = "jdbc:mysql://localhost:3306/chatapp"
             + "?useSSL=false"
             + "&serverTimezone=UTC"
             + "&allowPublicKeyRetrieval=true";

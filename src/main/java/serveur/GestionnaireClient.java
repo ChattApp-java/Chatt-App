@@ -12,6 +12,7 @@ public class GestionnaireClient implements Runnable {
 
     private final Socket socket;
     private final ServeurPrincipal serveur;
+    private final base_de_donnees.DAOUtilisateur daoUser;
     private String username;
 
     private BufferedReader in;
@@ -20,6 +21,7 @@ public class GestionnaireClient implements Runnable {
     public GestionnaireClient(Socket socket, ServeurPrincipal serveur) {
         this.socket = socket;
         this.serveur = serveur;
+        this.daoUser = new base_de_donnees.DAOUtilisateur();
     }
 
     @Override
@@ -64,6 +66,7 @@ public class GestionnaireClient implements Runnable {
 
                 this.username = name;
                 serveur.enregistrerClient(this);
+                daoUser.logAction(username, "CONNEXION");
 
                 envoyerMessage(Protocole.LOGIN_OK + Protocole.SEP + username);
                 envoyerMessage(Protocole.USER_LIST + Protocole.SEP + serveur.getConnectedUsernames());
@@ -153,6 +156,17 @@ public class GestionnaireClient implements Runnable {
                 break;
             }
 
+            case Protocole.FILE_INFO: {
+                if (parts.length < 5) break;
+                String dest = parts[1];
+                GestionnaireClient target = serveur.getClient(dest);
+                if (target != null) {
+                    target.envoyerMessage(raw); // Relayer l'info complète
+                    serveur.log("FILE_INFO routé de " + username + " vers " + dest);
+                }
+                break;
+            }
+
             default:
                 serveur.log("Message inconnu reçu de [" + username + "] : " + type);
         }
@@ -167,6 +181,7 @@ public class GestionnaireClient implements Runnable {
 
     private void deconnecter() {
         if (username != null) {
+            daoUser.logAction(username, "DÉCONNEXION");
             serveur.supprimerClient(this);
             serveur.broadcast(Protocole.USER_LEFT + Protocole.SEP + username, this);
             serveur.log("Déconnexion de : " + username);

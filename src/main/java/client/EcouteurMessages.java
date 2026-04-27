@@ -1,9 +1,9 @@
 package client;
 
 import commun.Protocole;
-import frontend.FenetreChat;
+import frontend.MainChatApp;
+import javafx.application.Platform;
 
-import javax.swing.*;
 import java.io.IOException;
 
 /**
@@ -12,12 +12,12 @@ import java.io.IOException;
 public class EcouteurMessages implements Runnable {
 
     private final ConnexionServeur connexion;
-    private final FenetreChat fenetre;
+    private final MainChatApp app;
     private volatile boolean running = true;
 
-    public EcouteurMessages(ConnexionServeur connexion, FenetreChat fenetre) {
+    public EcouteurMessages(ConnexionServeur connexion, MainChatApp app) {
         this.connexion = connexion;
-        this.fenetre = fenetre;
+        this.app = app;
     }
 
     @Override
@@ -26,51 +26,58 @@ public class EcouteurMessages implements Runnable {
             String line;
             while (running && (line = connexion.lire()) != null) {
                 String[] parts = line.split("\\" + Protocole.SEP);
+                if (parts.length == 0) continue;
                 String type = parts[0];
 
                 switch (type) {
-                    case Protocole.USER_LIST -> SwingUtilities.invokeLater(() -> {
-                        fenetre.mettreAJourListe(parts.length > 1 ? parts[1].split(",") : new String[0]);
+                    case Protocole.USER_LIST -> Platform.runLater(() -> {
+                        app.mettreAJourListe(parts.length > 1 ? parts[1].split(",") : new String[0]);
                     });
 
-                    case Protocole.MSG_RECV -> SwingUtilities.invokeLater(() -> {
-                        if (parts.length >= 3) fenetre.ajouterMessage(parts[1], parts[2], false);
+                    case Protocole.MSG_RECV -> Platform.runLater(() -> {
+                        if (parts.length >= 3) app.ajouterMessage(parts[1], parts[2], false);
                     });
 
-                    case Protocole.USER_JOINED -> SwingUtilities.invokeLater(() -> {
+                    case Protocole.USER_JOINED -> Platform.runLater(() -> {
                         if (parts.length > 1) {
-                            fenetre.ajouterUtilisateur(parts[1]);
-                            fenetre.ajouterMessageSysteme(parts[1] + " a rejoint le chat");
+                            app.ajouterUtilisateur(parts[1]);
+                            app.ajouterMessageSysteme(parts[1] + " a rejoint le chat");
                         }
                     });
 
-                    case Protocole.USER_LEFT -> SwingUtilities.invokeLater(() -> {
+                    case Protocole.USER_LEFT -> Platform.runLater(() -> {
                         if (parts.length > 1) {
-                            fenetre.retirerUtilisateur(parts[1]);
-                            fenetre.ajouterMessageSysteme(parts[1] + " a quitté le chat");
+                            app.retirerUtilisateur(parts[1]);
+                            app.ajouterMessageSysteme(parts[1] + " a quitté le chat");
                         }
                     });
 
-                    case Protocole.CALL_INCOMING -> SwingUtilities.invokeLater(() -> {
-                        if (parts.length >= 3) fenetre.gererAppelEntrant(parts[1], parts[2]);
+                    case Protocole.CALL_INCOMING -> Platform.runLater(() -> {
+                        if (parts.length >= 3) app.gererAppelEntrant(parts[1], parts[2]);
                     });
 
-                    case Protocole.CALL_ACCEPTED -> SwingUtilities.invokeLater(() -> {
-                        fenetre.appelAccepte(parts);
+                    case Protocole.CALL_ACCEPTED -> Platform.runLater(() -> {
+                        app.appelAccepte(parts);
                     });
 
-                    case Protocole.CALL_REJECTED -> SwingUtilities.invokeLater(() -> {
-                        if (parts.length > 1) fenetre.appelRefuse(parts[1]);
+                    case Protocole.CALL_REJECTED -> Platform.runLater(() -> {
+                        if (parts.length > 1) app.appelRefuse(parts[1]);
                     });
 
-                    case Protocole.CALL_ENDED -> SwingUtilities.invokeLater(() -> {
-                        fenetre.appelTermine();
+                    case Protocole.CALL_ENDED -> Platform.runLater(() -> {
+                        app.appelTermine();
+                    });
+
+                    case Protocole.FILE_INFO -> Platform.runLater(() -> {
+                        if (parts.length >= 4) {
+                            app.ajouterMessageSysteme("Fichier reçu : " + parts[2] + " (" + parts[3] + " bytes)");
+                        }
                     });
                 }
             }
         } catch (IOException e) {
             if (running) {
-                SwingUtilities.invokeLater(() -> fenetre.ajouterMessageSysteme("Connexion perdue."));
+                Platform.runLater(() -> app.ajouterMessageSysteme("Connexion perdue."));
             }
         }
     }
