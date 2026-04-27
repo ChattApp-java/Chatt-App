@@ -1,7 +1,7 @@
-package com.example.database;
+package com.chatapp.database;
 
-import com.example.model.User;
-import org.mindrot.jbcrypt.BCrypt; // ← ajouter dans pom.xml : org.mindrot:jbcrypt:0.4
+import com.chatapp.model.User;
+import org.mindrot.jbcrypt.BCrypt;
 
 import java.sql.*;
 import java.time.LocalDateTime;
@@ -12,32 +12,40 @@ public class UserDAO {
 
     public UserDAO() {}
 
-    // ✅ CORRECTION : hash le mot de passe avant de l'enregistrer
-    public boolean inscrire(User user) {
+    /**
+     * Inscrit un nouvel utilisateur avec mot de passe hashé.
+     * Vérifie d'abord que le nom d'utilisateur n'existe pas.
+     * @return true si inscrit, false si l'utilisateur existe déjà
+     * @throws SQLException en cas d'erreur base de données
+     */
+    public boolean inscrire(User user) throws SQLException {
+        if (userExiste(user.getUsername())) {
+            System.err.println("[DB] Inscription refusée : utilisateur '" + user.getUsername() + "' existe déjà.");
+            return false;
+        }
+
         String sql = "INSERT INTO users (username, password, email) VALUES (?, ?, ?)";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            // Hash du mot de passe avec BCrypt (jamais stocker en clair !)
-            String hashedPassword = BCrypt.hashpw(user.getPassword(), BCrypt.gensalt());
+            String hashedPassword = BCrypt.hashpw(user.getPassword(), BCrypt.gensalt(12));
 
             stmt.setString(1, user.getUsername());
-            stmt.setString(2, hashedPassword);   // ← mot de passe hashé
+            stmt.setString(2, hashedPassword);
             stmt.setString(3, user.getEmail());
 
             int rows = stmt.executeUpdate();
             System.out.println("[DB] Utilisateur inscrit : " + user.getUsername());
             return rows > 0;
-
-        } catch (SQLException e) {
-            System.err.println("[DB] Erreur inscription : " + e.getMessage());
-            return false;
         }
     }
 
-    // ✅ CORRECTION : vérifier le mot de passe avec BCrypt.checkpw()
-    public User connecter(String username, String password) {
-        // On récupère l'utilisateur par son nom, SANS comparer le mot de passe en SQL
+    /**
+     * Authentifie un utilisateur avec son mot de passe en clair.
+     * Retourne l'utilisateur si succès, null sinon.
+     * Met à jour le statut en ligne.
+     */
+    public User authentifier(String username, String password) {
         String sql = "SELECT * FROM users WHERE username = ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -48,11 +56,10 @@ public class UserDAO {
             if (rs.next()) {
                 String hashStocke = rs.getString("password");
 
-                // Vérification sécurisée du mot de passe
                 if (BCrypt.checkpw(password, hashStocke)) {
                     setStatut(username, true);
-                    System.out.println("[DB] Connexion réussie : " + username);
-                    return extraireUser(rs);
+                    System.out.println("[DB] Authentification réussie : " + username);
+                    return extraireUserPublic(rs);
                 } else {
                     System.out.println("[DB] Mot de passe incorrect : " + username);
                     return null;
@@ -63,9 +70,17 @@ public class UserDAO {
             }
 
         } catch (SQLException e) {
-            System.err.println("[DB] Erreur connexion : " + e.getMessage());
+            System.err.println("[DB] Erreur authentification : " + e.getMessage());
             return null;
         }
+    }
+
+    /**
+     * @deprecated Utilisez authentifier() qui vérifie le mot de passe.
+     */
+    @Deprecated
+    public User connecter(String username, String password) {
+        return authentifier(username, password);
     }
 
     public boolean userExiste(String username) {
@@ -99,14 +114,17 @@ public class UserDAO {
         }
     }
 
+    /**
+     * Retourne l'utilisateur sans le hash du mot de passe (sécurité).
+     */
     public User getUserByUsername(String username) {
-        String sql = "SELECT * FROM users WHERE username = ?";
+        String sql = "SELECT id_user, username, email, status, created_at FROM users WHERE username = ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setString(1, username);
             ResultSet rs = stmt.executeQuery();
-            if (rs.next()) return extraireUser(rs);
+            if (rs.next()) return extraireUserPublic(rs);
 
         } catch (SQLException e) {
             System.err.println("[DB] Erreur getUserByUsername : " + e.getMessage());
@@ -115,13 +133,13 @@ public class UserDAO {
     }
 
     public User getUserById(int id) {
-        String sql = "SELECT * FROM users WHERE id_user = ?";
+        String sql = "SELECT id_user, username, email, status, created_at FROM users WHERE id_user = ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setInt(1, id);
             ResultSet rs = stmt.executeQuery();
-            if (rs.next()) return extraireUser(rs);
+            if (rs.next()) return extraireUserPublic(rs);
 
         } catch (SQLException e) {
             System.err.println("[DB] Erreur getUserById : " + e.getMessage());
@@ -131,12 +149,12 @@ public class UserDAO {
 
     public List<User> getTousConnectes() {
         List<User> liste = new ArrayList<>();
-        String sql = "SELECT * FROM users WHERE status = true";
+        String sql = "SELECT id_user, username, email, status, created_at FROM users WHERE status = true";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             ResultSet rs = stmt.executeQuery();
-            while (rs.next()) liste.add(extraireUser(rs));
+            while (rs.next()) liste.add(extraireUserPublic(rs));
 
         } catch (SQLException e) {
             System.err.println("[DB] Erreur getTousConnectes : " + e.getMessage());
@@ -149,6 +167,9 @@ public class UserDAO {
         System.out.println("[DB] " + username + " déconnecté.");
     }
 
+    /**
+     * Extrait un User COMPLET (avec password) — usage interne uniquement (auth).
+     */
     private User extraireUser(ResultSet rs) throws SQLException {
         return new User(
                 rs.getInt("id_user"),
@@ -161,4 +182,21 @@ public class UserDAO {
                         : LocalDateTime.now()
         );
     }
+
+    /**
+     * Extrait un User PUBLIC (sans password) — usage API.
+     */
+    private User extraireUserPublic(ResultSet rs) throws SQLException {
+        return new User(
+                rs.getInt("id_user"),
+                rs.getString("username"),
+                null, // password jamais exposé
+                rs.getString("email"),
+                rs.getBoolean("status"),
+                rs.getTimestamp("created_at") != null
+                        ? rs.getTimestamp("created_at").toLocalDateTime()
+                        : LocalDateTime.now()
+        );
+    }
 }
+

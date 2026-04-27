@@ -1,65 +1,106 @@
 package com.chatapp.database;
 
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
+
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 
+/**
+ * DatabaseConnection.java
+ * Gestion robuste des connexions MySQL via HikariCP connection pool.
+ * - Thread-safe : chaque requête obtient sa propre connexion depuis le pool
+ * - SSL activé par défaut
+ * - Configuration externalisée via variables d'environnement
+ * - Initialisation paresseuse avec retry
+ */
 public class DatabaseConnection {
 
-    private static final String URL =
-            "jdbc:mysql://localhost:3307/chatapp"
-            + "?useSSL=false"
-            + "&serverTimezone=UTC"
-            + "&allowPublicKeyRetrieval=true";
-    private static final String USER     = "root";
-    private static final String PASSWORD = "";
+    private static final int POOL_SIZE = 10;
+    private static HikariDataSource dataSource;
+    private static volatile boolean initialized = false;
+    private static String lastError = null;
 
-    private static Connection instance = null;
+    private static synchronized void initializePool() {
+        if (initialized || dataSource != null) return;
 
-    private DatabaseConnection() {}
-
-    // ✅ CORRECTION : synchronized → thread-safe, plus de race condition
-    public static synchronized Connection getConnection() {
         try {
-            if (instance == null || instance.isClosed()) {
-                Class.forName("com.mysql.cj.jdbc.Driver");
-                instance = DriverManager.getConnection(URL, USER, PASSWORD);
-                System.out.println("[DB] ✅ Connexion MySQL établie.");
-            }
-        } catch (ClassNotFoundException e) {
-            System.err.println("[DB] ❌ Driver introuvable : " + e.getMessage());
-            instance = null;
-        } catch (SQLException e) {
-            System.err.println("[DB] ❌ Erreur connexion : " + e.getMessage());
-            instance = null;
-        }
+            HikariConfig config = new HikariConfig();
 
-        // ✅ CORRECTION : lever une exception claire au lieu de retourner null
-        if (instance == null) {
-            throw new RuntimeException("[DB] ❌ Impossible d'obtenir une connexion MySQL !");
-        }
+            // Configuration externalisée (sécurité : pas de credentials en dur)
+            String dbUrl  = System.getenv().getOrDefault("CHATAPP_DB_URL",
+                    "jdbc:mysql://localhost:3307/chattapp?useSSL=true&serverTimezone=UTC&allowPublicKeyRetrieval=false");
+            String dbUser = System.getenv().getOrDefault("CHATAPP_DB_USER", "root");
+            String dbPass = System.getenv().getOrDefault("CHATAPP_DB_PASSWORD", "");
 
-        return instance;
-    }
+            config.setJdbcUrl(dbUrl);
+            config.setUsername(dbUser);
+            config.setPassword(dbPass);
 
-    public static synchronized void closeConnection() {
-        try {
-            if (instance != null && !instance.isClosed()) {
-                instance.close();
-                instance = null;
-                System.out.println("[DB] Connexion fermée.");
-            }
-        } catch (SQLException e) {
-            System.err.println("[DB] Erreur fermeture : " + e.getMessage());
+            // Pool settings
+            config.setMaximumPoolSize(POOL_SIZE);
+            config.setMinimumIdle(2);
+            config.setConnectionTimeout(30000); // 30s
+            config.setIdleTimeout(600000);      // 10min
+            config.setMaxLifetime(1800000);     // 30min
+
+            // Health checks
+            config.setConnectionTestQuery("SELECT 1");
+            config.setLeakDetectionThreshold(60000); // 60s
+
+            // Driver class
+            config.setDriverClassName("com.mysql.cj.jdbc.Driver");
+
+            dataSource = new HikariDataSource(config);
+            initialized = true;
+            System.out.println("[DB] ✅ Pool HikariCP initialisé (max=" + POOL_SIZE + ")");
+        } catch (Exception e) {
+            lastError = e.getMessage();
+            System.err.println("[DB] ❌ Échec initialisation pool : " + e.getMessage());
+            dataSource = null;
+            initialized = false;
         }
     }
 
-    public static boolean isConnected() {
-        try {
-            return instance != null && !instance.isClosed();
+    /**
+     * Obtient une connexion depuis le pool.
+     * L'appelant DOIT la fermer (try-with-resources) pour la retourner au pool.
+     */
+    public static Connection getConnection() throws SQLException {
+        if (!initialized) {
+            initializePool();
+        }
+        if (dataSource == null || dataSource.isClosed()) {
+            throw new SQLException("[DB] ❌ DataSource non initialisée ou fermée. Dernière erreur : " + lastError);
+        }
+        return dataSource.getConnection();
+    }
+
+    /**
+     * Ferme proprement le pool (à appeler à l'arrêt du serveur).
+     */
+    public static void closePool() {
+        if (dataSource != null && !dataSource.isClosed()) {
+            dataSource.close();
+            System.out.println("[DB] Pool HikariCP fermé.");
+        }
+        initialized = false;
+        dataSource = null;
+    }
+
+    public static boolean isHealthy() {
+        try (Connection conn = getConnection()) {
+            return conn.isValid(5);
         } catch (SQLException e) {
+            System.err.println("[DB] Health check failed: " + e.getMessage());
             return false;
         }
     }
+
+    public static String getLastError() {
+        return lastError;
+    }
+
+    private DatabaseConnection() {}
 }
 
