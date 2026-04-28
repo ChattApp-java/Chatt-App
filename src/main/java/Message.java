@@ -1,83 +1,40 @@
-import java.time.LocalDateTime;
+import java.io.Serializable;
+import java.sql.Timestamp;
 
-/**
- * Message.java
- * Modèle représentant un message dans la base de données.
- */
-public class Message {
+public class Message implements Serializable {
+    private static final long serialVersionUID = 1L;
 
-    private int id_message;
-    private int id_sender;
-    private int id_receiver;
+    private String expediteur; // Nom d'utilisateur (String)
+    private String destinataire; // Nom d'utilisateur (String)
     private String contenu;
-    private LocalDateTime date_envoi;
-    private String statut; // "lu" ou "non_lu"
+    private Timestamp dateEnvoi;
 
-    // ── Constructeur complet ──────────────────────────────────
-    public Message(int id_message, int id_sender, int id_receiver,
-                   String contenu, LocalDateTime date_envoi, String statut) {
-        this.id_message = id_message;
-        this.id_sender = id_sender;
-        this.id_receiver = id_receiver;
+    // Constructeur complet pour le DAO (chargement BDD)
+    public Message(String expediteur, String destinataire, String contenu, Timestamp dateEnvoi) {
+        this.expediteur = expediteur;
+        this.destinataire = destinataire;
         this.contenu = contenu;
-        this.date_envoi = date_envoi;
-        this.statut = statut;
+        this.dateEnvoi = dateEnvoi;
     }
 
-    // ── Constructeur envoi (sans id ni date) ──────────────────
-    public Message(int id_sender, int id_receiver, String contenu) {
-        this.id_sender = id_sender;
-        this.id_receiver = id_receiver;
+    // Constructeur simplifié pour l'envoi en temps réel
+    public Message(String expediteur, String destinataire, String contenu) {
+        this.expediteur = expediteur;
+        this.destinataire = destinataire;
         this.contenu = contenu;
-        this.statut = "non_lu";
+        this.dateEnvoi = new Timestamp(System.currentTimeMillis());
     }
 
-    // ── Getters ───────────────────────────────────────────────
-    public int getId_message() {
-        return id_message;
-    }
+    // Getters et Setters
+    public String getExpediteur() { return expediteur; }
+    public void setExpediteur(String expediteur) { this.expediteur = expediteur; }
 
-    public int getId_sender() {
-        return id_sender;
-    }
+    public String getDestinataire() { return destinataire; }
+    public void setDestinataire(String destinataire) { this.destinataire = destinataire; }
 
-    public int getId_receiver() {
-        return id_receiver;
-    }
+    public String getContenu() { return contenu; }
+    public void setContenu(String contenu) { this.contenu = contenu; }
 
-    public String getContenu() {
-        return contenu;
-    }
-
-    public LocalDateTime getDate_envoi() {
-        return date_envoi;
-    }
-
-    public String getStatut() {
-        return statut;
-    }
-
-    // ── Setters ───────────────────────────────────────────────
-    public void setId_message(int id_message) {
-        this.id_message = id_message;
-    }
-
-    public void setStatut(String statut) {
-        this.statut = statut;
-    }
-
-    public void setDate_envoi(LocalDateTime d) {
-        this.date_envoi = d;
-    }
-
-    @Override
-    public String toString() {
-        return "Message{id=" + id_message
-                + ", de=" + id_sender
-                + ", vers=" + id_receiver
-                + ", contenu='" + contenu + "'"
-                + ", statut=" + statut
-                + "}";
-    }
+    public Timestamp getDateEnvoi() { return dateEnvoi; }
+    public void setDateEnvoi(Timestamp dateEnvoi) { this.dateEnvoi = dateEnvoi; }
 }
-

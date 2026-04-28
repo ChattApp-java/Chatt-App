@@ -23,7 +23,7 @@ public class DatabaseConnection {
             String dbPass = System.getenv().getOrDefault("CHATAPP_DB_PASSWORD", "");
             */
 
-            String dbUrl = System.getenv().getOrDefault(
+            /*String dbUrl = System.getenv().getOrDefault(
                     "CHATAPP_DB_URL",
                     "jdbc:mysql://192.168.225.148:3307/chattapp?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true"
             );
@@ -34,6 +34,19 @@ public class DatabaseConnection {
             String dbPass = System.getenv().getOrDefault(
                     "CHATAPP_DB_PASSWORD",
                     "1234"
+            );*/
+             //pour tester serveur sur meme machine
+            String dbUrl = System.getenv().getOrDefault(
+                    "CHATAPP_DB_URL",
+                    "jdbc:mysql://localhost:3306/chattapp?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true"
+            );
+            String dbUser = System.getenv().getOrDefault(
+                    "CHATAPP_DB_USER",
+                    "root" // Utilisateur par défaut dans XAMPP
+            );
+            String dbPass = System.getenv().getOrDefault(
+                    "CHATAPP_DB_PASSWORD",
+                    "" // Mot de passe vide par défaut dans XAMPP
             );
 
             config.setJdbcUrl(dbUrl);

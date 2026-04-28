@@ -1,162 +1,81 @@
-
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+
 public class MessageDAO {
 
     public MessageDAO() {}
 
+    /**
+     * Sauvegarde le message et retourne l'ID généré par la BDD.
+     */
     public int sauvegarderMessage(Message msg) {
-        String sql = "INSERT INTO messages (id_sender, id_receiver, contenu, statut) VALUES (?, ?, ?, 'non_lu')";
+        String contenuSec = msg.getContenu().replace("'", "''");
+        String expSec = msg.getExpediteur().replace("'", "''");
+        String destSec = msg.getDestinataire().replace("'", "''");
+
+        String sql = "INSERT INTO messages (expediteur, destinataire, contenu) VALUES ('"
+                + expSec + "', '" + destSec + "', '" + contenuSec + "')";
+
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+             Statement stmt = conn.createStatement()) {
 
-            stmt.setInt(1, msg.getId_sender());
-            stmt.setInt(2, msg.getId_receiver());
-            stmt.setString(3, msg.getContenu());
+            stmt.executeUpdate(sql, Statement.RETURN_GENERATED_KEYS);
+            ResultSet rs = stmt.getGeneratedKeys();
 
-            stmt.executeUpdate();
-
-            ResultSet keys = stmt.getGeneratedKeys();
-            if (keys.next()) {
-                int id = keys.getInt(1);
-                System.out.println("[DB] Message sauvegardé, id=" + id);
-                return id;
+            if (rs.next()) {
+                return rs.getInt(1); // Retourne le msgId
             }
-
         } catch (SQLException e) {
             System.err.println("[DB] Erreur sauvegarde message : " + e.getMessage());
         }
         return -1;
     }
 
-    public List<Message> getHistorique(int idUser1, int idUser2) {
-        List<Message> liste = new ArrayList<>();
-        String sql = "SELECT * FROM messages "
-                + "WHERE (id_sender = ? AND id_receiver = ?) "
-                + "   OR (id_sender = ? AND id_receiver = ?) "
-                + "ORDER BY date_envoi ASC";
+    /**
+     * Récupère l'historique entre deux utilisateurs.
+     */
+    public List<Message> getHistorique(String user1, String user2) {
+        List<Message> historique = new ArrayList<>();
+        String u1 = user1.replace("'", "''");
+        String u2 = user2.replace("'", "''");
+
+        String sql = "SELECT * FROM messages WHERE " +
+                "(expediteur = '" + u1 + "' AND destinataire = '" + u2 + "') OR " +
+                "(expediteur = '" + u2 + "' AND destinataire = '" + u1 + "') " +
+                "ORDER BY date_envoi ASC";
+
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
 
-            stmt.setInt(1, idUser1);
-            stmt.setInt(2, idUser2);
-            stmt.setInt(3, idUser2);
-            stmt.setInt(4, idUser1);
-
-            ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
-                liste.add(extraireMessage(rs));
+                historique.add(new Message(
+                        rs.getString("expediteur"),
+                        rs.getString("destinataire"),
+                        rs.getString("contenu"),
+                        rs.getTimestamp("date_envoi")
+                ));
             }
-            System.out.println("[DB] Historique récupéré : " + liste.size() + " messages.");
-
         } catch (SQLException e) {
             System.err.println("[DB] Erreur historique : " + e.getMessage());
         }
-        return liste;
-    }
-
-    public List<Message> getMessagesNonLus(int idReceiver) {
-        List<Message> liste = new ArrayList<>();
-        String sql = "SELECT * FROM messages "
-                + "WHERE id_receiver = ? AND statut = 'non_lu' "
-                + "ORDER BY date_envoi ASC";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setInt(1, idReceiver);
-            ResultSet rs = stmt.executeQuery();
-            while (rs.next()) {
-                liste.add(extraireMessage(rs));
-            }
-            System.out.println("[DB] Messages non lus pour user " + idReceiver + " : " + liste.size());
-
-        } catch (SQLException e) {
-            System.err.println("[DB] Erreur non lus : " + e.getMessage());
-        }
-        return liste;
-    }
-
-    public void marquerCommeLu(int idMessage) {
-        String sql = "UPDATE messages SET statut = 'lu' WHERE id_message = ?";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setInt(1, idMessage);
-            stmt.executeUpdate();
-
-        } catch (SQLException e) {
-            System.err.println("[DB] Erreur marquerCommeLu : " + e.getMessage());
-        }
-    }
-
-    public void marquerTousLus(int idSender, int idReceiver) {
-        String sql = "UPDATE messages SET statut = 'lu' "
-                + "WHERE id_sender = ? AND id_receiver = ?";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setInt(1, idSender);
-            stmt.setInt(2, idReceiver);
-            int rows = stmt.executeUpdate();
-            System.out.println("[DB] " + rows + " messages marqués comme lus.");
-
-        } catch (SQLException e) {
-            System.err.println("[DB] Erreur marquerTousLus : " + e.getMessage());
-        }
-    }
-
-    public boolean supprimerMessage(int idMessage) {
-        String sql = "DELETE FROM messages WHERE id_message = ?";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setInt(1, idMessage);
-            int rows = stmt.executeUpdate();
-            return rows > 0;
-
-        } catch (SQLException e) {
-            System.err.println("[DB] Erreur suppression : " + e.getMessage());
-            return false;
-        }
+        return historique;
     }
 
     /**
-     * Exécute une opération atomique dans une transaction.
-     * Utile pour les opérations multi-étapes (ex: sauvegarder message + mettre à jour statut).
+     * Marque les messages reçus comme lus.
      */
-    public boolean executeInTransaction(TransactionOperation op) {
-        try (Connection conn = DatabaseConnection.getConnection()) {
-            conn.setAutoCommit(false);
-            try {
-                boolean result = op.execute(conn);
-                conn.commit();
-                return result;
-            } catch (SQLException e) {
-                conn.rollback();
-                System.err.println("[DB] Transaction annulée : " + e.getMessage());
-                return false;
-            }
+    public void marquerTousLus(String destinataire, String expediteur) {
+        String sql = "UPDATE messages SET est_lu = 1 WHERE destinataire = '"
+                + destinataire.replace("'", "''") + "' AND expediteur = '"
+                + expediteur.replace("'", "''") + "'";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate(sql);
         } catch (SQLException e) {
-            System.err.println("[DB] Erreur transaction : " + e.getMessage());
-            return false;
+            System.err.println("[DB] Erreur marquer lus : " + e.getMessage());
         }
     }
-
-    @FunctionalInterface
-    public interface TransactionOperation {
-        boolean execute(Connection conn) throws SQLException;
-    }
-
-    private Message extraireMessage(ResultSet rs) throws SQLException {
-        return new Message(
-                rs.getInt("id_message"),
-                rs.getInt("id_sender"),
-                rs.getInt("id_receiver"),
-                rs.getString("contenu"),
-                rs.getTimestamp("date_envoi").toLocalDateTime(),
-                rs.getString("statut")
-        );
-    }
 }
-
