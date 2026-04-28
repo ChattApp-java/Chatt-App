@@ -7,32 +7,38 @@ public class ChatMessage {
 
     // Type de message (texte, audio, image, fichier, appel, etc.)
     private MessageType type;
-    // Expéditeur du message
+    // ID du message
+    private int messageId;
+    // Expéditeur du message (username ou string userId)
     private String from;
-    // Destinataire privé (null si message de groupe)
+    // Destinataire privé (username)
     private String to;
-    // ID du groupe (null si message privé)
-    private String groupId;
+    // ID de la conversation
+    private String conversationId;
     // Contenu textuel du message
     private String content;
     // Contenu binaire du message (audio, image, fichier)
     private byte[] binaryData;
 
     // Constructeur principal
-    public ChatMessage(MessageType type, String from, String to, String groupId, String content) {
+    public ChatMessage(MessageType type, String from, String to, String conversationId, String content) {
         this.type = type;
         this.from = from;
         this.to = to;
-        this.groupId = groupId;
+        this.conversationId = conversationId;
         this.content = content;
+        this.messageId = -1;
     }
 
-    // ---------------- GETTERS ----------------
+    // ---------------- GETTERS & SETTERS ----------------
     public MessageType getType() { return type; }
     public String getFrom() { return from; }
     public String getTo()   { return to; }
-    public String getGroupId() { return groupId; }
+    public String getConversationId() { return conversationId; }
     public String getContent() { return content; }
+    
+    public int getMessageId() { return messageId; }
+    public void setMessageId(int messageId) { this.messageId = messageId; }
 
     // ---------------- BINARY DATA ----------------
     public byte[] getBinaryData() { return binaryData; }
@@ -40,15 +46,16 @@ public class ChatMessage {
 
     // ---------------- SERIALIZATION ----------------
     // Sérialise le message en une seule ligne texte pour l'envoyer via le réseau
-    // Format : type|from|to|groupId|content|base64(binary)
+    // Format : type|messageId|from|to|conversationId|content|base64(binary)
     public String serialize() {
         // Convertit les données binaires en Base64 pour pouvoir les envoyer en texte
         String base64 = (binaryData == null) ? "" : Base64.getEncoder().encodeToString(binaryData);
 
         return type + "|" +     // type du message
+                messageId + "|" + 
                 safe(from) + "|" +   // expéditeur
                 safe(to) + "|" +     // destinataire privé
-                safe(groupId) + "|" + // ID du groupe
+                safe(conversationId) + "|" + // ID de la conversation
                 safe(content) + "|" + // contenu textuel
                 base64;               // données binaires encodées
     }
@@ -64,20 +71,22 @@ public class ChatMessage {
         try {
             // Sépare la ligne en parties, y compris les champs vides
             String[] parts = line.split("\\|", -1);
-            if (parts.length < 5) return null;
+            if (parts.length < 6) return null;
 
             MessageType type = MessageType.valueOf(parts[0]);
-            String from    = parts[1].replace("␟", "|");
-            String to      = parts[2].replace("␟", "|");
-            String groupId = parts[3].replace("␟", "|");
-            String content = parts[4].replace("␟", "|");
+            int messageId    = Integer.parseInt(parts[1]);
+            String from      = parts[2].replace("␟", "|");
+            String to        = parts[3].replace("␟", "|");
+            String convId    = parts[4].replace("␟", "|");
+            String content   = parts[5].replace("␟", "|");
 
             // Crée un objet ChatMessage avec les données textuelles
-            ChatMessage msg = new ChatMessage(type, from, to, groupId, content);
+            ChatMessage msg = new ChatMessage(type, from, to, convId, content);
+            msg.setMessageId(messageId);
 
             // Si des données binaires sont présentes, on les décode depuis Base64
-            if (parts.length >= 6 && !parts[5].isEmpty()) {
-                msg.setBinaryData(Base64.getDecoder().decode(parts[5]));
+            if (parts.length >= 7 && !parts[6].isEmpty()) {
+                msg.setBinaryData(Base64.getDecoder().decode(parts[6]));
             }
 
             return msg;

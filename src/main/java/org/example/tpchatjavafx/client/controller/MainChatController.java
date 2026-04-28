@@ -25,6 +25,15 @@ import org.example.tpchatjavafx.client.video.VideoCallController;
 import org.example.tpchatjavafx.client.video.VideoCallWindow;
 import org.example.tpchatjavafx.client.voice.VoiceCallSession;
 import org.example.tpchatjavafx.common.MessageType;
+import org.example.tpchatjavafx.dao.ContactDAO;
+import org.example.tpchatjavafx.dao.UtilisateurDAO;
+import org.example.tpchatjavafx.dao.MessageDAO;
+import org.example.tpchatjavafx.dao.ConversationDAO;
+import org.example.tpchatjavafx.dao.FichierMediaDAO;
+import org.example.tpchatjavafx.model.Conversation;
+import org.example.tpchatjavafx.model.FichierMedia;
+import org.example.tpchatjavafx.model.Message;
+import org.example.tpchatjavafx.model.Utilisateur;
 
 import javax.sound.sampled.*;
 import java.io.ByteArrayInputStream;
@@ -35,11 +44,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.sql.SQLException;
 import java.text.DecimalFormat;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class MainChatController {
 
@@ -47,9 +55,7 @@ public class MainChatController {
     @FXML private Label     chatStatusLabel;
     @FXML private Label     chatAvatarLabel;
     @FXML private ListView<String>    privateListView;
-    @FXML private ListView<String>    groupListView;
     @FXML private Tab       privateTab;
-    @FXML private Tab       groupTab;
     @FXML private ListView<UiMessage> messagesListView;
     @FXML private TextField messageField;
     @FXML private Button    emojiButton;
@@ -57,15 +63,26 @@ public class MainChatController {
     @FXML private Button    voiceCallButton;
     @FXML private Button    videoCallButton;
     @FXML private TabPane   tabPane;
+    
+    @FXML private TextField searchContactField;
 
     private NetworkClient networkClient;
     private String username;
+    private Utilisateur currentUser;
 
     private String currentPrivateTarget = null;
-    private String currentGroupId = null;
+    private String currentConversationId = null;
 
     private final Map<String, ObservableList<UiMessage>> privateConversations = new HashMap<>();
-    private final Map<String, ObservableList<UiMessage>> groupConversations = new HashMap<>();
+    private final Map<String, String> userStatuses = new HashMap<>(); // username -> EN_LIGNE/NON_CONNECTE
+    private final Set<Integer> processedMessageIds = new HashSet<>();
+    private final ObservableList<String> allContacts = FXCollections.observableArrayList();
+
+    private final ContactDAO contactDAO = new ContactDAO();
+    private final UtilisateurDAO utilisateurDAO = new UtilisateurDAO();
+    private final MessageDAO messageDAO = new MessageDAO();
+    private final ConversationDAO conversationDAO = new ConversationDAO();
+    private final FichierMediaDAO fichierMediaDAO = new FichierMediaDAO();
 
     private ContextMenu emojiPicker;
     private static final List<String> EMOJIS = Arrays.asList(
@@ -78,7 +95,6 @@ public class MainChatController {
     private TargetDataLine targetDataLine;
     private Thread recordingThread;
 
-    // 🔊 Voice call session
     private VoiceCallSession currentVoiceCall;
     private String voiceCallPeer = null;
 
@@ -88,27 +104,122 @@ public class MainChatController {
         updateRecordButtonState();
         setupMessageBubbles();
         setupContactCellFactory();
-        if (tabPane != null && groupTab != null) {
-            tabPane.getTabs().remove(groupTab);
+        
+        // Remove groups tab if it exists
+        if (tabPane != null && tabPane.getTabs().size() > 1) {
+            tabPane.getTabs().remove(1);
         }
     }
 
     public void init(NetworkClient networkClient, String username) {
         this.networkClient = networkClient;
         this.username = username;
+        
+        try {
+            this.currentUser = utilisateurDAO.findByUsername(username);
+            loadContacts();
+        } catch (SQLException e) {
+            showInfo("Erreur de chargement de l'utilisateur: " + e.getMessage());
+        }
 
         networkClient.setOnMessageReceived(this::onMessageReceived);
         networkClient.setOnUserListReceived(this::updateOnlineUsers);
+        networkClient.setOnUserStatusChanged(this::onUserStatusChanged);
 
         privateListView.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
             if (n != null) openPrivateChat(n);
         });
-        groupListView.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
-            if (n != null) openGroupChat(n);
+        
+        setupSearchContactAutoCompletion();
+        
+        // Request current online users list after setting callbacks
+        networkClient.requestUserList();
+    }
+
+    private void loadContacts() {
+        try {
+            List<Utilisateur> contacts = contactDAO.getContacts(currentUser.getId());
+            allContacts.clear();
+            for (Utilisateur u : contacts) {
+                allContacts.add(u.getUsername());
+                userStatuses.put(u.getUsername(), u.getStatut());
+            }
+            privateListView.setItems(allContacts);
+        } catch (SQLException e) {
+            showInfo("Erreur de chargement des contacts: " + e.getMessage());
+        }
+    }
+
+    private void setupSearchContactAutoCompletion() {
+        if (searchContactField == null) return;
+        
+        searchContactField.textProperty().addListener((observable, oldValue, newValue) -> {
+            String query = newValue.trim().toLowerCase();
+            if (query.isEmpty()) {
+                privateListView.setItems(allContacts);
+                return;
+            }
+            
+            // Filter the master list of contacts
+            ObservableList<String> filtered = FXCollections.observableArrayList();
+            for (String contact : allContacts) {
+                if (contact.toLowerCase().contains(query)) {
+                    filtered.add(contact);
+                }
+            }
+            privateListView.setItems(filtered);
         });
     }
 
-    // ── Sidebar cell factory WhatsApp-like ─────────────────────
+    @FXML
+    private void onAddContact() {
+        String contactName = (searchContactField != null) ? searchContactField.getText().trim() : "";
+        
+        if (contactName.isEmpty()) {
+            TextInputDialog dialog = new TextInputDialog();
+            dialog.setTitle("Ajouter un contact");
+            dialog.setHeaderText("Entrez le nom d'utilisateur du contact à ajouter");
+            dialog.setContentText("Nom d'utilisateur :");
+            Optional<String> result = dialog.showAndWait();
+            if (result.isPresent()) {
+                contactName = result.get().trim();
+            } else {
+                return;
+            }
+        }
+        
+        if (contactName.isEmpty()) return;
+        
+        if (contactName.equals(username)) {
+            showInfo("Vous ne pouvez pas vous ajouter vous-même.");
+            return;
+        }
+
+        try {
+            Utilisateur contact = utilisateurDAO.findByUsername(contactName);
+            if (contact == null) {
+                showInfo("Cet utilisateur n'existe pas dans la base de données.");
+                return;
+            }
+            
+            boolean added = contactDAO.addContact(currentUser.getId(), contact.getId());
+            if (added) {
+                if (!allContacts.contains(contactName)) {
+                    allContacts.add(contactName);
+                    userStatuses.put(contactName, contact.getStatut());
+                }
+                searchContactField.clear();
+                privateListView.setItems(allContacts); // Reset view to show all contacts including new one
+                // Request user list refresh to update status
+                networkClient.requestUserList();
+            } else {
+                showInfo("L'utilisateur est déjà dans vos contacts.");
+            }
+        } catch (SQLException e) {
+            showInfo("Erreur lors de l'ajout: " + e.getMessage());
+        }
+    }
+
     private void setupContactCellFactory() {
         privateListView.setCellFactory(lv -> new ListCell<>() {
             @Override
@@ -116,22 +227,25 @@ public class MainChatController {
                 super.updateItem(user, empty);
                 if (empty || user == null) { setGraphic(null); setText(null); return; }
                 String initial = user.substring(0, 1).toUpperCase();
-                // Avatar
+                
                 Label av = new Label(initial);
                 av.getStyleClass().add("avatar-letter");
                 StackPane avatar = new StackPane(av);
                 avatar.getStyleClass().add("avatar-circle");
-                // Avatar couleur selon hash
+                
                 String[] colors = {"#00A884","#2196F3","#9C27B0","#FF5722","#FF9800"};
                 avatar.setStyle("-fx-background-color:" + colors[Math.abs(user.hashCode()) % colors.length] + "; -fx-background-radius:50%; -fx-min-width:42px; -fx-min-height:42px; -fx-max-width:42px; -fx-max-height:42px;");
-                // Infos
+                
                 Label name = new Label(user);
                 name.setStyle("-fx-text-fill:#E9EDEF; -fx-font-size:14px; -fx-font-weight:bold;");
-                Label sub  = new Label("● En ligne");
-                sub.setStyle("-fx-text-fill:#25D366; -fx-font-size:11px;");
+                
+                String statut = userStatuses.getOrDefault(user, "NON_CONNECTE");
+                Label sub = new Label(statut.equals("EN_LIGNE") ? "● En ligne" : "● Non connecté");
+                sub.setStyle(statut.equals("EN_LIGNE") ? "-fx-text-fill:#25D366; -fx-font-size:11px;" : "-fx-text-fill:#8e8e8e; -fx-font-size:11px;");
+                
                 VBox info = new VBox(3, name, sub);
                 HBox row = new HBox(12, avatar, info);
-                row.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+                row.setAlignment(Pos.CENTER_LEFT);
                 row.setStyle("-fx-padding: 8 12;");
                 setGraphic(row);
                 setText(null);
@@ -139,21 +253,29 @@ public class MainChatController {
         });
     }
 
-    // ── Mise à jour liste utilisateurs connectés ───────────────
-    private void updateOnlineUsers(List<String> users) {
+    private void onUserStatusChanged(ChatMessage msg) {
+        String targetUser = msg.getFrom();
+        String status = msg.getContent();
+        userStatuses.put(targetUser, status);
+        
         Platform.runLater(() -> {
-            ObservableList<String> items = privateListView.getItems();
-            for (String u : users) {
-                if (!u.equals(username) && !u.isEmpty() && !items.contains(u)) {
-                    items.add(u);
-                }
+            privateListView.refresh();
+            if (targetUser.equals(currentPrivateTarget)) {
+                updateChatHeaderStatus(status);
             }
-            // Retirer ceux qui ne sont plus connectés (sauf les conversations existantes)
-            items.removeIf(u -> !users.contains(u) && !privateConversations.containsKey(u));
         });
     }
 
-    // ── Déconnexion ────────────────────────────────────────────
+    private void updateOnlineUsers(List<String> users) {
+        // Initial bulk update
+        for (String u : users) {
+            if (!u.equals(username)) {
+                userStatuses.put(u, "EN_LIGNE");
+            }
+        }
+        Platform.runLater(() -> privateListView.refresh());
+    }
+
     @FXML
     private void onLogout() {
         if (networkClient != null) networkClient.close();
@@ -163,41 +285,82 @@ public class MainChatController {
 
     private void openPrivateChat(String other) {
         currentPrivateTarget = other;
-        currentGroupId = null;
-        tabPane.getSelectionModel().select(0);
         if (chatTitleLabel  != null) chatTitleLabel.setText(other);
-        if (chatStatusLabel != null) chatStatusLabel.setText("● En ligne");
         if (chatAvatarLabel != null) chatAvatarLabel.setText(other.substring(0,1).toUpperCase());
-        ObservableList<UiMessage> msgs =
-                privateConversations.computeIfAbsent(other, k -> FXCollections.observableArrayList());
+        
+        String status = userStatuses.getOrDefault(other, "NON_CONNECTE");
+        updateChatHeaderStatus(status);
+        
+        ObservableList<UiMessage> msgs = privateConversations.get(other);
+        if (msgs == null) {
+            msgs = FXCollections.observableArrayList();
+            privateConversations.put(other, msgs);
+            loadConversationHistory(other);
+        }
+        
         messagesListView.setItems(msgs);
         updateCallButtonsVisibility();
     }
 
-    private void openGroupChat(String groupId) {
-        currentGroupId = groupId;
-        currentPrivateTarget = null;
-        tabPane.getSelectionModel().select(1); // Groups tab
-        if (chatTitleLabel  != null) chatTitleLabel.setText("Groupe: " + groupId);
-        if (chatStatusLabel != null) chatStatusLabel.setText("Membres connectés");
-        if (chatAvatarLabel != null) chatAvatarLabel.setText("G");
-        ObservableList<UiMessage> msgs =
-                groupConversations.computeIfAbsent(groupId, k -> FXCollections.observableArrayList());
-        messagesListView.setItems(msgs);
-        updateCallButtonsVisibility();
+    private void loadConversationHistory(String otherName) {
+        try {
+            Utilisateur other = utilisateurDAO.findByUsername(otherName);
+            if (other == null) return;
+            
+            Conversation conv = conversationDAO.findConversationBetween(currentUser.getId(), other.getId());
+            if (conv == null) return;
+            
+            currentConversationId = String.valueOf(conv.getId());
+            List<Message> history = messageDAO.getHistory(conv.getId());
+            ObservableList<UiMessage> uiMsgs = privateConversations.get(otherName);
+            
+            for (Message m : history) {
+                boolean own = m.getExpediteurId() == currentUser.getId();
+                UiMessage uiMsg = null;
+                
+                String type = m.getType();
+                if (type.equals("PRIVATE")) {
+                    uiMsg = new UiMessage(UiMessage.Kind.TEXT, own, m.getContenu(), null);
+                } else if (type.contains("PRIVATE_AUDIO") || type.contains("PRIVATE_IMAGE") || type.contains("PRIVATE_FILE")) {
+                    FichierMedia fm = fichierMediaDAO.findByMessageId(m.getId());
+                    if (fm != null) {
+                        UiMessage.Kind kind = type.contains("IMAGE") ? UiMessage.Kind.IMAGE :
+                                            type.contains("AUDIO") ? UiMessage.Kind.AUDIO : UiMessage.Kind.FILE;
+                        uiMsg = new UiMessage(kind, own, m.getContenu(), fm.getCheminAcces());
+                    }
+                }
+                
+                if (uiMsg != null) {
+                    uiMsgs.add(uiMsg);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Erreur chargement historique : " + e.getMessage());
+        }
+    }
+    
+    private void updateChatHeaderStatus(String status) {
+        if (chatStatusLabel != null) {
+            chatStatusLabel.setText(status.equals("EN_LIGNE") ? "● En ligne" : "● Non connecté");
+            chatStatusLabel.setStyle(status.equals("EN_LIGNE") ? "-fx-text-fill: #25D366;" : "-fx-text-fill: #8e8e8e;");
+        }
     }
 
     private void onMessageReceived(ChatMessage msg) {
+        // Avoid duplicates by tracking message ID
+        if (msg.getMessageId() != -1) {
+            if (processedMessageIds.contains(msg.getMessageId())) {
+                return;
+            }
+            processedMessageIds.add(msg.getMessageId());
+        }
+
         switch (msg.getType()) {
             case SYSTEM       -> addSystemMessage(msg);
             case PRIVATE      -> addPrivateMessage(msg);
-            case GROUP        -> addGroupMessage(msg);
             case PRIVATE_AUDIO -> handleIncomingPrivateAudio(msg);
-            case GROUP_AUDIO  -> handleIncomingGroupAudio(msg);
             case PRIVATE_IMAGE -> handleIncomingPrivateImage(msg);
-            case GROUP_IMAGE  -> handleIncomingGroupImage(msg);
             case PRIVATE_FILE -> handleIncomingPrivateFile(msg);
-            case GROUP_FILE   -> handleIncomingGroupFile(msg);
             // Appel vidéo
             case VIDEO_CALL_REQUEST -> Platform.runLater(() -> handleCallRequest(msg));
             case VIDEO_CALL_ACCEPT  -> Platform.runLater(() -> startVideoWindow(msg.getFrom(), true));
@@ -209,21 +372,18 @@ public class MainChatController {
             case VOICE_CALL_ACCEPT  -> Platform.runLater(() -> startVoiceSession(msg.getFrom()));
             case VOICE_CALL_REJECT  -> Platform.runLater(() -> showInfo("Appel vocal refusé par " + msg.getFrom()));
             case VOICE_CALL_END     -> Platform.runLater(this::endVoiceCall);
-            case VOICE_FRAME        -> Platform.runLater(() -> { if (currentVoiceCall != null) currentVoiceCall.playRemoteAudio(msg.getBinaryData()); });
+            case VOICE_FRAME        -> Platform.runLater(() -> { 
+                if (currentVoiceCall != null) currentVoiceCall.playRemoteAudio(msg.getBinaryData()); 
+                else org.example.tpchatjavafx.client.video.VideoCallController.receiveAudio(msg.getBinaryData());
+            });
             default -> {}
         }
     }
 
     private void addSystemMessage(ChatMessage msg) {
         String key = "SYSTEM";
-
         privateConversations.putIfAbsent(key, FXCollections.observableArrayList());
-        privateConversations.get(key).add(new UiMessage(
-                UiMessage.Kind.TEXT,
-                false,
-                "[SYSTEM] " + msg.getContent(),
-                null
-        ));
+        privateConversations.get(key).add(new UiMessage(UiMessage.Kind.TEXT, false, "[SYSTEM] " + msg.getContent(), null));
 
         if (key.equals(currentPrivateTarget)) {
             messagesListView.setItems(privateConversations.get(key));
@@ -235,17 +395,13 @@ public class MainChatController {
 
     private void addPrivateMessage(ChatMessage msg) {
         String other = msg.getFrom().equals(username) ? msg.getTo() : msg.getFrom();
-
         privateConversations.putIfAbsent(other, FXCollections.observableArrayList());
         boolean own = msg.getFrom().equals(username);
-        privateConversations.get(other).add(new UiMessage(
-                UiMessage.Kind.TEXT,
-                own,
-                msg.getContent(),
-                null
-        ));
+        
+        UiMessage uiMsg = new UiMessage(UiMessage.Kind.TEXT, own, msg.getContent(), null);
+        privateConversations.get(other).add(uiMsg);
 
-        if (other.equals(currentPrivateTarget) && isPrivateTabSelected()) {
+        if (other.equals(currentPrivateTarget)) {
             messagesListView.setItems(privateConversations.get(other));
         }
         if (!privateListView.getItems().contains(other)) {
@@ -253,57 +409,21 @@ public class MainChatController {
         }
     }
 
-    private void addGroupMessage(ChatMessage msg) {
-        String groupId = msg.getGroupId();
-
-        groupConversations.putIfAbsent(groupId, FXCollections.observableArrayList());
-        boolean own = msg.getFrom().equals(username);
-        groupConversations.get(groupId).add(new UiMessage(
-                UiMessage.Kind.TEXT,
-                own,
-                (own ? "" : msg.getFrom() + ": ") + msg.getContent(),
-                null
-        ));
-
-        if (groupId.equals(currentGroupId) && isGroupTabSelected()) {
-            messagesListView.setItems(groupConversations.get(groupId));
-        }
-        if (!groupListView.getItems().contains(groupId)) {
-            groupListView.getItems().add(groupId);
-        }
-    }
-
-    // ---------------- VIDEO CALL ----------------
-
     private void handleCallRequest(ChatMessage msg) {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Incoming Call");
         alert.setHeaderText("Video call from " + msg.getFrom());
         alert.setContentText("Accept the call?");
-
         ButtonType accept = new ButtonType("Accept");
         ButtonType reject = new ButtonType("Reject");
-
         alert.getButtonTypes().setAll(accept, reject);
 
         alert.showAndWait().ifPresent(r -> {
             if (r == accept) {
-                networkClient.send(new ChatMessage(
-                        MessageType.VIDEO_CALL_ACCEPT,
-                        username,
-                        msg.getFrom(),
-                        null,
-                        ""
-                ));
+                networkClient.send(new ChatMessage(MessageType.VIDEO_CALL_ACCEPT, username, msg.getFrom(), null, ""));
                 startVideoWindow(msg.getFrom(), false);
             } else {
-                networkClient.send(new ChatMessage(
-                        MessageType.VIDEO_CALL_REJECT,
-                        username,
-                        msg.getFrom(),
-                        null,
-                        ""
-                ));
+                networkClient.send(new ChatMessage(MessageType.VIDEO_CALL_REJECT, username, msg.getFrom(), null, ""));
             }
         });
     }
@@ -316,37 +436,21 @@ public class MainChatController {
         VideoCallWindow.closeCurrent();
     }
 
-    // ---------------- VOICE CALL ----------------
-
     private void handleVoiceCallRequest(ChatMessage msg) {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Incoming Voice Call");
         alert.setHeaderText("Voice call from " + msg.getFrom());
         alert.setContentText("Accept the call?");
-
         ButtonType accept = new ButtonType("Accept");
         ButtonType reject = new ButtonType("Reject");
-
         alert.getButtonTypes().setAll(accept, reject);
 
         alert.showAndWait().ifPresent(result -> {
             if (result == accept) {
-                networkClient.send(new ChatMessage(
-                        MessageType.VOICE_CALL_ACCEPT,
-                        username,
-                        msg.getFrom(),
-                        null,
-                        ""
-                ));
+                networkClient.send(new ChatMessage(MessageType.VOICE_CALL_ACCEPT, username, msg.getFrom(), null, ""));
                 startVoiceSession(msg.getFrom());
             } else {
-                networkClient.send(new ChatMessage(
-                        MessageType.VOICE_CALL_REJECT,
-                        username,
-                        msg.getFrom(),
-                        null,
-                        ""
-                ));
+                networkClient.send(new ChatMessage(MessageType.VOICE_CALL_REJECT, username, msg.getFrom(), null, ""));
             }
         });
     }
@@ -362,28 +466,16 @@ public class MainChatController {
             currentVoiceCall.start();
             voiceCallPeer = otherUser;
 
-            // 🔲 Open call window with timer + hangup callback
             VoiceCallWindow.open(username, otherUser, () -> {
-                // This runs when YOU end the call (button or X)
                 if (voiceCallPeer != null) {
-                    networkClient.send(new ChatMessage(
-                            MessageType.VOICE_CALL_END,
-                            username,
-                            voiceCallPeer,
-                            null,
-                            ""
-                    ));
+                    networkClient.send(new ChatMessage(MessageType.VOICE_CALL_END, username, voiceCallPeer, null, ""));
                 }
-                endVoiceCall(); // stop local session + close window
+                endVoiceCall();
             });
-
-            // Optional toast
-            // showInfo("Voice call started with " + otherUser);
         } catch (Exception e) {
             showInfo("Unable to start voice call: " + e.getMessage());
         }
     }
-
 
     private void endVoiceCall() {
         if (currentVoiceCall != null) {
@@ -392,16 +484,6 @@ public class MainChatController {
         }
         voiceCallPeer = null;
         VoiceCallWindow.close();
-        showInfo("Voice call ended.");
-    }
-
-
-    private boolean isPrivateTabSelected() {
-        return tabPane.getSelectionModel().getSelectedIndex() == 0;
-    }
-
-    private boolean isGroupTabSelected() {
-        return tabPane.getSelectionModel().getSelectedIndex() == 1;
     }
 
     private void showInfo(String msg) {
@@ -410,88 +492,14 @@ public class MainChatController {
     }
 
     @FXML
-    private void onNewPrivate() {
-        TextInputDialog dialog = new TextInputDialog();
-        dialog.setTitle("New Private Chat");
-        dialog.setHeaderText("Start a private chat");
-        dialog.setContentText("Enter username:");
-        dialog.showAndWait().ifPresent(name -> {
-            name = name.trim();
-            if (!name.isEmpty()) {
-                privateConversations.putIfAbsent(name, FXCollections.observableArrayList());
-                if (!privateListView.getItems().contains(name)) {
-                    privateListView.getItems().add(name);
-                }
-                openPrivateChat(name);
-            }
-        });
-    }
-
-    @FXML
-    private void onJoinGroup() {
-        TextInputDialog dialog = new TextInputDialog();
-        dialog.setTitle("Join Group");
-        dialog.setHeaderText("Join or create a group");
-        dialog.setContentText("Group ID:");
-        dialog.showAndWait().ifPresent(groupId -> {
-            groupId = groupId.trim();
-            if (!groupId.isEmpty()) {
-                networkClient.send(new ChatMessage(
-                        MessageType.JOIN_GROUP,
-                        username,
-                        null,
-                        groupId,
-                        ""
-                ));
-
-                groupConversations.putIfAbsent(groupId, FXCollections.observableArrayList());
-                if (!groupListView.getItems().contains(groupId)) {
-                    groupListView.getItems().add(groupId);
-                }
-                ensureGroupTabVisible();
-                openGroupChat(groupId);
-            }
-        });
-    }
-
-    @FXML
-    private void onNewGroup() {
-        onJoinGroup();
-    }
-
-    @FXML
-    private void onShowUnreadPrivate() {
-        showInfo("Filtre des messages privés non lus à implémenter.");
-    }
-
-    @FXML
-    private void onShowUnreadGroups() {
-        showInfo("Filtre des messages de groupe non lus à implémenter.");
-    }
-
-    @FXML
     private void onSend() {
         String text = messageField.getText().trim();
         if (text.isEmpty()) return;
 
-        if (isPrivateTabSelected() && currentPrivateTarget != null) {
-            ChatMessage msg = new ChatMessage(
-                    MessageType.PRIVATE,
-                    username,
-                    currentPrivateTarget,
-                    null,
-                    text
-            );
+        if (currentPrivateTarget != null) {
+            ChatMessage msg = new ChatMessage(MessageType.PRIVATE, username, currentPrivateTarget, null, text);
             addPrivateMessage(msg);
             networkClient.send(msg);
-        } else if (isGroupTabSelected() && currentGroupId != null) {
-            networkClient.send(new ChatMessage(
-                    MessageType.GROUP,
-                    username,
-                    null,
-                    currentGroupId,
-                    text
-            ));
         }
 
         messageField.clear();
@@ -509,66 +517,23 @@ public class MainChatController {
         if (file == null) return;
 
         String name = file.getName().toLowerCase();
-        boolean isImage = name.endsWith(".png") || name.endsWith(".jpg")
-                || name.endsWith(".jpeg") || name.endsWith(".gif");
+        boolean isImage = name.endsWith(".png") || name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".gif");
 
         try {
             byte[] data = Files.readAllBytes(file.toPath());
 
-            if (isImage && (isPrivateTabSelected() && currentPrivateTarget != null
-                    || isGroupTabSelected() && currentGroupId != null)) {
-
-                String tempPath = saveTempFile("img-", name.substring(name.lastIndexOf('.') + 1), data);
-
-                if (isPrivateTabSelected() && currentPrivateTarget != null) {
-                    ChatMessage msg = new ChatMessage(
-                            MessageType.PRIVATE_IMAGE,
-                            username,
-                            currentPrivateTarget,
-                            null,
-                            file.getName()
-                    );
+            if (currentPrivateTarget != null) {
+                if (isImage) {
+                    String tempPath = saveTempFile("img-", name.substring(name.lastIndexOf('.') + 1), data);
+                    ChatMessage msg = new ChatMessage(MessageType.PRIVATE_IMAGE, username, currentPrivateTarget, null, file.getName());
                     msg.setBinaryData(data);
                     addLocalImageMessage(true, tempPath);
                     networkClient.send(msg);
-                } else if (isGroupTabSelected() && currentGroupId != null) {
-                    ChatMessage msg = new ChatMessage(
-                            MessageType.GROUP_IMAGE,
-                            username,
-                            null,
-                            currentGroupId,
-                            file.getName()
-                    );
-                    msg.setBinaryData(data);
-                    addLocalGroupImageMessage(true, tempPath);
-                    networkClient.send(msg);
-                }
-            } else {
-                // generic file
-                if (isPrivateTabSelected() && currentPrivateTarget != null) {
-                    ChatMessage msg = new ChatMessage(
-                            MessageType.PRIVATE_FILE,
-                            username,
-                            currentPrivateTarget,
-                            null,
-                            file.getName()
-                    );
+                } else {
+                    ChatMessage msg = new ChatMessage(MessageType.PRIVATE_FILE, username, currentPrivateTarget, null, file.getName());
                     msg.setBinaryData(data);
                     addLocalFileMessage(true, file.getName(), file.getAbsolutePath());
                     networkClient.send(msg);
-                } else if (isGroupTabSelected() && currentGroupId != null) {
-                    ChatMessage msg = new ChatMessage(
-                            MessageType.GROUP_FILE,
-                            username,
-                            null,
-                            currentGroupId,
-                            file.getName()
-                    );
-                    msg.setBinaryData(data);
-                    addLocalGroupFileMessage(true, file.getName(), file.getAbsolutePath());
-                    networkClient.send(msg);
-                } else {
-                    appendToMessageField(formatAttachmentLabel("📎", file));
                 }
             }
         } catch (IOException e) {
@@ -588,12 +553,8 @@ public class MainChatController {
     @FXML
     private void onToggleEmojiPicker() {
         if (emojiPicker == null || emojiButton == null) return;
-
-        if (emojiPicker.isShowing()) {
-            emojiPicker.hide();
-        } else {
-            emojiPicker.show(emojiButton, Side.TOP, 0, 0);
-        }
+        if (emojiPicker.isShowing()) emojiPicker.hide();
+        else emojiPicker.show(emojiButton, Side.TOP, 0, 0);
     }
 
     @FXML
@@ -602,14 +563,7 @@ public class MainChatController {
             showInfo("Select a private contact first.");
             return;
         }
-
-        networkClient.send(new ChatMessage(
-                MessageType.VIDEO_CALL_REQUEST,
-                username,
-                currentPrivateTarget,
-                null,
-                "call_request"
-        ));
+        networkClient.send(new ChatMessage(MessageType.VIDEO_CALL_REQUEST, username, currentPrivateTarget, null, "call_request"));
     }
 
     @FXML
@@ -618,22 +572,11 @@ public class MainChatController {
             showInfo("Select a private contact first.");
             return;
         }
-
         if (currentVoiceCall != null) {
             showInfo("A voice call is already in progress.");
             return;
         }
-
-        // send request; real session starts on ACCEPT
-        networkClient.send(new ChatMessage(
-                MessageType.VOICE_CALL_REQUEST,
-                username,
-                currentPrivateTarget,
-                null,
-                "voice_call_request"
-        ));
-
-        showInfo("Voice call request sent to " + currentPrivateTarget + "...");
+        networkClient.send(new ChatMessage(MessageType.VOICE_CALL_REQUEST, username, currentPrivateTarget, null, "voice_call_request"));
     }
 
     private void buildEmojiPicker() {
@@ -664,31 +607,8 @@ public class MainChatController {
         messageField.requestFocus();
     }
 
-    private void appendToMessageField(String addition) {
-        if (messageField == null || addition == null || addition.isEmpty()) return;
-        if (!messageField.getText().isEmpty() && !messageField.getText().endsWith(" ")) {
-            messageField.appendText(" ");
-        }
-        messageField.appendText(addition + " ");
-        messageField.requestFocus();
-    }
-
     private Window getWindow() {
         return messageField != null && messageField.getScene() != null ? messageField.getScene().getWindow() : null;
-    }
-
-    private String formatAttachmentLabel(String icon, File file) {
-        return icon + " " + file.getName() + " (" + humanReadableSize(file.length()) + ")";
-    }
-
-    private String humanReadableSize(long bytes) {
-        if (bytes < 1024) return bytes + " B";
-        double kb = bytes / 1024.0;
-        if (kb < 1024) return new DecimalFormat("#.##").format(kb) + " KB";
-        double mb = kb / 1024.0;
-        if (mb < 1024) return new DecimalFormat("#.##").format(mb) + " MB";
-        double gb = mb / 1024.0;
-        return new DecimalFormat("#.##").format(gb) + " GB";
     }
 
     private void startAudioRecording() {
@@ -727,59 +647,30 @@ public class MainChatController {
         try {
             while (recordingAudio) {
                 int count = targetDataLine.read(buffer, 0, buffer.length);
-                if (count > 0) {
-                    out.write(buffer, 0, count);
-                }
+                if (count > 0) out.write(buffer, 0, count);
             }
             byte[] data = out.toByteArray();
             Platform.runLater(() -> handleRecordedAudio(format, data));
         } catch (Exception e) {
             Platform.runLater(() -> showInfo("Erreur pendant l'enregistrement audio."));
         } finally {
-            try {
-                out.close();
-            } catch (IOException ignored) {}
+            try { out.close(); } catch (IOException ignored) {}
         }
     }
 
     private void handleRecordedAudio(AudioFormat format, byte[] audioData) {
-        if (audioData == null || audioData.length == 0) {
-            showInfo("Aucun audio capturé.");
-            return;
-        }
+        if (audioData == null || audioData.length == 0) return;
         try {
             Path tempFile = Files.createTempFile("audio-message-", ".wav");
-            try (AudioInputStream stream =
-                         new AudioInputStream(new ByteArrayInputStream(audioData),
-                                 format,
-                                 audioData.length / format.getFrameSize())) {
+            try (AudioInputStream stream = new AudioInputStream(new ByteArrayInputStream(audioData), format, audioData.length / format.getFrameSize())) {
                 AudioSystem.write(stream, AudioFileFormat.Type.WAVE, tempFile.toFile());
             }
 
-            if (isPrivateTabSelected() && currentPrivateTarget != null) {
-                ChatMessage msg = new ChatMessage(
-                        MessageType.PRIVATE_AUDIO,
-                        username,
-                        currentPrivateTarget,
-                        null,
-                        "Audio"
-                );
+            if (currentPrivateTarget != null) {
+                ChatMessage msg = new ChatMessage(MessageType.PRIVATE_AUDIO, username, currentPrivateTarget, null, "Audio");
                 msg.setBinaryData(Files.readAllBytes(tempFile));
                 addLocalAudioMessage(true, tempFile.toString());
                 networkClient.send(msg);
-            } else if (isGroupTabSelected() && currentGroupId != null) {
-                ChatMessage msg = new ChatMessage(
-                        MessageType.GROUP_AUDIO,
-                        username,
-                        null,
-                        currentGroupId,
-                        "Audio"
-                );
-                msg.setBinaryData(Files.readAllBytes(tempFile));
-                addLocalGroupAudioMessage(true, tempFile.toString());
-                networkClient.send(msg);
-            } else {
-                appendToMessageField(formatAttachmentLabel("🎙️", tempFile.toFile()));
             }
         } catch (IOException e) {
             showInfo("Impossible d'enregistrer l'audio: " + e.getMessage());
@@ -823,9 +714,7 @@ public class MainChatController {
                     }
                     case IMAGE -> {
                         ImageView imageView = new ImageView();
-                        try {
-                            imageView.setImage(new Image(new File(item.getFilePath()).toURI().toString(), 200, 0, true, true));
-                        } catch (Exception ignored) {}
+                        try { imageView.setImage(new Image(new File(item.getFilePath()).toURI().toString(), 200, 0, true, true)); } catch (Exception ignored) {}
                         imageView.getStyleClass().add(isOwn ? "bubble-sent" : "bubble-received");
                         row.getChildren().add(imageView);
                     }
@@ -849,7 +738,6 @@ public class MainChatController {
                         row.getChildren().add(inner);
                     }
                 }
-
                 setText(null);
                 setGraphic(row);
             }
@@ -857,7 +745,7 @@ public class MainChatController {
     }
 
     private void updateCallButtonsVisibility() {
-        boolean inPrivate = currentPrivateTarget != null && isPrivateTabSelected();
+        boolean inPrivate = currentPrivateTarget != null;
         if (voiceCallButton != null) {
             voiceCallButton.setVisible(inPrivate);
             voiceCallButton.setManaged(inPrivate);
@@ -868,47 +756,17 @@ public class MainChatController {
         }
     }
 
-    private void ensureGroupTabVisible() {
-        if (tabPane == null || groupTab == null) return;
-        if (!tabPane.getTabs().contains(groupTab)) {
-            tabPane.getTabs().add(groupTab);
-        }
-    }
-
     private String saveTempFile(String prefix, String extension, byte[] data) throws IOException {
         Path tmp = Files.createTempFile(prefix, "." + extension);
-        try (FileOutputStream fos = new FileOutputStream(tmp.toFile())) {
-            fos.write(data);
-        }
+        try (FileOutputStream fos = new FileOutputStream(tmp.toFile())) { fos.write(data); }
         return tmp.toString();
     }
 
     private void addLocalAudioMessage(boolean own, String path) {
         if (currentPrivateTarget == null) return;
         privateConversations.putIfAbsent(currentPrivateTarget, FXCollections.observableArrayList());
-        privateConversations.get(currentPrivateTarget).add(new UiMessage(
-                UiMessage.Kind.AUDIO,
-                own,
-                "Audio",
-                path
-        ));
-        if (isPrivateTabSelected()) {
-            messagesListView.setItems(privateConversations.get(currentPrivateTarget));
-        }
-    }
-
-    private void addLocalGroupAudioMessage(boolean own, String path) {
-        if (currentGroupId == null) return;
-        groupConversations.putIfAbsent(currentGroupId, FXCollections.observableArrayList());
-        groupConversations.get(currentGroupId).add(new UiMessage(
-                UiMessage.Kind.AUDIO,
-                own,
-                "Audio",
-                path
-        ));
-        if (isGroupTabSelected()) {
-            messagesListView.setItems(groupConversations.get(currentGroupId));
-        }
+        privateConversations.get(currentPrivateTarget).add(new UiMessage(UiMessage.Kind.AUDIO, own, "Audio", path));
+        messagesListView.setItems(privateConversations.get(currentPrivateTarget));
     }
 
     private void handleIncomingPrivateAudio(ChatMessage msg) {
@@ -917,73 +775,17 @@ public class MainChatController {
             String path = saveTempFile("audio-in-", "wav", msg.getBinaryData());
             String other = msg.getFrom().equals(username) ? msg.getTo() : msg.getFrom();
             privateConversations.putIfAbsent(other, FXCollections.observableArrayList());
-            privateConversations.get(other).add(new UiMessage(
-                    UiMessage.Kind.AUDIO,
-                    msg.getFrom().equals(username),
-                    "Audio",
-                    path
-            ));
-            if (other.equals(currentPrivateTarget) && isPrivateTabSelected()) {
-                messagesListView.setItems(privateConversations.get(other));
-            }
-            if (!privateListView.getItems().contains(other)) {
-                privateListView.getItems().add(other);
-            }
-        } catch (IOException e) {
-            showInfo("Impossible de sauvegarder l'audio reçu.");
-        }
-    }
-
-    private void handleIncomingGroupAudio(ChatMessage msg) {
-        if (msg.getBinaryData() == null) return;
-        String gid = msg.getGroupId();
-        if (gid == null) return;
-        try {
-            String path = saveTempFile("audio-g-", "wav", msg.getBinaryData());
-            groupConversations.putIfAbsent(gid, FXCollections.observableArrayList());
-            groupConversations.get(gid).add(new UiMessage(
-                    UiMessage.Kind.AUDIO,
-                    msg.getFrom().equals(username),
-                    "Audio",
-                    path
-            ));
-            if (gid.equals(currentGroupId) && isGroupTabSelected()) {
-                messagesListView.setItems(groupConversations.get(gid));
-            }
-            if (!groupListView.getItems().contains(gid)) {
-                groupListView.getItems().add(gid);
-            }
-        } catch (IOException e) {
-            showInfo("Impossible de sauvegarder l'audio reçu.");
-        }
+            privateConversations.get(other).add(new UiMessage(UiMessage.Kind.AUDIO, msg.getFrom().equals(username), "Audio", path));
+            if (other.equals(currentPrivateTarget)) messagesListView.setItems(privateConversations.get(other));
+            if (!privateListView.getItems().contains(other)) privateListView.getItems().add(other);
+        } catch (IOException e) { showInfo("Impossible de sauvegarder l'audio reçu."); }
     }
 
     private void addLocalImageMessage(boolean own, String path) {
         if (currentPrivateTarget == null) return;
         privateConversations.putIfAbsent(currentPrivateTarget, FXCollections.observableArrayList());
-        privateConversations.get(currentPrivateTarget).add(new UiMessage(
-                UiMessage.Kind.IMAGE,
-                own,
-                "",
-                path
-        ));
-        if (isPrivateTabSelected()) {
-            messagesListView.setItems(privateConversations.get(currentPrivateTarget));
-        }
-    }
-
-    private void addLocalGroupImageMessage(boolean own, String path) {
-        if (currentGroupId == null) return;
-        groupConversations.putIfAbsent(currentGroupId, FXCollections.observableArrayList());
-        groupConversations.get(currentGroupId).add(new UiMessage(
-                UiMessage.Kind.IMAGE,
-                own,
-                "",
-                path
-        ));
-        if (isGroupTabSelected()) {
-            messagesListView.setItems(groupConversations.get(currentGroupId));
-        }
+        privateConversations.get(currentPrivateTarget).add(new UiMessage(UiMessage.Kind.IMAGE, own, "", path));
+        messagesListView.setItems(privateConversations.get(currentPrivateTarget));
     }
 
     private void handleIncomingPrivateImage(ChatMessage msg) {
@@ -991,117 +793,29 @@ public class MainChatController {
         try {
             String ext = "png";
             String name = msg.getContent();
-            if (name != null && name.contains(".")) {
-                ext = name.substring(name.lastIndexOf('.') + 1);
-            }
+            if (name != null && name.contains(".")) ext = name.substring(name.lastIndexOf('.') + 1);
             String path = saveTempFile("img-in-", ext, msg.getBinaryData());
             String other = msg.getFrom().equals(username) ? msg.getTo() : msg.getFrom();
             privateConversations.putIfAbsent(other, FXCollections.observableArrayList());
-            privateConversations.get(other).add(new UiMessage(
-                    UiMessage.Kind.IMAGE,
-                    msg.getFrom().equals(username),
-                    "",
-                    path
-            ));
-            if (other.equals(currentPrivateTarget) && isPrivateTabSelected()) {
-                messagesListView.setItems(privateConversations.get(other));
-            }
-            if (!privateListView.getItems().contains(other)) {
-                privateListView.getItems().add(other);
-            }
-        } catch (IOException e) {
-            showInfo("Impossible de sauvegarder l'image reçue.");
-        }
-    }
-
-    private void handleIncomingGroupImage(ChatMessage msg) {
-        if (msg.getBinaryData() == null) return;
-        String gid = msg.getGroupId();
-        if (gid == null) return;
-        try {
-            String ext = "png";
-            String name = msg.getContent();
-            if (name != null && name.contains(".")) {
-                ext = name.substring(name.lastIndexOf('.') + 1);
-            }
-            String path = saveTempFile("img-g-", ext, msg.getBinaryData());
-            groupConversations.putIfAbsent(gid, FXCollections.observableArrayList());
-            groupConversations.get(gid).add(new UiMessage(
-                    UiMessage.Kind.IMAGE,
-                    msg.getFrom().equals(username),
-                    "",
-                    path
-            ));
-            if (gid.equals(currentGroupId) && isGroupTabSelected()) {
-                messagesListView.setItems(groupConversations.get(gid));
-            }
-            if (!groupListView.getItems().contains(gid)) {
-                groupListView.getItems().add(gid);
-            }
-        } catch (IOException e) {
-            showInfo("Impossible de sauvegarder l'image reçue.");
-        }
+            privateConversations.get(other).add(new UiMessage(UiMessage.Kind.IMAGE, msg.getFrom().equals(username), "", path));
+            if (other.equals(currentPrivateTarget)) messagesListView.setItems(privateConversations.get(other));
+            if (!privateListView.getItems().contains(other)) privateListView.getItems().add(other);
+        } catch (IOException e) { showInfo("Impossible de sauvegarder l'image reçue."); }
     }
 
     private void handleIncomingPrivateFile(ChatMessage msg) {
         if (msg.getBinaryData() == null) return;
         try {
-            String originalName = msg.getContent();
             String ext = "bin";
-            if (originalName != null && originalName.contains(".")) {
-                ext = originalName.substring(originalName.lastIndexOf('.') + 1);
-            }
+            String name = msg.getContent();
+            if (name != null && name.contains(".")) ext = name.substring(name.lastIndexOf('.') + 1);
             String path = saveTempFile("file-in-", ext, msg.getBinaryData());
             String other = msg.getFrom().equals(username) ? msg.getTo() : msg.getFrom();
-
             privateConversations.putIfAbsent(other, FXCollections.observableArrayList());
-            privateConversations.get(other).add(new UiMessage(
-                    UiMessage.Kind.FILE,
-                    msg.getFrom().equals(username),
-                    originalName != null ? originalName : "Fichier",
-                    path
-            ));
-
-            if (other.equals(currentPrivateTarget) && isPrivateTabSelected()) {
-                messagesListView.setItems(privateConversations.get(other));
-            }
-            if (!privateListView.getItems().contains(other)) {
-                privateListView.getItems().add(other);
-            }
-        } catch (IOException e) {
-            showInfo("Impossible de sauvegarder le fichier reçu.");
-        }
-    }
-
-    private void handleIncomingGroupFile(ChatMessage msg) {
-        if (msg.getBinaryData() == null) return;
-        String gid = msg.getGroupId();
-        if (gid == null) return;
-        try {
-            String originalName = msg.getContent();
-            String ext = "bin";
-            if (originalName != null && originalName.contains(".")) {
-                ext = originalName.substring(originalName.lastIndexOf('.') + 1);
-            }
-            String path = saveTempFile("file-g-", ext, msg.getBinaryData());
-
-            groupConversations.putIfAbsent(gid, FXCollections.observableArrayList());
-            groupConversations.get(gid).add(new UiMessage(
-                    UiMessage.Kind.FILE,
-                    msg.getFrom().equals(username),
-                    originalName != null ? originalName : "Fichier",
-                    path
-            ));
-
-            if (gid.equals(currentGroupId) && isGroupTabSelected()) {
-                messagesListView.setItems(groupConversations.get(gid));
-            }
-            if (!groupListView.getItems().contains(gid)) {
-                groupListView.getItems().add(gid);
-            }
-        } catch (IOException e) {
-            showInfo("Impossible de sauvegarder le fichier reçu.");
-        }
+            privateConversations.get(other).add(new UiMessage(UiMessage.Kind.FILE, msg.getFrom().equals(username), name != null ? name : "Fichier", path));
+            if (other.equals(currentPrivateTarget)) messagesListView.setItems(privateConversations.get(other));
+            if (!privateListView.getItems().contains(other)) privateListView.getItems().add(other);
+        } catch (IOException e) { showInfo("Impossible de sauvegarder le fichier reçu."); }
     }
 
     private void playAudio(String path) {
@@ -1111,54 +825,27 @@ public class MainChatController {
                 Clip clip = AudioSystem.getClip();
                 clip.open(ais);
                 clip.start();
-            } catch (Exception e) {
-                Platform.runLater(() -> showInfo("Impossible de lire l'audio."));
-            }
+            } catch (Exception e) { Platform.runLater(() -> showInfo("Impossible de lire l'audio.")); }
         }).start();
     }
 
     private void addLocalFileMessage(boolean own, String fileName, String path) {
         if (currentPrivateTarget == null) return;
         privateConversations.putIfAbsent(currentPrivateTarget, FXCollections.observableArrayList());
-        privateConversations.get(currentPrivateTarget).add(new UiMessage(
-                UiMessage.Kind.FILE,
-                own,
-                fileName,
-                path
-        ));
-        if (isPrivateTabSelected()) {
-            messagesListView.setItems(privateConversations.get(currentPrivateTarget));
-        }
-    }
-
-    private void addLocalGroupFileMessage(boolean own, String fileName, String path) {
-        if (currentGroupId == null) return;
-        groupConversations.putIfAbsent(currentGroupId, FXCollections.observableArrayList());
-        groupConversations.get(currentGroupId).add(new UiMessage(
-                UiMessage.Kind.FILE,
-                own,
-                fileName,
-                path
-        ));
-        if (isGroupTabSelected()) {
-            messagesListView.setItems(groupConversations.get(currentGroupId));
-        }
+        privateConversations.get(currentPrivateTarget).add(new UiMessage(UiMessage.Kind.FILE, own, fileName, path));
+        messagesListView.setItems(privateConversations.get(currentPrivateTarget));
     }
 
     private void downloadFile(String path, String suggestedName) {
         if (path == null) return;
-
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Save file");
         chooser.setInitialFileName(suggestedName != null ? suggestedName : "file");
         File dest = chooser.showSaveDialog(getWindow());
         if (dest == null) return;
-
         try {
             Files.copy(Path.of(path), dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
             showInfo("Fichier sauvegardé : " + dest.getAbsolutePath());
-        } catch (IOException e) {
-            showInfo("Erreur lors de la sauvegarde du fichier : " + e.getMessage());
-        }
+        } catch (IOException e) { showInfo("Erreur lors de la sauvegarde : " + e.getMessage()); }
     }
 }

@@ -8,26 +8,24 @@ public enum MessageType {
     // ── Auth ──────────────────────────────────────────────────
     LOGIN,          // client → server : connexion (from=username, content=password)
     REGISTER,       // client → server : inscription (from=username, content=password|email)
-    AUTH_SUCCESS,   // server → client : auth réussie (content=username)
+    AUTH_SUCCESS,   // server → client : auth réussie (content=username, to=userId)
     AUTH_FAIL,      // server → client : auth échouée (content=raison)
     LOGOUT,         // client → server : déconnexion
 
     // ── Système ───────────────────────────────────────────────
     SYSTEM,         // server → client : message informatif
     USER_LIST,      // server → tous  : liste des connectés (content=user1,user2,...)
+    STATUS_UPDATE,  // server → tous  : statut (from=username, content=EN_LIGNE/NON_CONNECTE)
+    USER_LIST_REQUEST, // client → server : demande de rafraîchir la liste
+    SYNC_HISTORY,   // server → client : historique des messages (content=JSON history)
 
     // ── Messagerie texte ──────────────────────────────────────
     PRIVATE,        // message privé 1-à-1
-    GROUP,          // message de groupe
-    JOIN_GROUP,     // rejoindre / créer un groupe
 
     // ── Médias ────────────────────────────────────────────────
     PRIVATE_AUDIO,  // audio privé
-    GROUP_AUDIO,    // audio de groupe
     PRIVATE_IMAGE,  // image privée
-    GROUP_IMAGE,    // image de groupe
     PRIVATE_FILE,   // fichier privé
-    GROUP_FILE,     // fichier de groupe
 
     // ── Appel vidéo ───────────────────────────────────────────
     VIDEO_CALL_REQUEST,

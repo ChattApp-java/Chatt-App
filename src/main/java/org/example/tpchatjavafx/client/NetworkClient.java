@@ -27,6 +27,7 @@ public class NetworkClient {
     private Consumer<String>       onAuthSuccess;   // reçoit le username
     private Consumer<String>       onAuthFail;      // reçoit la raison
     private Consumer<List<String>> onUserListReceived;
+    private Consumer<ChatMessage>  onUserStatusChanged;
     private Runnable               onConnectionLost;
 
     public NetworkClient(String serverHost, int serverPort) {
@@ -39,6 +40,7 @@ public class NetworkClient {
     public void setOnAuthSuccess(Consumer<String> cb)             { onAuthSuccess        = cb; }
     public void setOnAuthFail(Consumer<String> cb)                { onAuthFail           = cb; }
     public void setOnUserListReceived(Consumer<List<String>> cb)  { onUserListReceived   = cb; }
+    public void setOnUserStatusChanged(Consumer<ChatMessage> cb)  { onUserStatusChanged  = cb; }
     public void setOnConnectionLost(Runnable cb)                  { onConnectionLost     = cb; }
 
     // ── Connexion ─────────────────────────────────────────────
@@ -62,6 +64,10 @@ public class NetworkClient {
         this.username = username;
         String content = password + "|" + (email == null ? "" : email);
         send(new ChatMessage(MessageType.REGISTER, username, null, null, content));
+    }
+
+    public void requestUserList() {
+        send(new ChatMessage(MessageType.USER_LIST_REQUEST, username, "SERVER", null, ""));
     }
 
     // ── Envoi ────────────────────────────────────────────────
@@ -123,6 +129,9 @@ public class NetworkClient {
                                 : Arrays.asList(raw.split(","));
                         onUserListReceived.accept(users);
                     }
+                }
+                case STATUS_UPDATE -> {
+                    if (onUserStatusChanged != null) onUserStatusChanged.accept(msg);
                 }
                 default -> {
                     if (onMessageReceived != null) onMessageReceived.accept(msg);

@@ -8,6 +8,7 @@ import org.example.tpchatjavafx.client.NetworkClient;
 import org.example.tpchatjavafx.client.model.ChatMessage;
 import org.example.tpchatjavafx.common.MessageType;
 import com.github.sarxos.webcam.Webcam;
+import javax.sound.sampled.*;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -29,6 +30,12 @@ public class VideoCallController {
     private String otherUser;            // Pseudo de l'autre personne
     private Timer cameraTimer;           // Timer pour envoyer les frames périodiquement
     private Webcam webcam;               // Objet pour accéder à la webcam
+    
+    // Audio
+    private TargetDataLine mic;
+    private SourceDataLine speakers;
+    private volatile boolean audioRunning = false;
+    private Thread audioCaptureThread;
 
     /**
      * Initialise le contrôleur avec le client réseau et les pseudos des deux utilisateurs
@@ -45,6 +52,13 @@ public class VideoCallController {
 
         // Démarre la capture et l'envoi des frames de la webcam
         startSendingCameraFrames();
+        
+        // Initialise et démarre l'audio
+        try {
+            startAudio();
+        } catch (LineUnavailableException e) {
+            System.err.println("Impossible de démarrer l'audio : " + e.getMessage());
+        }
     }
 
     /**
@@ -100,15 +114,62 @@ public class VideoCallController {
         } catch (Exception ignored) {}
     }
 
+    private void startAudio() throws LineUnavailableException {
+        AudioFormat format = new AudioFormat(16000, 16, 1, true, false);
+        DataLine.Info micInfo = new DataLine.Info(TargetDataLine.class, format);
+        DataLine.Info spkInfo = new DataLine.Info(SourceDataLine.class, format);
+
+        mic = (TargetDataLine) AudioSystem.getLine(micInfo);
+        mic.open(format);
+        mic.start();
+
+        speakers = (SourceDataLine) AudioSystem.getLine(spkInfo);
+        speakers.open(format);
+        speakers.start();
+
+        audioRunning = true;
+        audioCaptureThread = new Thread(this::audioCaptureLoop, "video-audio-capture");
+        audioCaptureThread.setDaemon(true);
+        audioCaptureThread.start();
+    }
+
+    private void audioCaptureLoop() {
+        byte[] buffer = new byte[2048];
+        try {
+            while (audioRunning) {
+                int count = mic.read(buffer, 0, buffer.length);
+                if (count > 0) {
+                    byte[] frame = new byte[count];
+                    System.arraycopy(buffer, 0, frame, 0, count);
+
+                    ChatMessage msg = new ChatMessage(MessageType.VOICE_FRAME, username, otherUser, null, "vframe");
+                    msg.setBinaryData(frame);
+                    networkClient.send(msg);
+                }
+            }
+        } catch (Exception ignored) {}
+    }
+
+    public static void receiveAudio(byte[] data) {
+        if (instance != null && instance.speakers != null && instance.audioRunning) {
+            instance.speakers.write(data, 0, data.length);
+        }
+    }
+
     /**
      * Termine l'appel vidéo
      */
     @FXML
-    private void onEndCall() {
+    public void onEndCall() {
         // Ferme la webcam si elle est ouverte
         if (webcam != null && webcam.isOpen()) webcam.close();
         // Arrête le timer pour arrêter d'envoyer les frames
         if (cameraTimer != null) cameraTimer.cancel();
+        
+        // Arrête l'audio
+        audioRunning = false;
+        if (mic != null) { mic.stop(); mic.close(); }
+        if (speakers != null) { speakers.stop(); speakers.close(); }
 
         // Envoie un message indiquant la fin de l'appel
         networkClient.send(new ChatMessage(

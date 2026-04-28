@@ -24,32 +24,26 @@
                 <Label text="WhatsApp JavaFX" styleClass="sidebar-brand" HBox.hgrow="ALWAYS"/>
                 <MenuButton styleClass="menu-btn" text="⋮">
                     <items>
-                        <MenuItem text="Nouvelle conversation" onAction="#onNewPrivate"/>
-                        <MenuItem text="Rejoindre un groupe"   onAction="#onJoinGroup"/>
-                        <MenuItem text="Créer un groupe"       onAction="#onNewGroup"/>
-                        <SeparatorMenuItem/>
                         <MenuItem text="Déconnexion"           onAction="#onLogout"/>
                     </items>
                 </MenuButton>
             </HBox>
 
-            <!-- Barre de recherche -->
-            <HBox styleClass="search-bar" alignment="CENTER" spacing="8">
-                <padding><Insets top="8" right="12" bottom="8" left="12"/></padding>
-                <TextField promptText="🔍  Rechercher ou démarrer une discussion"
-                           styleClass="search-field" HBox.hgrow="ALWAYS"/>
-            </HBox>
-
-            <!-- Onglets Privé / Groupes -->
+            <!-- Onglets Privé -->
             <TabPane fx:id="tabPane" styleClass="sidebar-tabs"
                      tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
-                <Tab fx:id="privateTab" text="Privé">
+                <Tab fx:id="privateTab" text="Contacts">
                     <ListView fx:id="privateListView" styleClass="contact-list"/>
                 </Tab>
-                <Tab fx:id="groupTab" text="Groupes">
-                    <ListView fx:id="groupListView" styleClass="contact-list"/>
-                </Tab>
             </TabPane>
+            
+            <!-- Barre de recherche et ajout en bas -->
+            <HBox styleClass="search-bar" alignment="CENTER" spacing="8">
+                <padding><Insets top="12" right="12" bottom="12" left="12"/></padding>
+                <TextField fx:id="searchContactField" promptText="🔍 Rechercher un utilisateur..."
+                           styleClass="search-field" HBox.hgrow="ALWAYS"/>
+                <Button text="+" onAction="#onAddContact" style="-fx-background-color: #00A884; -fx-text-fill: white; -fx-font-weight: bold;"/>
+            </HBox>
         </VBox>
     </left>
 

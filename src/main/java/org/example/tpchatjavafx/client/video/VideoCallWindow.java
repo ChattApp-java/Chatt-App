@@ -20,6 +20,9 @@ public class VideoCallWindow {
             window = new Stage();
             window.setTitle("Video Call with " + other);
             window.setScene(scene);
+            
+            window.setOnCloseRequest(e -> controller.onEndCall());
+            
             window.show();
 
         } catch (Exception e) {
