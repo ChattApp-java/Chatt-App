@@ -1,0 +1,235 @@
+/* ===========================================================
+   TELEGRAM DESKTOP STYLE — JavaFX CSS
+   =========================================================== */
+
+/* Global --------------------------------------------------- */
+.chat-shell {
+    -fx-background-color: #F0F4F8;
+    -fx-font-family: "Segoe UI", "Roboto", "Inter", sans-serif;
+}
+
+/* Top bar --------------------------------------------------- */
+.chat-top-bar {
+    -fx-background-color: #229ED9; /* Telegram Blue */
+    -fx-padding: 12 18;
+}
+
+.brand-title {
+    -fx-text-fill: white;
+    -fx-font-size: 19px;
+    -fx-font-weight: 700;
+}
+
+.brand-subtitle {
+    -fx-text-fill: #E5F6FD;
+    -fx-font-size: 12px;
+}
+
+.top-actions {
+    -fx-spacing: 8;
+}
+
+.btn-ghost {
+    -fx-background-color: rgba(255,255,255,0.15);
+    -fx-text-fill: #E5F6FD;
+    -fx-font-size: 12px;
+    -fx-font-weight: 600;
+    -fx-padding: 6 14;
+    -fx-background-radius: 6;
+}
+
+.btn-ghost:hover {
+    -fx-background-color: rgba(255,255,255,0.25);
+}
+
+/* Sidebar --------------------------------------------------- */
+.chat-sidebar {
+    -fx-background-color: #FFFFFF;
+    -fx-padding: 12;
+    -fx-border-width: 0 1 0 0;
+    -fx-border-color: #E1E5E9;
+}
+
+.sidebar-heading {
+    -fx-text-fill: #2E3B4E;
+    -fx-font-size: 15px;
+    -fx-font-weight: 700;
+}
+
+.sidebar-subheading {
+    -fx-text-fill: #7589A3;
+    -fx-font-size: 12px;
+}
+
+/* Search */
+.sidebar-search {
+    -fx-background-color: #EEF3F7;
+    -fx-text-fill: #2E3B4E;
+    -fx-padding: 8 12;
+    -fx-background-radius: 12;
+    -fx-font-size: 13px;
+    -fx-border-color: transparent;
+}
+
+.sidebar-search:focused {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #229ED9;
+    -fx-border-width: 1;
+}
+
+/* Tabs */
+.sidebar-tabs .tab-header-area {
+    -fx-background-color: transparent;
+}
+
+.sidebar-tabs .tab {
+    -fx-background-color: transparent;
+    -fx-text-base-color: #5C728A;
+    -fx-padding: 7 12;
+    -fx-background-radius: 8;
+}
+
+.sidebar-tabs .tab:selected {
+    -fx-background-color: #D2EFFC;
+    -fx-text-base-color: #229ED9;
+    -fx-font-weight: 700;
+}
+
+.sidebar-tabs .tab-content-area {
+    -fx-background-color: #FFFFFF;
+}
+
+/* Chat panel --------------------------------------------------- */
+.chat-panel {
+    -fx-background-color: #E8EDF2;
+}
+
+.chat-panel-header {
+    -fx-background-color: #FFFFFF;
+    -fx-padding: 10 16;
+    -fx-border-color: #D7DDE3;
+    -fx-border-width: 0 0 1 0;
+}
+
+.chat-title {
+    -fx-text-fill: #2E3B4E;
+    -fx-font-size: 15px;
+    -fx-font-weight: 700;
+}
+
+.chat-subtitle {
+    -fx-text-fill: #70859E;
+    -fx-font-size: 12px;
+}
+
+/* Message list */
+.chat-list {
+    -fx-background-color: transparent;
+    -fx-padding: 10;
+}
+
+.chat-list .list-cell {
+    -fx-background-color: transparent;
+    -fx-padding: 3 0;
+}
+
+/* Telegram Bubble shapes ------------------------------------- */
+
+/* Incoming bubble */
+.bubble-in {
+    -fx-background-color: white;
+    -fx-text-fill: #1D2733;
+    -fx-background-radius: 14 14 14 0;
+    -fx-padding: 8 12;
+    -fx-font-size: 14px;
+    -fx-effect: dropshadow( gaussian , rgba(0,0,0,0.08), 8, 0, 0, 2 );
+}
+
+/* Outgoing bubble */
+.bubble-out {
+    -fx-background-color: #229ED9;
+    -fx-text-fill: white;
+    -fx-background-radius: 14 14 0 14;
+    -fx-padding: 8 12;
+    -fx-font-size: 14px;
+    -fx-effect: dropshadow( gaussian , rgba(0,0,0,0.10), 8, 0, 0, 2 );
+}
+
+/* Composer ----------------------------------------------------- */
+.composer-wrapper {
+    -fx-padding: 6 12;
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #CFD9E2;
+    -fx-border-width: 1 0 0 0;
+}
+
+.composer-input {
+    -fx-padding: 8 0;
+}
+
+.composer-input .text-field {
+    -fx-background-color: #EEF3F7;
+    -fx-border-color: transparent;
+    -fx-background-radius: 16;
+    -fx-padding: 6 12;
+    -fx-font-size: 14px;
+    -fx-prompt-text-fill: #7D8FA5;
+}
+
+.composer-input .text-field:focused {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #229ED9;
+    -fx-border-width: 1;
+}
+
+/* Send button */
+.btn-primary {
+    -fx-background-color: #229ED9;
+    -fx-text-fill: white;
+    -fx-font-weight: 600;
+    -fx-font-size: 13px;
+    -fx-background-radius: 16;
+    -fx-padding: 6 14;
+}
+
+.btn-primary:hover {
+    -fx-background-color: #38B0E3;
+}
+
+/* Icon buttons (emoji, attach, mic...) */
+.btn-icon {
+    -fx-background-color: transparent;
+    -fx-text-fill: #6C819A;
+    -fx-font-size: 18px;
+    -fx-padding: 6;
+}
+
+.btn-icon:hover {
+    -fx-background-color: rgba(0,0,0,0.06);
+    -fx-background-radius: 6;
+}
+
+/* Scrollbars --------------------------------------------------- */
+.scroll-bar {
+    -fx-background-color: transparent;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: #C9D3DD;
+    -fx-background-radius: 10;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: #B5C0CC;
+}
+
+.scroll-bar .track {
+    -fx-background-color: transparent;
+}
+.bubble-call {
+    -fx-background-color: #e5e7eb;
+    -fx-padding: 6 10 6 10;
+    -fx-background-radius: 14;
+    -fx-font-size: 11px;
+    -fx-text-fill: #374151;
+}

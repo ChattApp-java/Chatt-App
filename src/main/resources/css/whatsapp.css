@@ -1,0 +1,277 @@
+/* ============================================================
+   WhatsApp JavaFX — Thème Light (White)
+   Inspiré de WhatsApp Web (Mode Clair)
+   ============================================================ */
+
+/* ── Variables couleurs ───────────────────────────────────── */
+/* Fond app    : #F0F2F5
+   Sidebar     : #FFFFFF
+   Chat fond   : #EFEAE2 (fond texturé)
+   Header/bars : #F0F2F5
+   Bulle moi   : #D9FDD3 (vert clair)
+   Bulle autre : #FFFFFF (blanc)
+   Texte prim  : #111B21 (presque noir)
+   Texte sec   : #667781 (gris)
+   Vert accent : #00A884 (teal)
+   Hover       : #F5F6F6
+   Bordure     : #D1D7DB */
+
+/* ── Reset global ─────────────────────────────────────────── */
+.root {
+    -fx-font-family: "Segoe UI", "Inter", "Arial", sans-serif;
+    -fx-font-size: 14px;
+    -fx-background-color: #F0F2F5;
+    -fx-text-fill: #111B21;
+}
+
+/* ============================================================
+   ÉCRAN LOGIN
+   ============================================================ */
+.login-root {
+    -fx-background-color: #F0F2F5;
+    -fx-alignment: center;
+}
+
+.login-card {
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 16;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 30, 0, 0, 8);
+    -fx-padding: 0;
+}
+
+.login-header {
+    -fx-background-color: #00A884;
+    -fx-background-radius: 16 16 0 0;
+    -fx-padding: 32 32 24 32;
+}
+
+.login-logo {
+    -fx-font-size: 48px;
+}
+
+.login-title {
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #FFFFFF;
+}
+
+.login-subtitle {
+    -fx-font-size: 13px;
+    -fx-text-fill: #E9EDEF;
+}
+
+.login-form {
+    -fx-padding: 24 32 24 32;
+}
+
+.login-tabs {
+    -fx-background-color: transparent;
+    -fx-tab-min-height: 40px;
+}
+
+.login-tabs .tab-header-area .tab-header-background {
+    -fx-background-color: #F0F2F5;
+}
+
+.login-tabs .tab {
+    -fx-background-color: transparent;
+    -fx-text-fill: #667781;
+    -fx-font-size: 13px;
+    -fx-padding: 8 16;
+}
+
+.login-tabs .tab:selected {
+    -fx-text-fill: #00A884;
+}
+
+.login-tabs .tab:selected .tab-label {
+    -fx-text-fill: #00A884;
+}
+
+.login-tabs .tab-content-area {
+    -fx-background-color: #FFFFFF;
+}
+
+.field-label {
+    -fx-text-fill: #667781;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.login-field {
+    -fx-background-color: #FFFFFF;
+    -fx-text-fill: #111B21;
+    -fx-prompt-text-fill: #A1A1A1;
+    -fx-background-radius: 8;
+    -fx-border-color: #D1D7DB;
+    -fx-border-radius: 8;
+    -fx-padding: 10 14;
+    -fx-font-size: 14px;
+}
+
+.login-field:focused {
+    -fx-border-color: #00A884;
+    -fx-border-width: 1.5;
+}
+
+.error-label {
+    -fx-text-fill: #EA0038;
+    -fx-font-size: 12px;
+    -fx-wrap-text: true;
+}
+
+.btn-login {
+    -fx-background-color: #00A884;
+    -fx-text-fill: #FFFFFF;
+    -fx-font-weight: bold;
+    -fx-font-size: 15px;
+    -fx-background-radius: 24;
+    -fx-padding: 12 24;
+    -fx-cursor: hand;
+}
+
+.btn-login:hover {
+    -fx-background-color: #00C49A;
+}
+
+.btn-register {
+    -fx-background-color: transparent;
+    -fx-text-fill: #00A884;
+    -fx-font-weight: bold;
+    -fx-font-size: 15px;
+    -fx-background-radius: 24;
+    -fx-border-color: #00A884;
+    -fx-border-radius: 24;
+    -fx-border-width: 1.5;
+    -fx-padding: 12 24;
+    -fx-cursor: hand;
+}
+
+/* ============================================================
+   LAYOUT PRINCIPAL
+   ============================================================ */
+.root-pane {
+    -fx-background-color: #FFFFFF;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────── */
+.sidebar {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #D1D7DB;
+    -fx-border-width: 0 1 0 0;
+}
+
+.sidebar-header {
+    -fx-background-color: #F0F2F5;
+    -fx-border-color: #D1D7DB;
+    -fx-border-width: 0 0 1 0;
+}
+
+.sidebar-brand {
+    -fx-text-fill: #111B21;
+    -fx-font-size: 17px;
+    -fx-font-weight: bold;
+}
+
+.menu-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #54656F;
+}
+
+.search-bar {
+    -fx-background-color: #FFFFFF;
+    -fx-padding: 8 12;
+}
+
+.search-field {
+    -fx-background-color: #F0F2F5;
+    -fx-text-fill: #111B21;
+    -fx-background-radius: 8;
+    -fx-padding: 8 14;
+}
+
+/* ── Contact list ────────────────────────────────────────── */
+.contact-list {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: transparent;
+}
+
+.contact-list .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #111B21;
+    -fx-border-color: transparent transparent #F0F2F5 transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.contact-list .list-cell:hover {
+    -fx-background-color: #F5F6F6;
+}
+
+.contact-list .list-cell:selected {
+    -fx-background-color: #F0F2F5;
+}
+
+/* ── Zone chat ───────────────────────────────────────────── */
+.chat-area {
+    -fx-background-color: #EFEAE2; /* Couleur sable WhatsApp */
+}
+
+.chat-top-bar {
+    -fx-background-color: #F0F2F5;
+    -fx-border-color: #D1D7DB;
+    -fx-border-width: 0 0 1 0;
+}
+
+.chat-contact-name {
+    -fx-text-fill: #111B21;
+}
+
+.chat-contact-status {
+    -fx-text-fill: #667781;
+}
+
+.call-btn {
+    -fx-text-fill: #54656F;
+}
+
+/* ── Bulles de messages ──────────────────────────────────── */
+.bubble-sent {
+    -fx-background-color: #D9FDD3;
+    -fx-background-radius: 12 0 12 12;
+    -fx-padding: 8 12;
+    -fx-text-fill: #111B21;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 4, 0, 0, 1);
+}
+
+.bubble-received {
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 0 12 12 12;
+    -fx-padding: 8 12;
+    -fx-text-fill: #111B21;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 4, 0, 0, 1);
+}
+
+.bubble-time {
+    -fx-text-fill: #667781;
+}
+
+/* ── Barre de saisie ─────────────────────────────────────── */
+.input-bar {
+    -fx-background-color: #F0F2F5;
+    -fx-border-color: #D1D7DB;
+}
+
+.message-input {
+    -fx-background-color: #FFFFFF;
+    -fx-text-fill: #111B21;
+    -fx-background-radius: 8;
+}
+
+.send-btn {
+    -fx-background-color: #00A884;
+}
+
+/* ── ScrollBar light ─────────────────────────────────────── */
+.scroll-bar .thumb {
+    -fx-background-color: #CED0D1;
+}

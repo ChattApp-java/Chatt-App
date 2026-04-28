@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+
+<StackPane xmlns="http://javafx.com/javafx/21"
+           xmlns:fx="http://javafx.com/fxml/1"
+           fx:controller="org.example.tpchatjavafx.client.controller.LoginController"
+           styleClass="login-root">
+
+    <!-- Conteneur principal flexible -->
+    <VBox alignment="CENTER" fillWidth="true" spacing="0">
+        <padding><Insets top="20" right="20" bottom="20" left="20"/></padding>
+
+        <VBox styleClass="login-card" maxWidth="480" alignment="TOP_CENTER" spacing="0" VBox.vgrow="SOMETIMES">
+            
+            <!-- Header -->
+            <VBox alignment="CENTER" spacing="8" styleClass="login-header">
+                <Label text="💬" styleClass="login-logo"/>
+                <Label text="WhatsApp JavaFX" styleClass="login-title"/>
+                <Label text="Messagerie sécurisée en temps réel" styleClass="login-subtitle"/>
+            </VBox>
+
+            <!-- Tabs -->
+            <TabPane fx:id="tabPane" styleClass="login-tabs" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
+                
+                <!-- ── Tab: Login ── -->
+                <Tab text="  Connexion  ">
+                    <VBox spacing="15" styleClass="login-form">
+                        <padding><Insets top="24" right="32" bottom="24" left="32"/></padding>
+
+                        <VBox spacing="6">
+                            <Label text="Serveur" styleClass="field-label"/>
+                            <HBox spacing="10">
+                                <TextField fx:id="loginHostField" promptText="localhost" styleClass="login-field" HBox.hgrow="ALWAYS"/>
+                                <TextField fx:id="loginPortField" promptText="5555" styleClass="login-field" prefWidth="80"/>
+                            </HBox>
+                        </VBox>
+
+                        <VBox spacing="6">
+                            <Label text="Nom d'utilisateur" styleClass="field-label"/>
+                            <TextField fx:id="loginUsernameField" promptText="Votre pseudonyme" styleClass="login-field"/>
+                        </VBox>
+
+                        <VBox spacing="6">
+                            <Label text="Mot de passe" styleClass="field-label"/>
+                            <StackPane alignment="CENTER_RIGHT">
+                                <PasswordField fx:id="loginPasswordField" promptText="••••••••" styleClass="login-field"/>
+                                <TextField fx:id="loginPasswordVisibleField" promptText="Votre mot de passe" styleClass="login-field" visible="false" managed="false"/>
+                            </StackPane>
+                            <CheckBox fx:id="loginShowPasswordCheck" text="Afficher le mot de passe" style="-fx-font-size: 11px; -fx-text-fill: #667781;"/>
+                        </VBox>
+
+                        <Label fx:id="loginErrorLabel" styleClass="error-label" wrapText="true" visible="false" managed="false"/>
+
+                        <Button fx:id="loginBtn" text="Se connecter" styleClass="btn-login" onAction="#onLogin" maxWidth="Infinity" defaultButton="true"/>
+                    </VBox>
+                </Tab>
+
+                <!-- ── Tab: Register ── -->
+                <Tab text="  Inscription  ">
+                    <VBox spacing="15" styleClass="login-form">
+                        <padding><Insets top="24" right="32" bottom="24" left="32"/></padding>
+
+                        <VBox spacing="6">
+                            <Label text="Serveur" styleClass="field-label"/>
+                            <HBox spacing="10">
+                                <TextField fx:id="regHostField" promptText="localhost" styleClass="login-field" HBox.hgrow="ALWAYS"/>
+                                <TextField fx:id="regPortField" promptText="5555" styleClass="login-field" prefWidth="80"/>
+                            </HBox>
+                        </VBox>
+
+                        <VBox spacing="6">
+                            <Label text="Nom d'utilisateur" styleClass="field-label"/>
+                            <TextField fx:id="regUsernameField" promptText="Choisissez un pseudonyme" styleClass="login-field"/>
+                        </VBox>
+
+                        <VBox spacing="6">
+                            <Label text="Mot de passe" styleClass="field-label"/>
+                            <StackPane alignment="CENTER_RIGHT">
+                                <PasswordField fx:id="regPasswordField" promptText="Min. 4 caractères" styleClass="login-field"/>
+                                <TextField fx:id="regPasswordVisibleField" promptText="Votre mot de passe" styleClass="login-field" visible="false" managed="false"/>
+                            </StackPane>
+                            <CheckBox fx:id="regShowPasswordCheck" text="Afficher le mot de passe" style="-fx-font-size: 11px; -fx-text-fill: #667781;"/>
+                        </VBox>
+
+                        <VBox spacing="6">
+                            <Label text="Email (optionnel)" styleClass="field-label"/>
+                            <TextField fx:id="regEmailField" promptText="votre@email.com" styleClass="login-field"/>
+                        </VBox>
+
+                        <Label fx:id="regErrorLabel" styleClass="error-label" wrapText="true" visible="false" managed="false"/>
+
+                        <Button fx:id="registerBtn" text="Créer un compte" styleClass="btn-register" onAction="#onRegister" maxWidth="Infinity"/>
+                    </VBox>
+                </Tab>
+
+            </TabPane>
+        </VBox>
+    </VBox>
+</StackPane>

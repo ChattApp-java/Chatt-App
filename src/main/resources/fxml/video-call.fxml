@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="org.example.tpchatjavafx.client.video.VideoCallController">
+
+    <!-- Remote video fills the center -->
+    <center>
+        <StackPane>
+            <ImageView fx:id="remoteVideo" preserveRatio="true" fitWidth="1200" fitHeight="700" />
+            <ImageView fx:id="localVideo" fitWidth="400" fitHeight="200"
+                       StackPane.alignment="BOTTOM_RIGHT"/>
+        </StackPane>
+
+
+    </center>
+
+    <bottom>
+        <HBox alignment="CENTER">
+            <Button text="End Call" onAction="#onEndCall"/>
+        </HBox>
+    </bottom>
+</BorderPane>

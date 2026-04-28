@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="org.example.tpchatjavafx.client.controller.MainChatController"
+            styleClass="root-pane"
+            prefWidth="1100" prefHeight="700">
+
+    <!-- ══════════════════════════════════════════════════════
+         SIDEBAR GAUCHE (300px)
+         ══════════════════════════════════════════════════════ -->
+    <left>
+        <VBox styleClass="sidebar" prefWidth="310" minWidth="260" maxWidth="360">
+
+            <!-- Header sidebar -->
+            <HBox styleClass="sidebar-header" alignment="CENTER_LEFT" spacing="12">
+                <padding><Insets top="12" right="16" bottom="12" left="16"/></padding>
+                <Label text="💬" style="-fx-font-size:22px;"/>
+                <Label text="WhatsApp JavaFX" styleClass="sidebar-brand" HBox.hgrow="ALWAYS"/>
+                <MenuButton styleClass="menu-btn" text="⋮">
+                    <items>
+                        <MenuItem text="Nouvelle conversation" onAction="#onNewPrivate"/>
+                        <MenuItem text="Rejoindre un groupe"   onAction="#onJoinGroup"/>
+                        <MenuItem text="Créer un groupe"       onAction="#onNewGroup"/>
+                        <SeparatorMenuItem/>
+                        <MenuItem text="Déconnexion"           onAction="#onLogout"/>
+                    </items>
+                </MenuButton>
+            </HBox>
+
+            <!-- Barre de recherche -->
+            <HBox styleClass="search-bar" alignment="CENTER" spacing="8">
+                <padding><Insets top="8" right="12" bottom="8" left="12"/></padding>
+                <TextField promptText="🔍  Rechercher ou démarrer une discussion"
+                           styleClass="search-field" HBox.hgrow="ALWAYS"/>
+            </HBox>
+
+            <!-- Onglets Privé / Groupes -->
+            <TabPane fx:id="tabPane" styleClass="sidebar-tabs"
+                     tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
+                <Tab fx:id="privateTab" text="Privé">
+                    <ListView fx:id="privateListView" styleClass="contact-list"/>
+                </Tab>
+                <Tab fx:id="groupTab" text="Groupes">
+                    <ListView fx:id="groupListView" styleClass="contact-list"/>
+                </Tab>
+            </TabPane>
+        </VBox>
+    </left>
+
+    <!-- ══════════════════════════════════════════════════════
+         ZONE CENTRALE — CHAT
+         ══════════════════════════════════════════════════════ -->
+    <center>
+        <VBox styleClass="chat-area">
+
+            <!-- Barre supérieure du chat -->
+            <HBox fx:id="chatTopBar" styleClass="chat-top-bar" alignment="CENTER_LEFT" spacing="12">
+                <padding><Insets top="10" right="16" bottom="10" left="16"/></padding>
+
+                <!-- Avatar circulaire -->
+                <StackPane styleClass="avatar-circle" fx:id="chatAvatar">
+                    <Label fx:id="chatAvatarLabel" text="?" styleClass="avatar-letter"/>
+                </StackPane>
+
+                <!-- Nom + statut -->
+                <VBox spacing="2" HBox.hgrow="ALWAYS">
+                    <Label fx:id="chatTitleLabel" text="Sélectionnez une conversation"
+                           styleClass="chat-contact-name"/>
+                    <Label fx:id="chatStatusLabel" text="" styleClass="chat-contact-status"/>
+                </VBox>
+
+                <!-- Boutons appel -->
+                <HBox spacing="8" alignment="CENTER_RIGHT">
+                    <Button fx:id="voiceCallButton" text="📞" styleClass="call-btn"
+                            onAction="#onStartVoiceCall" managed="false" visible="false">
+                        <tooltip><Tooltip text="Appel vocal"/></tooltip>
+                    </Button>
+                    <Button fx:id="videoCallButton" text="📹" styleClass="call-btn"
+                            onAction="#onStartVideoCall" managed="false" visible="false">
+                        <tooltip><Tooltip text="Appel vidéo"/></tooltip>
+                    </Button>
+                    <Button text="🔍" styleClass="call-btn">
+                        <tooltip><Tooltip text="Rechercher"/></tooltip>
+                    </Button>
+                </HBox>
+            </HBox>
+
+            <!-- Liste de messages -->
+            <ListView fx:id="messagesListView" styleClass="messages-list" VBox.vgrow="ALWAYS"/>
+
+            <!-- Barre de saisie -->
+            <HBox styleClass="input-bar" alignment="CENTER" spacing="10">
+                <padding><Insets top="10" right="16" bottom="10" left="16"/></padding>
+
+                <Button fx:id="emojiButton" text="😊" styleClass="input-icon-btn"
+                        onAction="#onToggleEmojiPicker">
+                    <tooltip><Tooltip text="Emoji"/></tooltip>
+                </Button>
+
+                <Button text="📎" styleClass="input-icon-btn" onAction="#onUploadFile">
+                    <tooltip><Tooltip text="Joindre un fichier"/></tooltip>
+                </Button>
+
+                <TextField fx:id="messageField"
+                           promptText="Tapez un message…"
+                           styleClass="message-input"
+                           HBox.hgrow="ALWAYS"
+                           onAction="#onSend"/>
+
+                <Button fx:id="recordAudioButton" text="🎙" styleClass="input-icon-btn"
+                        onAction="#onRecordAudio">
+                    <tooltip><Tooltip text="Note vocale"/></tooltip>
+                </Button>
+
+                <Button text="➤" styleClass="send-btn" onAction="#onSend">
+                    <tooltip><Tooltip text="Envoyer"/></tooltip>
+                </Button>
+            </HBox>
+
+        </VBox>
+    </center>
+
+</BorderPane>

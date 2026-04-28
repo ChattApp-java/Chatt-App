@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+
+<StackPane xmlns="http://javafx.com/javafx/21"
+           xmlns:fx="http://javafx.com/fxml/1"
+           fx:controller="com.chattapp.client.controller.LoginController"
+           style="-fx-background-color: #090a14;">
+
+    <VBox alignment="CENTER" spacing="0" maxWidth="420">
+
+        <!-- Card -->
+        <VBox spacing="20" style="-fx-background-color: #1a1a2e;
+                                   -fx-background-radius: 16;
+                                   -fx-padding: 40;
+                                   -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 30, 0, 0, 8);">
+
+            <!-- Logo + Title -->
+            <VBox spacing="6" alignment="CENTER">
+                <Label text="💬" style="-fx-font-size: 48px;"/>
+                <Label fx:id="titleLabel" text="Connexion"
+                       style="-fx-text-fill: #e0e0e0; -fx-font-size: 26px; -fx-font-weight: bold;"/>
+                <Label text="ChattApp"
+                       style="-fx-text-fill: #00a884; -fx-font-size: 14px;"/>
+            </VBox>
+
+            <!-- Error label -->
+            <Label fx:id="errorLabel" text=""
+                   style="-fx-text-fill: #ff4d4d; -fx-font-size: 13px;"
+                   wrapText="true" alignment="CENTER" maxWidth="340"/>
+
+            <!-- Username -->
+            <VBox spacing="6">
+                <Label text="Nom d'utilisateur ou email"
+                       style="-fx-text-fill: #8696a0; -fx-font-size: 12px;"/>
+                <TextField fx:id="usernameField"
+                           promptText="Entrez votre identifiant"
+                           style="-fx-background-color: #0d0d1a;
+                                  -fx-text-fill: #e0e0e0;
+                                  -fx-prompt-text-fill: #4a4a6a;
+                                  -fx-background-radius: 8;
+                                  -fx-border-color: #2a2a40;
+                                  -fx-border-radius: 8;
+                                  -fx-padding: 12 14;
+                                  -fx-font-size: 14px;"/>
+            </VBox>
+
+            <!-- Password -->
+            <VBox spacing="6">
+                <Label text="Mot de passe"
+                       style="-fx-text-fill: #8696a0; -fx-font-size: 12px;"/>
+                <PasswordField fx:id="passwordField"
+                               promptText="Entrez votre mot de passe"
+                               style="-fx-background-color: #0d0d1a;
+                                      -fx-text-fill: #e0e0e0;
+                                      -fx-prompt-text-fill: #4a4a6a;
+                                      -fx-background-radius: 8;
+                                      -fx-border-color: #2a2a40;
+                                      -fx-border-radius: 8;
+                                      -fx-padding: 12 14;
+                                      -fx-font-size: 14px;"/>
+            </VBox>
+
+            <!-- Email (register only) -->
+            <VBox fx:id="emailRow" spacing="6" visible="false" managed="false">
+                <Label text="Email"
+                       style="-fx-text-fill: #8696a0; -fx-font-size: 12px;"/>
+                <TextField fx:id="emailField"
+                           promptText="Entrez votre email"
+                           style="-fx-background-color: #0d0d1a;
+                                  -fx-text-fill: #e0e0e0;
+                                  -fx-prompt-text-fill: #4a4a6a;
+                                  -fx-background-radius: 8;
+                                  -fx-border-color: #2a2a40;
+                                  -fx-border-radius: 8;
+                                  -fx-padding: 12 14;
+                                  -fx-font-size: 14px;"/>
+            </VBox>
+
+            <!-- Action Button -->
+            <Button fx:id="actionButton" text="Se connecter"
+                    onAction="#handleAction"
+                    maxWidth="Infinity" prefHeight="44"
+                    style="-fx-background-color: #00a884;
+                           -fx-text-fill: white;
+                           -fx-font-size: 15px;
+                           -fx-font-weight: bold;
+                           -fx-background-radius: 10;
+                           -fx-cursor: hand;"/>
+
+            <!-- Switch mode -->
+            <Label fx:id="switchLabel"
+                   text="Pas de compte ? Inscrivez-vous"
+                   onMouseClicked="#handleSwitch"
+                   style="-fx-text-fill: #00a884;
+                          -fx-font-size: 13px;
+                          -fx-cursor: hand;"
+                   alignment="CENTER" maxWidth="Infinity"/>
+        </VBox>
+    </VBox>
+</StackPane>
