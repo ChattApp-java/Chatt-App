@@ -71,6 +71,8 @@ public class MainChatController {
     private Utilisateur currentUser;
 
     private String currentPrivateTarget = null;
+    private final java.util.Map<String, Integer> unreadCounts = new java.util.HashMap<>();
+    private final java.time.format.DateTimeFormatter timeFormatter = java.time.format.DateTimeFormatter.ofPattern("HH:mm");
     private String currentConversationId = null;
 
     private final Map<String, ObservableList<UiMessage>> privateConversations = new HashMap<>();
@@ -220,16 +222,28 @@ public class MainChatController {
                 avatar.setStyle("-fx-background-color:" + colors[Math.abs(user.hashCode()) % colors.length] + "; -fx-background-radius:50%; -fx-min-width:42px; -fx-min-height:42px; -fx-max-width:42px; -fx-max-height:42px;");
                 
                 Label name = new Label(user);
-                name.setStyle("-fx-text-fill:#E9EDEF; -fx-font-size:14px; -fx-font-weight:bold;");
+                name.getStyleClass().add("chat-contact-name");
                 
                 String statut = userStatuses.getOrDefault(user, "NON_CONNECTE");
                 Label sub = new Label(statut.equals("EN_LIGNE") ? "● En ligne" : "● Non connecté");
-                sub.setStyle(statut.equals("EN_LIGNE") ? "-fx-text-fill:#25D366; -fx-font-size:11px;" : "-fx-text-fill:#8e8e8e; -fx-font-size:11px;");
+                sub.getStyleClass().add("chat-contact-status");
+                if (statut.equals("EN_LIGNE")) sub.setStyle("-fx-text-fill: #25D366;");
                 
                 VBox info = new VBox(3, name, sub);
                 HBox row = new HBox(12, avatar, info);
                 row.setAlignment(Pos.CENTER_LEFT);
-                row.setStyle("-fx-padding: 8 12;");
+                HBox.setHgrow(info, javafx.scene.layout.Priority.ALWAYS);
+
+                // Unread Badge
+                int unread = unreadCounts.getOrDefault(user, 0);
+                if (unread > 0) {
+                    Label badgeText = new Label(String.valueOf(unread));
+                    badgeText.getStyleClass().add("unread-badge-text");
+                    StackPane badge = new StackPane(badgeText);
+                    badge.getStyleClass().add("unread-badge");
+                    row.getChildren().add(badge);
+                }
+
                 setGraphic(row);
                 setText(null);
             }
@@ -283,6 +297,10 @@ public class MainChatController {
         
         messagesListView.setItems(msgs);
         updateCallButtonsVisibility();
+        
+        // Reset unread count
+        unreadCounts.put(other, 0);
+        privateListView.refresh();
     }
 
     private void loadConversationHistory(String otherName) {
@@ -302,14 +320,16 @@ public class MainChatController {
                 processedMessageIds.add(msg.getMessageId());
             }
             
+            String time = msg.getTimestamp();
+            if (time == null || time.isEmpty()) time = java.time.LocalDateTime.now().format(timeFormatter);
+            
             UiMessage uiMsg = null;
-            // The server passes the original type in the conversationId field for SYNC_HISTORY
             String typeStr = msg.getConversationId(); 
             if (typeStr == null || typeStr.isEmpty()) typeStr = "TEXTE";
 
             if (typeStr.contains("AUDIO") || typeStr.contains("IMAGE") || typeStr.contains("FILE")) {
                 UiMessage.Kind kind = typeStr.contains("IMAGE") ? UiMessage.Kind.IMAGE :
-                                    typeStr.contains("AUDIO") ? UiMessage.Kind.AUDIO : UiMessage.Kind.FILE;
+                                     typeStr.contains("AUDIO") ? UiMessage.Kind.AUDIO : UiMessage.Kind.FILE;
                 
                 String localPath = null;
                 if (msg.getBinaryData() != null) {
@@ -323,9 +343,9 @@ public class MainChatController {
                         System.err.println("Erreur sauvegarde média historique: " + e.getMessage());
                     }
                 }
-                uiMsg = new UiMessage(kind, own, msg.getContent(), localPath);
+                uiMsg = new UiMessage(kind, own, msg.getContent(), localPath, time);
             } else {
-                uiMsg = new UiMessage(UiMessage.Kind.TEXT, own, msg.getContent(), null);
+                uiMsg = new UiMessage(UiMessage.Kind.TEXT, own, msg.getContent(), null, time);
             }
             
             if (uiMsg != null) {
@@ -378,12 +398,21 @@ public class MainChatController {
             });
             default -> {}
         }
+        
+        // Increment unread count if not in current chat
+        if (!msg.getType().name().contains("CALL") && msg.getType() != MessageType.SYSTEM) {
+            String sender = msg.getFrom();
+            if (!sender.equals(username) && !sender.equals(currentPrivateTarget)) {
+                unreadCounts.put(sender, unreadCounts.getOrDefault(sender, 0) + 1);
+                Platform.runLater(() -> privateListView.refresh());
+            }
+        }
     }
 
     private void addSystemMessage(ChatMessage msg) {
         String key = "SYSTEM";
         privateConversations.putIfAbsent(key, FXCollections.observableArrayList());
-        privateConversations.get(key).add(new UiMessage(UiMessage.Kind.TEXT, false, "[SYSTEM] " + msg.getContent(), null));
+        privateConversations.get(key).add(new UiMessage(UiMessage.Kind.TEXT, false, "[SYSTEM] " + msg.getContent(), null, java.time.LocalDateTime.now().format(timeFormatter)));
 
         if (key.equals(currentPrivateTarget)) {
             messagesListView.setItems(privateConversations.get(key));
@@ -395,27 +424,35 @@ public class MainChatController {
 
     private void addPrivateMessage(ChatMessage msg) {
         String other = msg.getFrom().equals(username) ? msg.getTo() : msg.getFrom();
-        privateConversations.putIfAbsent(other, FXCollections.observableArrayList());
-        boolean own = msg.getFrom().equals(username);
+        boolean isOwn = msg.getFrom().equals(username);
         
-        UiMessage uiMsg = new UiMessage(UiMessage.Kind.TEXT, own, msg.getContent(), null);
-        privateConversations.get(other).add(uiMsg);
-
-        if (other.equals(currentPrivateTarget)) {
-            messagesListView.setItems(privateConversations.get(other));
-        }
-        if (!privateListView.getItems().contains(other)) {
-            privateListView.getItems().add(other);
-        }
+        Platform.runLater(() -> {
+            ObservableList<UiMessage> msgs = privateConversations.computeIfAbsent(other, k -> FXCollections.observableArrayList());
+            
+            String time = msg.getTimestamp();
+            if (time == null || time.isEmpty()) time = java.time.LocalDateTime.now().format(timeFormatter);
+            
+            UiMessage uiMsg = new UiMessage(UiMessage.Kind.TEXT, isOwn, msg.getContent(), null, time);
+            msgs.add(uiMsg);
+            
+            if (other.equals(currentPrivateTarget)) {
+                messagesListView.scrollTo(msgs.size() - 1);
+            }
+            if (!privateListView.getItems().contains(other)) {
+                privateListView.getItems().add(other);
+            }
+            privateListView.refresh();
+        });
     }
 
     private void handleCallRequest(ChatMessage msg) {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Incoming Call");
-        alert.setHeaderText("Video call from " + msg.getFrom());
-        alert.setContentText("Accept the call?");
-        ButtonType accept = new ButtonType("Accept");
-        ButtonType reject = new ButtonType("Reject");
+        alert.setTitle("WeChat - Appel Vidéo");
+        alert.setHeaderText("Appel vidéo entrant de " + msg.getFrom());
+        alert.setContentText("Souhaitez-vous accepter l'appel ?");
+        
+        ButtonType accept = new ButtonType("Accepter", ButtonBar.ButtonData.OK_DONE);
+        ButtonType reject = new ButtonType("Refuser", ButtonBar.ButtonData.CANCEL_CLOSE);
         alert.getButtonTypes().setAll(accept, reject);
 
         alert.showAndWait().ifPresent(r -> {
@@ -438,11 +475,12 @@ public class MainChatController {
 
     private void handleVoiceCallRequest(ChatMessage msg) {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Incoming Voice Call");
-        alert.setHeaderText("Voice call from " + msg.getFrom());
-        alert.setContentText("Accept the call?");
-        ButtonType accept = new ButtonType("Accept");
-        ButtonType reject = new ButtonType("Reject");
+        alert.setTitle("WeChat - Appel Vocal");
+        alert.setHeaderText("Appel vocal entrant de " + msg.getFrom());
+        alert.setContentText("Souhaitez-vous accepter l'appel ?");
+        
+        ButtonType accept = new ButtonType("Accepter", ButtonBar.ButtonData.OK_DONE);
+        ButtonType reject = new ButtonType("Refuser", ButtonBar.ButtonData.CANCEL_CLOSE);
         alert.getButtonTypes().setAll(accept, reject);
 
         alert.showAndWait().ifPresent(result -> {
@@ -710,13 +748,25 @@ public class MainChatController {
                         bubble.setWrapText(true);
                         bubble.setMaxWidth(420);
                         bubble.getStyleClass().add(isOwn ? "bubble-sent" : "bubble-received");
-                        row.getChildren().add(bubble);
+                        
+                        Label time = new Label(item.getTimestamp());
+                        time.getStyleClass().add(isOwn ? "timestamp-sent" : "timestamp-received");
+                        
+                        VBox content = new VBox(2, bubble, time);
+                        content.setAlignment(isOwn ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
+                        row.getChildren().add(content);
                     }
                     case IMAGE -> {
                         ImageView imageView = new ImageView();
                         try { imageView.setImage(new Image(new File(item.getFilePath()).toURI().toString(), 200, 0, true, true)); } catch (Exception ignored) {}
                         imageView.getStyleClass().add(isOwn ? "bubble-sent" : "bubble-received");
-                        row.getChildren().add(imageView);
+                        
+                        Label time = new Label(item.getTimestamp());
+                        time.getStyleClass().add(isOwn ? "timestamp-sent" : "timestamp-received");
+                        
+                        VBox content = new VBox(2, imageView, time);
+                        content.setAlignment(isOwn ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
+                        row.getChildren().add(content);
                     }
                     case AUDIO -> {
                         Button play = new Button("▶");
@@ -724,8 +774,14 @@ public class MainChatController {
                         play.setOnAction(e -> playAudio(item.getFilePath()));
                         Label label = new Label(" Message vocal");
                         label.getStyleClass().add(isOwn ? "bubble-sent" : "bubble-received");
+                        
+                        Label time = new Label(item.getTimestamp());
+                        time.getStyleClass().add(isOwn ? "timestamp-sent" : "timestamp-received");
+
                         HBox inner = new HBox(6, play, label);
-                        row.getChildren().add(inner);
+                        VBox content = new VBox(2, inner, time);
+                        content.setAlignment(isOwn ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
+                        row.getChildren().add(content);
                     }
                     case FILE -> {
                         Label nameLabel = new Label("📎 " + item.getText());
@@ -733,9 +789,15 @@ public class MainChatController {
                         Button downloadBtn = new Button("💾");
                         downloadBtn.getStyleClass().add("btn-icon");
                         downloadBtn.setOnAction(e -> downloadFile(item.getFilePath(), item.getText()));
+                        
+                        Label time = new Label(item.getTimestamp());
+                        time.getStyleClass().add(isOwn ? "timestamp-sent" : "timestamp-received");
+
                         HBox inner = new HBox(8, nameLabel, downloadBtn);
                         inner.setAlignment(isOwn ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
-                        row.getChildren().add(inner);
+                        VBox content = new VBox(2, inner, time);
+                        content.setAlignment(isOwn ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
+                        row.getChildren().add(content);
                     }
                 }
                 setText(null);
@@ -765,7 +827,8 @@ public class MainChatController {
     private void addLocalAudioMessage(boolean own, String path) {
         if (currentPrivateTarget == null) return;
         privateConversations.putIfAbsent(currentPrivateTarget, FXCollections.observableArrayList());
-        privateConversations.get(currentPrivateTarget).add(new UiMessage(UiMessage.Kind.AUDIO, own, "Audio", path));
+        String time = java.time.LocalDateTime.now().format(timeFormatter);
+        privateConversations.get(currentPrivateTarget).add(new UiMessage(UiMessage.Kind.AUDIO, own, "Audio", path, time));
         messagesListView.setItems(privateConversations.get(currentPrivateTarget));
     }
 
@@ -775,7 +838,8 @@ public class MainChatController {
             String path = saveTempFile("audio-in-", "wav", msg.getBinaryData());
             String other = msg.getFrom().equals(username) ? msg.getTo() : msg.getFrom();
             privateConversations.putIfAbsent(other, FXCollections.observableArrayList());
-            privateConversations.get(other).add(new UiMessage(UiMessage.Kind.AUDIO, msg.getFrom().equals(username), "Audio", path));
+            String time = java.time.LocalDateTime.now().format(timeFormatter);
+            privateConversations.get(other).add(new UiMessage(UiMessage.Kind.AUDIO, msg.getFrom().equals(username), "Audio", path, time));
             if (other.equals(currentPrivateTarget)) messagesListView.setItems(privateConversations.get(other));
             if (!privateListView.getItems().contains(other)) privateListView.getItems().add(other);
         } catch (IOException e) { showInfo("Impossible de sauvegarder l'audio reçu."); }
@@ -784,7 +848,8 @@ public class MainChatController {
     private void addLocalImageMessage(boolean own, String path) {
         if (currentPrivateTarget == null) return;
         privateConversations.putIfAbsent(currentPrivateTarget, FXCollections.observableArrayList());
-        privateConversations.get(currentPrivateTarget).add(new UiMessage(UiMessage.Kind.IMAGE, own, "", path));
+        String time = java.time.LocalDateTime.now().format(timeFormatter);
+        privateConversations.get(currentPrivateTarget).add(new UiMessage(UiMessage.Kind.IMAGE, own, "", path, time));
         messagesListView.setItems(privateConversations.get(currentPrivateTarget));
     }
 
@@ -797,7 +862,8 @@ public class MainChatController {
             String path = saveTempFile("img-in-", ext, msg.getBinaryData());
             String other = msg.getFrom().equals(username) ? msg.getTo() : msg.getFrom();
             privateConversations.putIfAbsent(other, FXCollections.observableArrayList());
-            privateConversations.get(other).add(new UiMessage(UiMessage.Kind.IMAGE, msg.getFrom().equals(username), "", path));
+            String time = java.time.LocalDateTime.now().format(timeFormatter);
+            privateConversations.get(other).add(new UiMessage(UiMessage.Kind.IMAGE, msg.getFrom().equals(username), "", path, time));
             if (other.equals(currentPrivateTarget)) messagesListView.setItems(privateConversations.get(other));
             if (!privateListView.getItems().contains(other)) privateListView.getItems().add(other);
         } catch (IOException e) { showInfo("Impossible de sauvegarder l'image reçue."); }
@@ -812,7 +878,8 @@ public class MainChatController {
             String path = saveTempFile("file-in-", ext, msg.getBinaryData());
             String other = msg.getFrom().equals(username) ? msg.getTo() : msg.getFrom();
             privateConversations.putIfAbsent(other, FXCollections.observableArrayList());
-            privateConversations.get(other).add(new UiMessage(UiMessage.Kind.FILE, msg.getFrom().equals(username), name != null ? name : "Fichier", path));
+            String time = java.time.LocalDateTime.now().format(timeFormatter);
+            privateConversations.get(other).add(new UiMessage(UiMessage.Kind.FILE, msg.getFrom().equals(username), name != null ? name : "Fichier", path, time));
             if (other.equals(currentPrivateTarget)) messagesListView.setItems(privateConversations.get(other));
             if (!privateListView.getItems().contains(other)) privateListView.getItems().add(other);
         } catch (IOException e) { showInfo("Impossible de sauvegarder le fichier reçu."); }
@@ -832,7 +899,8 @@ public class MainChatController {
     private void addLocalFileMessage(boolean own, String fileName, String path) {
         if (currentPrivateTarget == null) return;
         privateConversations.putIfAbsent(currentPrivateTarget, FXCollections.observableArrayList());
-        privateConversations.get(currentPrivateTarget).add(new UiMessage(UiMessage.Kind.FILE, own, fileName, path));
+        String time = java.time.LocalDateTime.now().format(timeFormatter);
+        privateConversations.get(currentPrivateTarget).add(new UiMessage(UiMessage.Kind.FILE, own, fileName, path, time));
         messagesListView.setItems(privateConversations.get(currentPrivateTarget));
     }
 

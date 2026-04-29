@@ -1,235 +1,190 @@
 /* ===========================================================
-   TELEGRAM DESKTOP STYLE — JavaFX CSS
+   WECHAT PREMIUM VIOLET THEME
    =========================================================== */
 
-/* Global --------------------------------------------------- */
-.chat-shell {
-    -fx-background-color: #F0F4F8;
-    -fx-font-family: "Segoe UI", "Roboto", "Inter", sans-serif;
-}
-
-/* Top bar --------------------------------------------------- */
-.chat-top-bar {
-    -fx-background-color: #229ED9; /* Telegram Blue */
-    -fx-padding: 12 18;
-}
-
-.brand-title {
-    -fx-text-fill: white;
-    -fx-font-size: 19px;
-    -fx-font-weight: 700;
-}
-
-.brand-subtitle {
-    -fx-text-fill: #E5F6FD;
-    -fx-font-size: 12px;
-}
-
-.top-actions {
-    -fx-spacing: 8;
-}
-
-.btn-ghost {
-    -fx-background-color: rgba(255,255,255,0.15);
-    -fx-text-fill: #E5F6FD;
-    -fx-font-size: 12px;
-    -fx-font-weight: 600;
-    -fx-padding: 6 14;
-    -fx-background-radius: 6;
-}
-
-.btn-ghost:hover {
-    -fx-background-color: rgba(255,255,255,0.25);
-}
-
-/* Sidebar --------------------------------------------------- */
-.chat-sidebar {
+.root-pane {
     -fx-background-color: #FFFFFF;
-    -fx-padding: 12;
+    -fx-font-family: "Segoe UI", "Roboto", sans-serif;
+}
+
+/* Sidebar */
+.sidebar {
+    -fx-background-color: #F8F9FA;
+    -fx-border-color: #E9ECEF;
     -fx-border-width: 0 1 0 0;
-    -fx-border-color: #E1E5E9;
 }
 
-.sidebar-heading {
-    -fx-text-fill: #2E3B4E;
-    -fx-font-size: 15px;
-    -fx-font-weight: 700;
+.sidebar-header {
+    -fx-background-color: #7209B7;
+    -fx-padding: 15;
 }
 
-.sidebar-subheading {
-    -fx-text-fill: #7589A3;
-    -fx-font-size: 12px;
+.sidebar-brand {
+    -fx-text-fill: white;
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
 }
 
-/* Search */
-.sidebar-search {
-    -fx-background-color: #EEF3F7;
-    -fx-text-fill: #2E3B4E;
-    -fx-padding: 8 12;
-    -fx-background-radius: 12;
-    -fx-font-size: 13px;
-    -fx-border-color: transparent;
-}
-
-.sidebar-search:focused {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #229ED9;
-    -fx-border-width: 1;
-}
-
-/* Tabs */
-.sidebar-tabs .tab-header-area {
-    -fx-background-color: transparent;
+.sidebar-tabs .tab-header-area .tab-header-background {
+    -fx-background-color: #F8F9FA;
 }
 
 .sidebar-tabs .tab {
     -fx-background-color: transparent;
-    -fx-text-base-color: #5C728A;
-    -fx-padding: 7 12;
-    -fx-background-radius: 8;
+    -fx-padding: 10 20;
 }
 
 .sidebar-tabs .tab:selected {
-    -fx-background-color: #D2EFFC;
-    -fx-text-base-color: #229ED9;
-    -fx-font-weight: 700;
-}
-
-.sidebar-tabs .tab-content-area {
     -fx-background-color: #FFFFFF;
+    -fx-border-color: #7209B7;
+    -fx-border-width: 0 0 3 0;
 }
 
-/* Chat panel --------------------------------------------------- */
-.chat-panel {
-    -fx-background-color: #E8EDF2;
+/* Contacts */
+.contact-list {
+    -fx-background-color: white;
 }
 
-.chat-panel-header {
-    -fx-background-color: #FFFFFF;
-    -fx-padding: 10 16;
-    -fx-border-color: #D7DDE3;
+.contact-list .list-cell {
+    -fx-background-color: white;
+    -fx-border-color: #F1F3F5;
     -fx-border-width: 0 0 1 0;
-}
-
-.chat-title {
-    -fx-text-fill: #2E3B4E;
-    -fx-font-size: 15px;
-    -fx-font-weight: 700;
-}
-
-.chat-subtitle {
-    -fx-text-fill: #70859E;
-    -fx-font-size: 12px;
-}
-
-/* Message list */
-.chat-list {
-    -fx-background-color: transparent;
     -fx-padding: 10;
 }
 
-.chat-list .list-cell {
-    -fx-background-color: transparent;
-    -fx-padding: 3 0;
+.contact-list .list-cell:filled:selected {
+    -fx-background-color: #F3F0FF;
+    -fx-border-color: #7209B7;
+    -fx-border-width: 0 0 0 4;
 }
 
-/* Telegram Bubble shapes ------------------------------------- */
-
-/* Incoming bubble */
-.bubble-in {
-    -fx-background-color: white;
-    -fx-text-fill: #1D2733;
-    -fx-background-radius: 14 14 14 0;
-    -fx-padding: 8 12;
-    -fx-font-size: 14px;
-    -fx-effect: dropshadow( gaussian , rgba(0,0,0,0.08), 8, 0, 0, 2 );
-}
-
-/* Outgoing bubble */
-.bubble-out {
-    -fx-background-color: #229ED9;
-    -fx-text-fill: white;
-    -fx-background-radius: 14 14 0 14;
-    -fx-padding: 8 12;
-    -fx-font-size: 14px;
-    -fx-effect: dropshadow( gaussian , rgba(0,0,0,0.10), 8, 0, 0, 2 );
-}
-
-/* Composer ----------------------------------------------------- */
-.composer-wrapper {
-    -fx-padding: 6 12;
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #CFD9E2;
-    -fx-border-width: 1 0 0 0;
-}
-
-.composer-input {
-    -fx-padding: 8 0;
-}
-
-.composer-input .text-field {
-    -fx-background-color: #EEF3F7;
-    -fx-border-color: transparent;
-    -fx-background-radius: 16;
-    -fx-padding: 6 12;
-    -fx-font-size: 14px;
-    -fx-prompt-text-fill: #7D8FA5;
-}
-
-.composer-input .text-field:focused {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #229ED9;
-    -fx-border-width: 1;
-}
-
-/* Send button */
-.btn-primary {
-    -fx-background-color: #229ED9;
-    -fx-text-fill: white;
-    -fx-font-weight: 600;
-    -fx-font-size: 13px;
-    -fx-background-radius: 16;
-    -fx-padding: 6 14;
-}
-
-.btn-primary:hover {
-    -fx-background-color: #38B0E3;
-}
-
-/* Icon buttons (emoji, attach, mic...) */
-.btn-icon {
-    -fx-background-color: transparent;
-    -fx-text-fill: #6C819A;
-    -fx-font-size: 18px;
-    -fx-padding: 6;
-}
-
-.btn-icon:hover {
-    -fx-background-color: rgba(0,0,0,0.06);
-    -fx-background-radius: 6;
-}
-
-/* Scrollbars --------------------------------------------------- */
-.scroll-bar {
-    -fx-background-color: transparent;
-}
-
-.scroll-bar .thumb {
-    -fx-background-color: #C9D3DD;
+/* Unread Badge */
+.unread-badge {
+    -fx-background-color: #7209B7;
     -fx-background-radius: 10;
+    -fx-padding: 2 6;
+    -fx-min-width: 20;
+    -fx-alignment: center;
 }
 
-.scroll-bar .thumb:hover {
-    -fx-background-color: #B5C0CC;
+.unread-badge-text {
+    -fx-text-fill: white;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
 }
 
-.scroll-bar .track {
+/* Chat Area */
+.chat-area {
+    -fx-background-color: #FFFFFF;
+}
+
+.chat-top-bar {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E9ECEF;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 10 20;
+}
+
+.chat-contact-name {
+    -fx-text-fill: #212529;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+}
+
+.chat-contact-status {
+    -fx-text-fill: #6C757D;
+    -fx-font-size: 12px;
+}
+
+/* Messages */
+.messages-list {
+    -fx-background-color: #F8F9FA;
+}
+
+.messages-list .list-cell {
     -fx-background-color: transparent;
 }
-.bubble-call {
-    -fx-background-color: #e5e7eb;
-    -fx-padding: 6 10 6 10;
-    -fx-background-radius: 14;
-    -fx-font-size: 11px;
-    -fx-text-fill: #374151;
+
+.bubble-sent {
+    -fx-background-color: #7209B7;
+    -fx-text-fill: white;
+    -fx-background-radius: 15 15 2 15;
+    -fx-padding: 10 15;
+}
+
+.bubble-received {
+    -fx-background-color: #FFFFFF;
+    -fx-text-fill: #212529;
+    -fx-background-radius: 15 15 15 2;
+    -fx-padding: 10 15;
+    -fx-border-color: #DEE2E6;
+    -fx-border-radius: 15 15 15 2;
+}
+
+.timestamp-sent {
+    -fx-text-fill: rgba(255, 255, 255, 0.7);
+    -fx-font-size: 10px;
+}
+
+.timestamp-received {
+    -fx-text-fill: #ADB5BD;
+    -fx-font-size: 10px;
+}
+
+/* Input Bar */
+.input-bar {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E9ECEF;
+    -fx-border-width: 1 0 0 0;
+    -fx-padding: 10 20;
+}
+
+.message-input {
+    -fx-background-color: #F1F3F5;
+    -fx-background-radius: 20;
+    -fx-padding: 10 15;
+}
+
+.send-btn {
+    -fx-background-color: #7209B7;
+    -fx-text-fill: white;
+    -fx-background-radius: 20;
+    -fx-padding: 10 20;
+}
+
+.call-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #7209B7;
+    -fx-font-size: 18px;
+}
+
+.logout-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: white;
+    -fx-font-size: 18px;
+}
+
+/* Login Screen */
+.login-root {
+    -fx-background-color: linear-gradient(to bottom right, #7209B7, #B5179E);
+}
+
+.login-card {
+    -fx-background-color: white;
+    -fx-background-radius: 15;
+    -fx-padding: 40;
+}
+
+.login-title {
+    -fx-text-fill: #7209B7;
+    -fx-font-size: 32px;
+    -fx-font-weight: bold;
+}
+
+.btn-login {
+    -fx-background-color: #7209B7;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-padding: 12;
+    -fx-background-radius: 8;
 }

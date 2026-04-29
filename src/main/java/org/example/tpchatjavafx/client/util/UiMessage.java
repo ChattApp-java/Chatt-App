@@ -13,12 +13,14 @@ public class UiMessage {
     private final boolean own;
     private final String text;      // message text OR filename / label
     private final String filePath;  // local path for audio / image / file
+    private final String timestamp;
 
-    public UiMessage(Kind kind, boolean own, String text, String filePath) {
+    public UiMessage(Kind kind, boolean own, String text, String filePath, String timestamp) {
         this.kind = kind;
         this.own = own;
         this.text = text;
         this.filePath = filePath;
+        this.timestamp = timestamp;
     }
 
     public Kind getKind() {
@@ -35,5 +37,9 @@ public class UiMessage {
 
     public String getFilePath() {
         return filePath;
+    }
+
+    public String getTimestamp() {
+        return timestamp;
     }
 }

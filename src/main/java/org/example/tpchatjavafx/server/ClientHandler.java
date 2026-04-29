@@ -13,6 +13,8 @@ import org.example.tpchatjavafx.service.AuthService;
 import java.io.*;
 import java.net.Socket;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
 
@@ -27,6 +29,7 @@ public class ClientHandler implements Runnable {
     private String           username;
     private int              userId;
     private final String     socketId;
+    private static final DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
 
     private final AuthService  authService = new AuthService();
     private final UtilisateurDAO userDAO   = new UtilisateurDAO();
@@ -193,6 +196,9 @@ public class ClientHandler implements Runnable {
                     m.getContenu()
                 );
                 cmsg.setMessageId(m.getId());
+                if (m.getDateEnvoi() != null) {
+                    cmsg.setTimestamp(m.getDateEnvoi().format(timeFormatter));
+                }
 
                 // Load binary data if it's a media message
                 if (m.getType().contains("PRIVATE_AUDIO") || m.getType().contains("PRIVATE_IMAGE") || m.getType().contains("PRIVATE_FILE")) {
@@ -223,6 +229,7 @@ public class ClientHandler implements Runnable {
     // ── Persistance + routage ─────────────────────────────────
 
     private void persistAndRoute(ChatMessage msg) {
+        msg.setTimestamp(LocalDateTime.now().format(timeFormatter));
         if (msg.getType() == MessageType.PRIVATE || msg.getType() == MessageType.PRIVATE_AUDIO || 
             msg.getType() == MessageType.PRIVATE_IMAGE || msg.getType() == MessageType.PRIVATE_FILE) {
             try {
@@ -326,6 +333,9 @@ public class ClientHandler implements Runnable {
                         m.getContenu()
                     );
                     syncMsg.setMessageId(m.getId());
+                    if (m.getDateEnvoi() != null) {
+                        syncMsg.setTimestamp(m.getDateEnvoi().format(timeFormatter));
+                    }
                     
                     // Charger les données binaires si c'est un média
                     if (m.getType().contains("AUDIO") || m.getType().contains("IMAGE") || m.getType().contains("FILE")) {

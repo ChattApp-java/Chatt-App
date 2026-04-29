@@ -18,7 +18,7 @@ public class ChatClientApp extends Application {
     @Override
     public void start(Stage stage) throws Exception {
         primaryStage = stage;
-        primaryStage.setTitle("WhatsApp JavaFX");
+        primaryStage.setTitle("WeChat");
         primaryStage.setResizable(true);
         showLoginView();
     }
@@ -32,11 +32,11 @@ public class ChatClientApp extends Application {
         FXMLLoader loader = new FXMLLoader(fxml);
         Scene scene = new Scene(loader.load(), 900, 600);
 
-        URL css = ChatClientApp.class.getResource("/css/whatsapp.css");
+        URL css = ChatClientApp.class.getResource("/css/styles.css");
         if (css != null) scene.getStylesheets().add(css.toExternalForm());
 
         primaryStage.setScene(scene);
-        primaryStage.setTitle("WhatsApp JavaFX — Connexion");
+        primaryStage.setTitle("WeChat — Connexion");
         primaryStage.show();
     }
 
@@ -49,11 +49,11 @@ public class ChatClientApp extends Application {
         FXMLLoader loader = new FXMLLoader(fxml);
         Scene scene = new Scene(loader.load(), 1100, 700);
 
-        URL css = ChatClientApp.class.getResource("/css/whatsapp.css");
+        URL css = ChatClientApp.class.getResource("/css/styles.css");
         if (css != null) scene.getStylesheets().add(css.toExternalForm());
 
         primaryStage.setScene(scene);
-        primaryStage.setTitle("WhatsApp JavaFX — " + username);
+        primaryStage.setTitle("WeChat — " + username);
 
         org.example.tpchatjavafx.client.controller.MainChatController ctrl = loader.getController();
         ctrl.init(networkClient, username, userId);

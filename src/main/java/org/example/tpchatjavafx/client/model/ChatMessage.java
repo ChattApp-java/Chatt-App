@@ -17,8 +17,10 @@ public class ChatMessage {
     private String conversationId;
     // Contenu textuel du message
     private String content;
-    // Contenu binaire du message (audio, image, fichier)
+    // Données binaires du message (audio, image, fichier)
     private byte[] binaryData;
+    // Horodatage du message (HH:mm)
+    private String timestamp;
 
     // Constructeur principal
     public ChatMessage(MessageType type, String from, String to, String conversationId, String content) {
@@ -44,6 +46,9 @@ public class ChatMessage {
     public byte[] getBinaryData() { return binaryData; }
     public void setBinaryData(byte[] data) { this.binaryData = data; }
 
+    public String getTimestamp() { return timestamp; }
+    public void setTimestamp(String timestamp) { this.timestamp = timestamp; }
+
     // ---------------- SERIALIZATION ----------------
     // Sérialise le message en une seule ligne texte pour l'envoyer via le réseau
     // Format : type|messageId|from|to|conversationId|content|base64(binary)
@@ -57,7 +62,8 @@ public class ChatMessage {
                 safe(to) + "|" +     // destinataire privé
                 safe(conversationId) + "|" + // ID de la conversation
                 safe(content) + "|" + // contenu textuel
-                base64;               // données binaires encodées
+                base64 + "|" +        // données binaires encodées
+                safe(timestamp);      // horodatage
     }
 
     // Remplace les caractères '|' par un caractère spécial pour éviter les conflits
@@ -84,9 +90,14 @@ public class ChatMessage {
             ChatMessage msg = new ChatMessage(type, from, to, convId, content);
             msg.setMessageId(messageId);
 
-            // Si des données binaires sont présentes, on les décode depuis Base64
+            // Décodage Base64 si binaire
             if (parts.length >= 7 && !parts[6].isEmpty()) {
                 msg.setBinaryData(Base64.getDecoder().decode(parts[6]));
+            }
+            
+            // Horodatage (8ème champ si présent)
+            if (parts.length >= 8) {
+                msg.setTimestamp(parts[7].replace("␟", "|"));
             }
 
             return msg;

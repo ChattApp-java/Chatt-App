@@ -19,7 +19,7 @@
             <!-- Header -->
             <VBox alignment="CENTER" spacing="8" styleClass="login-header">
                 <Label text="💬" styleClass="login-logo"/>
-                <Label text="WhatsApp JavaFX" styleClass="login-title"/>
+                <Label text="WeChat" styleClass="login-title"/>
                 <Label text="Messagerie sécurisée en temps réel" styleClass="login-subtitle"/>
             </VBox>
 

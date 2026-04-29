@@ -21,12 +21,8 @@
             <HBox styleClass="sidebar-header" alignment="CENTER_LEFT" spacing="12">
                 <padding><Insets top="12" right="16" bottom="12" left="16"/></padding>
                 <Label text="💬" style="-fx-font-size:22px;"/>
-                <Label text="WhatsApp JavaFX" styleClass="sidebar-brand" HBox.hgrow="ALWAYS"/>
-                <MenuButton styleClass="menu-btn" text="⋮">
-                    <items>
-                        <MenuItem text="Déconnexion"           onAction="#onLogout"/>
-                    </items>
-                </MenuButton>
+                <Label text="WeChat" styleClass="sidebar-brand" HBox.hgrow="ALWAYS"/>
+                <Button text="⏻" onAction="#onLogout" styleClass="logout-btn"/>
             </HBox>
 
             <!-- Onglets Privé -->
@@ -40,9 +36,9 @@
             <!-- Barre de recherche et ajout en bas -->
             <HBox styleClass="search-bar" alignment="CENTER" spacing="8">
                 <padding><Insets top="12" right="12" bottom="12" left="12"/></padding>
-                <TextField fx:id="searchContactField" promptText="🔍 Rechercher un utilisateur..."
+                <TextField fx:id="searchContactField" promptText="🔍 Rechercher..."
                            styleClass="search-field" HBox.hgrow="ALWAYS"/>
-                <Button text="+" onAction="#onAddContact" style="-fx-background-color: #00A884; -fx-text-fill: white; -fx-font-weight: bold;"/>
+                <Button text="+" onAction="#onAddContact" styleClass="send-btn" prefWidth="40" prefHeight="40"/>
             </HBox>
         </VBox>
     </left>
@@ -78,9 +74,6 @@
                     <Button fx:id="videoCallButton" text="📹" styleClass="call-btn"
                             onAction="#onStartVideoCall" managed="false" visible="false">
                         <tooltip><Tooltip text="Appel vidéo"/></tooltip>
-                    </Button>
-                    <Button text="🔍" styleClass="call-btn">
-                        <tooltip><Tooltip text="Rechercher"/></tooltip>
                     </Button>
                 </HBox>
             </HBox>
