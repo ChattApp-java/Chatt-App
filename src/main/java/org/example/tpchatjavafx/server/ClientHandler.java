@@ -2,6 +2,7 @@ package org.example.tpchatjavafx.server;
 
 import org.example.tpchatjavafx.client.model.ChatMessage;
 import org.example.tpchatjavafx.common.MessageType;
+import org.example.tpchatjavafx.dao.ContactDAO;
 import org.example.tpchatjavafx.dao.MessageDAO;
 import org.example.tpchatjavafx.dao.UtilisateurDAO;
 import org.example.tpchatjavafx.dao.ConversationDAO;
@@ -11,6 +12,7 @@ import org.example.tpchatjavafx.service.AuthService;
 
 import java.io.*;
 import java.net.Socket;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.UUID;
 
@@ -30,6 +32,7 @@ public class ClientHandler implements Runnable {
     private final UtilisateurDAO userDAO   = new UtilisateurDAO();
     private final MessageDAO   messageDAO  = new MessageDAO();
     private final ConversationDAO convDAO  = new ConversationDAO();
+    private final ContactDAO contactDAO    = new ContactDAO();
 
     public ClientHandler(Socket socket) { 
         this.socket = socket;
@@ -77,6 +80,15 @@ public class ClientHandler implements Runnable {
         switch (msg.getType()) {
             case LOGIN    -> handleLogin(msg);
             case REGISTER -> handleRegister(msg);
+            case CONTACT_ADD -> {
+                if (username != null) handleContactAdd(msg);
+            }
+            case CONTACT_LOAD -> {
+                if (username != null) handleContactLoad();
+            }
+            case HISTORY_REQUEST -> {
+                if (username != null) handleHistoryRequest(msg);
+            }
             case LOGOUT   -> cleanup();
             default       -> {
                 // N'autoriser que les utilisateurs authentifiés
@@ -119,6 +131,46 @@ public class ClientHandler implements Runnable {
             send(new ChatMessage(MessageType.AUTH_FAIL, "SERVER", uname, null, "Erreur serveur post-inscription"));
         }
     }
+
+    private void handleContactAdd(ChatMessage msg) {
+        String contactName = msg.getContent();
+        if (contactName == null || contactName.isBlank()) return;
+
+        try {
+            Utilisateur contact = userDAO.findByUsername(contactName);
+            if (contact == null) {
+                send(new ChatMessage(MessageType.ERROR, "SERVER", username, null, "L'utilisateur " + contactName + " n'existe pas."));
+                return;
+            }
+
+            if (contact.getId() == userId) {
+                send(new ChatMessage(MessageType.ERROR, "SERVER", username, null, "Vous ne pouvez pas vous ajouter vous-même."));
+                return;
+            }
+
+            boolean added = contactDAO.addContact(userId, contact.getId());
+            if (added) {
+                handleContactLoad(); // Envoyer la liste mise à jour
+            } else {
+                send(new ChatMessage(MessageType.ERROR, "SERVER", username, null, "L'utilisateur est déjà dans vos contacts."));
+            }
+        } catch (Exception e) {
+            send(new ChatMessage(MessageType.ERROR, "SERVER", username, null, "Erreur lors de l'ajout du contact : " + e.getMessage()));
+        }
+    }
+
+    private void handleContactLoad() {
+        try {
+            List<Utilisateur> contacts = contactDAO.getContacts(userId);
+            String csv = contacts.stream()
+                    .map(Utilisateur::getUsername)
+                    .reduce((a, b) -> a + "," + b)
+                    .orElse("");
+            send(new ChatMessage(MessageType.CONTACT_LIST, "SERVER", username, null, csv));
+        } catch (Exception e) {
+            send(new ChatMessage(MessageType.ERROR, "SERVER", username, null, "Erreur chargement contacts : " + e.getMessage()));
+        }
+    }
     
     private void setupSession(Utilisateur user) {
         this.username = user.getUsername();
@@ -126,7 +178,7 @@ public class ClientHandler implements Runnable {
         ChatServer.registerClient(username, userId, this);
         
         // Envoi auth success avec l'ID
-        send(new ChatMessage(MessageType.AUTH_SUCCESS, "SERVER", username, String.valueOf(userId), username));
+        send(new ChatMessage(MessageType.AUTH_SUCCESS, "SERVER", String.valueOf(userId), null, username));
         System.out.println("[Auth] Connecté : " + username);
         
         // Push messages non lus
@@ -251,5 +303,31 @@ public class ClientHandler implements Runnable {
         }
         try { if (!socket.isClosed()) socket.close(); }
         catch (IOException ignored) {}
+    }
+
+    private void handleHistoryRequest(ChatMessage msg) {
+        String otherUsername = msg.getContent();
+        try {
+            Utilisateur other = userDAO.findByUsername(otherUsername);
+            if (other == null) return;
+
+            org.example.tpchatjavafx.model.Conversation conv = convDAO.findConversationBetween(userId, other.getId());
+            if (conv != null) {
+                List<Message> history = messageDAO.getHistory(conv.getId());
+                for (Message m : history) {
+                    ChatMessage syncMsg = new ChatMessage(
+                        MessageType.SYNC_HISTORY,
+                        m.getExpediteur().getUsername(),
+                        otherUsername,
+                        String.valueOf(conv.getId()),
+                        m.getContenu()
+                    );
+                    syncMsg.setMessageId(m.getId());
+                    send(syncMsg);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Erreur history: " + e.getMessage());
+        }
     }
 }

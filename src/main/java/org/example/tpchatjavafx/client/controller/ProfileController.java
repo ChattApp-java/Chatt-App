@@ -50,7 +50,7 @@ public class ProfileController {
         try {
             NetworkClient networkClient = new NetworkClient(serverHost, serverPort);
             networkClient.connect();
-            ChatClientApp.showMainChat(networkClient, username);
+            ChatClientApp.showMainChat(networkClient, username, -1);
         } catch (Exception e) {
             e.printStackTrace();
             errorLabel.setText("Cannot connect to server: " + e.getMessage());

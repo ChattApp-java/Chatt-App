@@ -42,7 +42,7 @@ public class ChatClientApp extends Application {
 
     // ── Main chat ─────────────────────────────────────────────
 
-    public static void showMainChat(NetworkClient networkClient, String username) throws Exception {
+    public static void showMainChat(NetworkClient networkClient, String username, int userId) throws Exception {
         URL fxml = ChatClientApp.class.getResource("/fxml/main-chat-view.fxml");
         if (fxml == null) throw new IllegalStateException("main-chat-view.fxml introuvable");
 
@@ -56,7 +56,7 @@ public class ChatClientApp extends Application {
         primaryStage.setTitle("WhatsApp JavaFX — " + username);
 
         org.example.tpchatjavafx.client.controller.MainChatController ctrl = loader.getController();
-        ctrl.init(networkClient, username);
+        ctrl.init(networkClient, username, userId);
     }
 
     public static Stage getPrimaryStage() { return primaryStage; }

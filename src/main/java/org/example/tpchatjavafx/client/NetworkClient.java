@@ -24,11 +24,14 @@ public class NetworkClient {
 
     // ── Callbacks ────────────────────────────────────────────
     private Consumer<ChatMessage>  onMessageReceived;
-    private Consumer<String>       onAuthSuccess;   // reçoit le username
+    private Consumer<ChatMessage>  onAuthSuccess;   // reçoit le message complet
     private Consumer<String>       onAuthFail;      // reçoit la raison
     private Consumer<List<String>> onUserListReceived;
+    private Consumer<List<String>> onContactListReceived;
+    private Consumer<ChatMessage>  onHistoryReceived;
     private Consumer<ChatMessage>  onUserStatusChanged;
     private Runnable               onConnectionLost;
+    private Consumer<String>       onError;
 
     public NetworkClient(String serverHost, int serverPort) {
         this.serverHost = serverHost;
@@ -37,11 +40,14 @@ public class NetworkClient {
 
     // ── Setters callbacks ────────────────────────────────────
     public void setOnMessageReceived(Consumer<ChatMessage> cb)   { onMessageReceived   = cb; }
-    public void setOnAuthSuccess(Consumer<String> cb)             { onAuthSuccess        = cb; }
+    public void setOnAuthSuccess(Consumer<ChatMessage> cb)        { onAuthSuccess        = cb; }
     public void setOnAuthFail(Consumer<String> cb)                { onAuthFail           = cb; }
     public void setOnUserListReceived(Consumer<List<String>> cb)  { onUserListReceived   = cb; }
+    public void setOnContactListReceived(Consumer<List<String>> cb) { onContactListReceived = cb; }
     public void setOnUserStatusChanged(Consumer<ChatMessage> cb)  { onUserStatusChanged  = cb; }
+    public void setOnHistoryReceived(Consumer<ChatMessage> cb)    { onHistoryReceived    = cb; }
     public void setOnConnectionLost(Runnable cb)                  { onConnectionLost     = cb; }
+    public void setOnError(Consumer<String> cb)                   { onError              = cb; }
 
     // ── Connexion ─────────────────────────────────────────────
 
@@ -68,6 +74,18 @@ public class NetworkClient {
 
     public void requestUserList() {
         send(new ChatMessage(MessageType.USER_LIST_REQUEST, username, "SERVER", null, ""));
+    }
+
+    public void addContact(String contactUsername) {
+        send(new ChatMessage(MessageType.CONTACT_ADD, username, "SERVER", null, contactUsername));
+    }
+
+    public void requestContacts() {
+        send(new ChatMessage(MessageType.CONTACT_LOAD, username, "SERVER", null, ""));
+    }
+
+    public void requestHistory(String otherUser) {
+        send(new ChatMessage(MessageType.HISTORY_REQUEST, username, "SERVER", null, otherUser));
     }
 
     // ── Envoi ────────────────────────────────────────────────
@@ -116,7 +134,7 @@ public class NetworkClient {
             switch (msg.getType()) {
                 case AUTH_SUCCESS -> {
                     username = msg.getContent();
-                    if (onAuthSuccess != null) onAuthSuccess.accept(username);
+                    if (onAuthSuccess != null) onAuthSuccess.accept(msg);
                 }
                 case AUTH_FAIL -> {
                     if (onAuthFail != null) onAuthFail.accept(msg.getContent());
@@ -132,6 +150,21 @@ public class NetworkClient {
                 }
                 case STATUS_UPDATE -> {
                     if (onUserStatusChanged != null) onUserStatusChanged.accept(msg);
+                }
+                case CONTACT_LIST -> {
+                    if (onContactListReceived != null) {
+                        String raw = msg.getContent();
+                        List<String> users = (raw == null || raw.isBlank())
+                                ? List.of()
+                                : Arrays.asList(raw.split(","));
+                        onContactListReceived.accept(users);
+                    }
+                }
+                case ERROR -> {
+                    if (onError != null) onError.accept(msg.getContent());
+                }
+                case SYNC_HISTORY -> {
+                    if (onHistoryReceived != null) onHistoryReceived.accept(msg);
                 }
                 default -> {
                     if (onMessageReceived != null) onMessageReceived.accept(msg);

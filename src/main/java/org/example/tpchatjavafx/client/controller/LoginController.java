@@ -119,8 +119,12 @@ public class LoginController {
     private void connectAndSend(String host, int port, Label errorLabel, Runnable sendAction) {
         client = new NetworkClient(host, port);
 
-        client.setOnAuthSuccess(username -> Platform.runLater(() -> {
-            try { ChatClientApp.showMainChat(client, username); }
+        client.setOnAuthSuccess(msg -> Platform.runLater(() -> {
+            try { 
+                String uname = msg.getContent();
+                int uId = Integer.parseInt(msg.getTo());
+                ChatClientApp.showMainChat(client, uname, uId); 
+            }
             catch (Exception e) { showError(errorLabel, "Erreur d'ouverture : " + e.getMessage()); }
         }));
 

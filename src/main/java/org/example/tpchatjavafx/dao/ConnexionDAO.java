@@ -11,7 +11,7 @@ public class ConnexionDAO {
         conn.setAutoCommit(false);
         try {
             if (estEnLigne) {
-                String sqlInsert = "INSERT INTO connexion (utilisateur_id, socket_id, est_en_ligne) VALUES (?, ?, ?)";
+                String sqlInsert = "INSERT INTO connexion (utilisateur_id, socketId, estEnLigne) VALUES (?, ?, ?)";
                 try (PreparedStatement stmt1 = conn.prepareStatement(sqlInsert)) {
                     stmt1.setInt(1, utilisateurId);
                     stmt1.setString(2, socketId);
@@ -19,7 +19,7 @@ public class ConnexionDAO {
                     stmt1.executeUpdate();
                 }
             } else {
-                String sqlUpdate = "UPDATE connexion SET est_en_ligne = ?, date_deconnexion = CURRENT_TIMESTAMP WHERE socket_id = ?";
+                String sqlUpdate = "UPDATE connexion SET estEnLigne = ?, dateDeconnexion = CURRENT_TIMESTAMP WHERE socketId = ?";
                 try (PreparedStatement stmt1 = conn.prepareStatement(sqlUpdate)) {
                     stmt1.setBoolean(1, false);
                     stmt1.setString(2, socketId);
@@ -28,7 +28,7 @@ public class ConnexionDAO {
             }
 
             // Update user global status
-            String sqlUser = "UPDATE utilisateur SET statut = ?, derniere_connexion = CURRENT_TIMESTAMP WHERE id = ?";
+            String sqlUser = "UPDATE utilisateur SET statut = ?, derniereConnexion = CURRENT_TIMESTAMP WHERE id = ?";
             try (PreparedStatement stmt2 = conn.prepareStatement(sqlUser)) {
                 stmt2.setString(1, estEnLigne ? "EN_LIGNE" : "NON_CONNECTE");
                 stmt2.setInt(2, utilisateurId);

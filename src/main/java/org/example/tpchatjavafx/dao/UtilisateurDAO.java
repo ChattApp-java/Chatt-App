@@ -88,7 +88,7 @@ public class UtilisateurDAO {
         u.setEmail(rs.getString("email"));
         u.setPassword(rs.getString("password"));
         u.setStatut(rs.getString("statut"));
-        Timestamp ts = rs.getTimestamp("derniere_connexion");
+        Timestamp ts = rs.getTimestamp("derniereConnexion");
         if (ts != null) {
             u.setDerniereConnexion(ts.toLocalDateTime());
         }

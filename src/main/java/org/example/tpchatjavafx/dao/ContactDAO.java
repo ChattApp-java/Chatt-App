@@ -42,8 +42,8 @@ public class ContactDAO {
                     u.setUsername(rs.getString("username"));
                     u.setEmail(rs.getString("email"));
                     u.setStatut(rs.getString("statut"));
-                    if (rs.getTimestamp("derniere_connexion") != null) {
-                        u.setDerniereConnexion(rs.getTimestamp("derniere_connexion").toLocalDateTime());
+                    if (rs.getTimestamp("derniereConnexion") != null) {
+                        u.setDerniereConnexion(rs.getTimestamp("derniereConnexion").toLocalDateTime());
                     }
                     contacts.add(u);
                 }

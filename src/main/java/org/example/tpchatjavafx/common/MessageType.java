@@ -39,5 +39,12 @@ public enum MessageType {
     VOICE_CALL_ACCEPT,
     VOICE_CALL_REJECT,
     VOICE_CALL_END,
-    VOICE_FRAME
+    VOICE_FRAME,
+
+    // ── Contacts ──────────────────────────────────────────────
+    CONTACT_ADD,    // client → server : ajouter un contact (content=username_to_add)
+    CONTACT_LOAD,   // client → server : charger ses contacts
+    CONTACT_LIST,   // server → client : liste des noms (content=CSV ou content vide si JSON)
+    ERROR,          // server → client : message d'erreur (content=message)
+    HISTORY_REQUEST // client → server : demande l'historique (content=otherUsername)
 }

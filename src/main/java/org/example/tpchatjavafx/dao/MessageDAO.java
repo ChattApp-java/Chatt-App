@@ -36,7 +36,7 @@ public class MessageDAO {
         List<Message> history = new ArrayList<>();
         String sql = "SELECT m.*, u.username FROM message m " +
                      "JOIN utilisateur u ON m.expediteur_id = u.id " +
-                     "WHERE m.conversation_id = ? ORDER BY m.date_envoi ASC";
+                     "WHERE m.conversation_id = ? ORDER BY m.dateEnvoi ASC";
         try (Connection conn = DatabaseConnection.getInstance().getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, conversationId);
@@ -53,7 +53,7 @@ public class MessageDAO {
         List<Message> unread = new ArrayList<>();
         String sql = "SELECT m.*, u.username FROM message m " +
                      "JOIN utilisateur u ON m.expediteur_id = u.id " +
-                     "WHERE m.destinataire_id = ? AND m.est_lu = FALSE ORDER BY m.date_envoi ASC";
+                     "WHERE m.destinataire_id = ? AND m.estLu = FALSE ORDER BY m.dateEnvoi ASC";
         try (Connection conn = DatabaseConnection.getInstance().getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, userId);
@@ -67,7 +67,7 @@ public class MessageDAO {
     }
 
     public void markAsRead(int messageId) throws SQLException {
-        String sql = "UPDATE message SET est_lu = TRUE WHERE id = ?";
+        String sql = "UPDATE message SET estLu = TRUE WHERE id = ?";
         try (Connection conn = DatabaseConnection.getInstance().getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, messageId);
@@ -79,7 +79,7 @@ public class MessageDAO {
         Message m = new Message();
         m.setId(rs.getInt("id"));
         m.setContenu(rs.getString("contenu"));
-        m.setDateEnvoi(rs.getTimestamp("date_envoi").toLocalDateTime());
+        m.setDateEnvoi(rs.getTimestamp("dateEnvoi").toLocalDateTime());
         m.setType(rs.getString("type"));
         m.setExpediteurId(rs.getInt("expediteur_id"));
         m.setDestinataireId(rs.getInt("destinataire_id"));
@@ -87,7 +87,7 @@ public class MessageDAO {
             m.setDestinataireId(null);
         }
         m.setConversationId(rs.getInt("conversation_id"));
-        m.setEstLu(rs.getBoolean("est_lu"));
+        m.setEstLu(rs.getBoolean("estLu"));
         
         // Map transient field
         Utilisateur expediteur = new Utilisateur();

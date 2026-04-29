@@ -111,20 +111,19 @@ public class MainChatController {
         }
     }
 
-    public void init(NetworkClient networkClient, String username) {
+    public void init(NetworkClient networkClient, String username, int userId) {
         this.networkClient = networkClient;
         this.username = username;
+        this.currentUser = new Utilisateur();
+        this.currentUser.setId(userId);
+        this.currentUser.setUsername(username);
         
-        try {
-            this.currentUser = utilisateurDAO.findByUsername(username);
-            loadContacts();
-        } catch (SQLException e) {
-            showInfo("Erreur de chargement de l'utilisateur: " + e.getMessage());
-        }
-
         networkClient.setOnMessageReceived(this::onMessageReceived);
         networkClient.setOnUserListReceived(this::updateOnlineUsers);
+        networkClient.setOnContactListReceived(this::updateContactList);
+        networkClient.setOnHistoryReceived(this::onHistoryReceived);
         networkClient.setOnUserStatusChanged(this::onUserStatusChanged);
+        networkClient.setOnError(this::showInfo);
 
         privateListView.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
             if (n != null) openPrivateChat(n);
@@ -132,22 +131,26 @@ public class MainChatController {
         
         setupSearchContactAutoCompletion();
         
-        // Request current online users list after setting callbacks
+        // Request current online users and contact list
         networkClient.requestUserList();
+        networkClient.requestContacts();
     }
 
-    private void loadContacts() {
-        try {
-            List<Utilisateur> contacts = contactDAO.getContacts(currentUser.getId());
+    private void updateContactList(List<String> contacts) {
+        Platform.runLater(() -> {
             allContacts.clear();
-            for (Utilisateur u : contacts) {
-                allContacts.add(u.getUsername());
-                userStatuses.put(u.getUsername(), u.getStatut());
+            for (String contactName : contacts) {
+                if (!allContacts.contains(contactName)) {
+                    allContacts.add(contactName);
+                    // Status will be updated by STATUS_UPDATE or requestUserList
+                    if (!userStatuses.containsKey(contactName)) {
+                        userStatuses.put(contactName, "NON_CONNECTE");
+                    }
+                }
             }
             privateListView.setItems(allContacts);
-        } catch (SQLException e) {
-            showInfo("Erreur de chargement des contacts: " + e.getMessage());
-        }
+            privateListView.refresh();
+        });
     }
 
     private void setupSearchContactAutoCompletion() {
@@ -195,29 +198,9 @@ public class MainChatController {
             return;
         }
 
-        try {
-            Utilisateur contact = utilisateurDAO.findByUsername(contactName);
-            if (contact == null) {
-                showInfo("Cet utilisateur n'existe pas dans la base de données.");
-                return;
-            }
-            
-            boolean added = contactDAO.addContact(currentUser.getId(), contact.getId());
-            if (added) {
-                if (!allContacts.contains(contactName)) {
-                    allContacts.add(contactName);
-                    userStatuses.put(contactName, contact.getStatut());
-                }
-                searchContactField.clear();
-                privateListView.setItems(allContacts); // Reset view to show all contacts including new one
-                // Request user list refresh to update status
-                networkClient.requestUserList();
-            } else {
-                showInfo("L'utilisateur est déjà dans vos contacts.");
-            }
-        } catch (SQLException e) {
-            showInfo("Erreur lors de l'ajout: " + e.getMessage());
-        }
+        // Request server to add contact
+        networkClient.addContact(contactName);
+        searchContactField.clear();
     }
 
     private void setupContactCellFactory() {
@@ -303,40 +286,30 @@ public class MainChatController {
     }
 
     private void loadConversationHistory(String otherName) {
-        try {
-            Utilisateur other = utilisateurDAO.findByUsername(otherName);
-            if (other == null) return;
+        networkClient.requestHistory(otherName);
+    }
+    
+    private void onHistoryReceived(ChatMessage msg) {
+        Platform.runLater(() -> {
+            boolean own = msg.getFrom().equals(username);
+            String other = own ? msg.getTo() : msg.getFrom();
             
-            Conversation conv = conversationDAO.findConversationBetween(currentUser.getId(), other.getId());
-            if (conv == null) return;
+            ObservableList<UiMessage> uiMsgs = privateConversations.computeIfAbsent(other, k -> FXCollections.observableArrayList());
             
-            currentConversationId = String.valueOf(conv.getId());
-            List<Message> history = messageDAO.getHistory(conv.getId());
-            ObservableList<UiMessage> uiMsgs = privateConversations.get(otherName);
-            
-            for (Message m : history) {
-                boolean own = m.getExpediteurId() == currentUser.getId();
-                UiMessage uiMsg = null;
-                
-                String type = m.getType();
-                if (type.equals("PRIVATE")) {
-                    uiMsg = new UiMessage(UiMessage.Kind.TEXT, own, m.getContenu(), null);
-                } else if (type.contains("PRIVATE_AUDIO") || type.contains("PRIVATE_IMAGE") || type.contains("PRIVATE_FILE")) {
-                    FichierMedia fm = fichierMediaDAO.findByMessageId(m.getId());
-                    if (fm != null) {
-                        UiMessage.Kind kind = type.contains("IMAGE") ? UiMessage.Kind.IMAGE :
-                                            type.contains("AUDIO") ? UiMessage.Kind.AUDIO : UiMessage.Kind.FILE;
-                        uiMsg = new UiMessage(kind, own, m.getContenu(), fm.getCheminAcces());
-                    }
-                }
-                
-                if (uiMsg != null) {
-                    uiMsgs.add(uiMsg);
-                }
+            // Avoid duplicates
+            if (msg.getMessageId() != -1) {
+                if (processedMessageIds.contains(msg.getMessageId())) return;
+                processedMessageIds.add(msg.getMessageId());
             }
-        } catch (SQLException e) {
-            System.err.println("Erreur chargement historique : " + e.getMessage());
-        }
+            
+            UiMessage uiMsg = new UiMessage(UiMessage.Kind.TEXT, own, msg.getContent(), null);
+            uiMsgs.add(uiMsg);
+            
+            // Auto-scroll if it's the current view
+            if (other.equals(currentPrivateTarget)) {
+                messagesListView.scrollTo(uiMsgs.size() - 1);
+            }
+        });
     }
     
     private void updateChatHeaderStatus(String status) {
