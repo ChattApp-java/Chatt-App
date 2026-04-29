@@ -12,7 +12,7 @@ public class DatabaseConnection {
 
     private DatabaseConnection() {
         HikariConfig config = new HikariConfig();
-        config.setJdbcUrl("jdbc:mysql://localhost:3306/chattapp_db?useSSL=false&serverTimezone=UTC");
+        config.setJdbcUrl("jdbc:mysql://localhost:3306/wechat?useSSL=false&serverTimezone=UTC");
         config.setUsername("root");
         config.setPassword(""); // Update with user's db password if needed, leaving default XAMPP/WAMP empty
         

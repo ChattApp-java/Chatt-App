@@ -315,14 +315,32 @@ public class ClientHandler implements Runnable {
             if (conv != null) {
                 List<Message> history = messageDAO.getHistory(conv.getId());
                 for (Message m : history) {
+                    String senderName = m.getExpediteur().getUsername();
+                    String recipientName = senderName.equals(username) ? otherUsername : username;
+
                     ChatMessage syncMsg = new ChatMessage(
                         MessageType.SYNC_HISTORY,
-                        m.getExpediteur().getUsername(),
-                        otherUsername,
-                        String.valueOf(conv.getId()),
+                        senderName,
+                        recipientName,
+                        m.getType(), // Pass original type (PRIVATE_AUDIO, etc.)
                         m.getContenu()
                     );
                     syncMsg.setMessageId(m.getId());
+                    
+                    // Charger les données binaires si c'est un média
+                    if (m.getType().contains("AUDIO") || m.getType().contains("IMAGE") || m.getType().contains("FILE")) {
+                        try {
+                            org.example.tpchatjavafx.model.FichierMedia fm = fichierMediaDAO.findByMessageId(m.getId());
+                            if (fm != null && fm.getCheminAcces() != null) {
+                                java.io.File file = new java.io.File(fm.getCheminAcces());
+                                if (file.exists()) {
+                                    syncMsg.setBinaryData(java.nio.file.Files.readAllBytes(file.toPath()));
+                                }
+                            }
+                        } catch (Exception e) {
+                            System.err.println("Erreur chargement média historique: " + e.getMessage());
+                        }
+                    }
                     send(syncMsg);
                 }
             }

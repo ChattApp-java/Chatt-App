@@ -19,7 +19,7 @@ public class DatabaseConnection {
         if (initialized) return;
         try {
             HikariConfig cfg = new HikariConfig();
-            cfg.setJdbcUrl("jdbc:mysql://localhost:3306/chattapp_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true");
+            cfg.setJdbcUrl("jdbc:mysql://localhost:3306/wechat?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true");
             cfg.setUsername("root");
             cfg.setPassword("");
             cfg.setDriverClassName("com.mysql.cj.jdbc.Driver");

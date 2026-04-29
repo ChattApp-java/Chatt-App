@@ -302,8 +302,35 @@ public class MainChatController {
                 processedMessageIds.add(msg.getMessageId());
             }
             
-            UiMessage uiMsg = new UiMessage(UiMessage.Kind.TEXT, own, msg.getContent(), null);
-            uiMsgs.add(uiMsg);
+            UiMessage uiMsg = null;
+            // The server passes the original type in the conversationId field for SYNC_HISTORY
+            String typeStr = msg.getConversationId(); 
+            if (typeStr == null || typeStr.isEmpty()) typeStr = "TEXTE";
+
+            if (typeStr.contains("AUDIO") || typeStr.contains("IMAGE") || typeStr.contains("FILE")) {
+                UiMessage.Kind kind = typeStr.contains("IMAGE") ? UiMessage.Kind.IMAGE :
+                                    typeStr.contains("AUDIO") ? UiMessage.Kind.AUDIO : UiMessage.Kind.FILE;
+                
+                String localPath = null;
+                if (msg.getBinaryData() != null) {
+                    try {
+                        java.io.File temp = java.io.File.createTempFile("chat_", "_" + msg.getContent());
+                        try (java.io.FileOutputStream fos = new java.io.FileOutputStream(temp)) {
+                            fos.write(msg.getBinaryData());
+                        }
+                        localPath = temp.getAbsolutePath();
+                    } catch (java.io.IOException e) {
+                        System.err.println("Erreur sauvegarde média historique: " + e.getMessage());
+                    }
+                }
+                uiMsg = new UiMessage(kind, own, msg.getContent(), localPath);
+            } else {
+                uiMsg = new UiMessage(UiMessage.Kind.TEXT, own, msg.getContent(), null);
+            }
+            
+            if (uiMsg != null) {
+                uiMsgs.add(uiMsg);
+            }
             
             // Auto-scroll if it's the current view
             if (other.equals(currentPrivateTarget)) {

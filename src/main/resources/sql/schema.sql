@@ -1,7 +1,7 @@
 -- Schema MySQL pour l'application de Chat JavaFX
 
-CREATE DATABASE IF NOT EXISTS chattapp_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE chattapp_db;
+CREATE DATABASE IF NOT EXISTS wechat CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE wechat;
 
 -- 1. Table Utilisateur
 CREATE TABLE IF NOT EXISTS utilisateur (
