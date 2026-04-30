@@ -19,7 +19,7 @@ public class ContactDAO {
             stmt.setInt(2, contactId);
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            // Ignorer si le contact existe déjà (violation de contrainte unique)
+            // Ignorer si le contact existe déjà 
             if (e.getErrorCode() == 1062) {
                 return false;
             }
