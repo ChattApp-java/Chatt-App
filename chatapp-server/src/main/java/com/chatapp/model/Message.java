@@ -14,6 +14,8 @@ public class Message {
     private String contenu;
     private LocalDateTime date_envoi;
     private String statut; // "lu" ou "non_lu"
+    private Integer groupeId;   // nullable — null si message individuel
+    private Integer reunionId;  // nullable — null si message hors réunion
 
     // ── Constructeur complet ──────────────────────────────────
     public Message(int id_message, int id_sender, int id_receiver,
@@ -24,6 +26,22 @@ public class Message {
         this.contenu = contenu;
         this.date_envoi = date_envoi;
         this.statut = statut;
+        this.groupeId = null;
+        this.reunionId = null;
+    }
+
+    // ── Constructeur complet avec groupeId et reunionId ───────────
+    public Message(int id_message, int id_sender, int id_receiver,
+            String contenu, LocalDateTime date_envoi, String statut,
+            Integer groupeId, Integer reunionId) {
+        this.id_message = id_message;
+        this.id_sender = id_sender;
+        this.id_receiver = id_receiver;
+        this.contenu = contenu;
+        this.date_envoi = date_envoi;
+        this.statut = statut;
+        this.groupeId = groupeId;
+        this.reunionId = reunionId;
     }
 
     // ── Constructeur envoi (sans id ni date) ──────────────────
@@ -59,6 +77,15 @@ public class Message {
         return statut;
     }
 
+    // ── Getters groupeId / reunionId ─────────────────────────────
+    public Integer getGroupeId() {
+        return groupeId;
+    }
+
+    public Integer getReunionId() {
+        return reunionId;
+    }
+
     // ── Setters ───────────────────────────────────────────────
     public void setId_message(int id_message) {
         this.id_message = id_message;
@@ -70,6 +97,14 @@ public class Message {
 
     public void setDate_envoi(LocalDateTime d) {
         this.date_envoi = d;
+    }
+
+    public void setGroupeId(Integer groupeId) {
+        this.groupeId = groupeId;
+    }
+
+    public void setReunionId(Integer reunionId) {
+        this.reunionId = reunionId;
     }
 
     @Override

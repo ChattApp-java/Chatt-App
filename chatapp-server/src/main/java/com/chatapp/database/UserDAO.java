@@ -144,6 +144,40 @@ public class UserDAO {
         return liste;
     }
 
+    /**
+     * Récupère une liste d'utilisateurs par leurs identifiants.
+     * @param ids liste d'identifiants recherchés
+     * @return liste des utilisateurs correspondants (peut être vide)
+     */
+    public List<User> getUsersByIds(List<Integer> ids) {
+        List<User> liste = new ArrayList<>();
+        if (ids == null || ids.isEmpty()) return liste;
+
+        // Construit dynamiquement la clause IN : (?,?,?...)
+        StringBuilder placeholders = new StringBuilder();
+        for (int i = 0; i < ids.size(); i++) {
+            placeholders.append(i == 0 ? "?" : ",?");
+        }
+        String sql = "SELECT * FROM users WHERE id_user IN (" + placeholders + ")";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            for (int i = 0; i < ids.size(); i++) {
+                stmt.setInt(i + 1, ids.get(i));
+            }
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                liste.add(extraireUser(rs));
+            }
+            System.out.println("[DB] getUsersByIds : " + liste.size() + " utilisateur(s) trouvé(s).");
+
+        } catch (SQLException e) {
+            System.err.println("[DB] Erreur getUsersByIds : " + e.getMessage());
+        }
+        return liste;
+    }
+
     public void deconnecter(String username) {
         setStatut(username, false);
         System.out.println("[DB] " + username + " déconnecté.");
