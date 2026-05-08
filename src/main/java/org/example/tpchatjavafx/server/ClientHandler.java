@@ -16,6 +16,7 @@ import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -44,6 +45,7 @@ public class ClientHandler implements Runnable {
 
     public String getUsername() { return username; }
     public String getSocketId() { return socketId; }
+    public Socket getSocket() { return socket; }
 
     // ── Envoi ─────────────────────────────────────────────────
 
@@ -93,6 +95,21 @@ public class ClientHandler implements Runnable {
                 if (username != null) handleHistoryRequest(msg);
             }
             case LOGOUT   -> cleanup();
+            
+            // ===== APPELS =====
+            case CALL_REQUEST -> {
+                if (username != null) handleCallRequest(msg);
+            }
+            case CALL_ANSWER -> {
+                if (username != null) handleCallAnswer(msg);
+            }
+            case CALL_REJECT -> {
+                if (username != null) handleCallReject(msg);
+            }
+            case CALL_END -> {
+                if (username != null) handleCallEnd(msg);
+            }
+            
             default       -> {
                 // N'autoriser que les utilisateurs authentifiés
                 if (username != null) persistAndRoute(msg);
@@ -310,6 +327,79 @@ public class ClientHandler implements Runnable {
         }
         try { if (!socket.isClosed()) socket.close(); }
         catch (IOException ignored) {}
+    }
+
+    private void handleCallRequest(ChatMessage msg) {
+        String targetUser = msg.getTo();
+        String callType = msg.getCallType();
+        
+        System.out.println("[Server] " + username + " appelle " + targetUser + 
+                           " (" + callType + ")");
+        
+        Set<ClientHandler> targetHandlers = ChatServer.clients.get(targetUser);
+        if (targetHandlers != null && !targetHandlers.isEmpty()) {
+            // Utilisateur en ligne - envoyer notification
+            ChatMessage notification = new ChatMessage();
+            notification.setType("CALL_INCOMING");
+            notification.setFrom(username);
+            notification.setTo(targetUser);
+            notification.setCallType(callType);
+            notification.setRemoteHost(socket.getInetAddress().getHostAddress());
+            notification.setRemotePort(9999); // Port local pour réception
+            
+            for (ClientHandler handler : targetHandlers) {
+                handler.send(notification);
+            }
+        } else {
+            // Utilisateur non connecté
+            ChatMessage response = new ChatMessage();
+            response.setType("ERROR");
+            response.setContent("Utilisateur hors ligne");
+            send(response);
+        }
+    }
+
+    private void handleCallAnswer(ChatMessage msg) {
+        String callerId = msg.getFrom();
+        String targetUser = msg.getTo();
+        
+        System.out.println("[Server] " + username + " accepte appel de " + callerId);
+        
+        Set<ClientHandler> callerHandlers = ChatServer.clients.get(callerId);
+        if (callerHandlers != null && !callerHandlers.isEmpty()) {
+            ChatMessage answer = new ChatMessage();
+            answer.setType("CALL_ANSWER");
+            answer.setFrom(username);
+            answer.setTo(callerId);
+            answer.setRemoteHost(socket.getInetAddress().getHostAddress());
+            answer.setRemotePort(10000); // Port local pour réception
+            
+            for (ClientHandler handler : callerHandlers) {
+                handler.send(answer);
+            }
+        }
+    }
+
+    private void handleCallReject(ChatMessage msg) {
+        String callerId = msg.getFrom();
+        
+        System.out.println("[Server] " + username + " refuse appel de " + callerId);
+        
+        Set<ClientHandler> callerHandlers = ChatServer.clients.get(callerId);
+        if (callerHandlers != null) {
+            ChatMessage rejection = new ChatMessage();
+            rejection.setType("CALL_REJECT");
+            rejection.setFrom(username);
+            
+            for (ClientHandler handler : callerHandlers) {
+                handler.send(rejection);
+            }
+        }
+    }
+
+    private void handleCallEnd(ChatMessage msg) {
+        System.out.println("[Server] " + username + " termine appel");
+        // Notification au client distant (optionnel)
     }
 
     private void handleHistoryRequest(ChatMessage msg) {

@@ -2,7 +2,22 @@ package org.example.tpchatjavafx.model;
 
 import java.util.Date;
 
-public class Appel {
+public class
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Appel {
     private int id;
     private String statut; // EN_COURS, TERMINE, MANQUE, REJETE
     private Date dateHeure;

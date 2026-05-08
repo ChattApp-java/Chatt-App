@@ -1,7 +1,9 @@
 package org.example.tpchatjavafx.client;
 
 import javafx.application.Platform;
+import org.example.tpchatjavafx.client.audio.AudioTransmissionService;
 import org.example.tpchatjavafx.client.model.ChatMessage;
+import org.example.tpchatjavafx.client.video.MeetingVideoCapture;
 import org.example.tpchatjavafx.common.MessageType;
 
 import java.io.*;
@@ -32,6 +34,13 @@ public class NetworkClient {
     private Consumer<ChatMessage>  onUserStatusChanged;
     private Runnable               onConnectionLost;
     private Consumer<String>       onError;
+    private AudioTransmissionService meetingAudioService;
+    private MeetingVideoCapture      meetingVideoCapture;
+    private MeetingController        activeMeetingController;
+
+    public void setActiveMeetingController(MeetingController controller) {
+        this.activeMeetingController = controller;
+    }
 
     public NetworkClient(String serverHost, int serverPort) {
         this.serverHost = serverHost;
@@ -48,6 +57,53 @@ public class NetworkClient {
     public void setOnHistoryReceived(Consumer<ChatMessage> cb)    { onHistoryReceived    = cb; }
     public void setOnConnectionLost(Runnable cb)                  { onConnectionLost     = cb; }
     public void setOnError(Consumer<String> cb)                   { onError              = cb; }
+
+    private Consumer<ChatMessage> onIncomingCall;
+    private Consumer<ChatMessage> onCallAnswered;
+    private Consumer<ChatMessage> onCallRejected;
+
+    private Consumer<ChatMessage> onMeetingInvite;
+    private Consumer<ChatMessage> onMeetingStarted;
+    private Consumer<ChatMessage> onMeetingEnded;
+    private Consumer<ChatMessage> onMeetingParticipantJoined;
+    private Consumer<ChatMessage> onMeetingParticipantLeft;
+    private Consumer<ChatMessage> onMeetingInfo;
+
+    public void setOnIncomingCall(Consumer<ChatMessage> cb) {
+        this.onIncomingCall = cb;
+    }
+
+    public void setOnCallAnswered(Consumer<ChatMessage> cb) {
+        this.onCallAnswered = cb;
+    }
+
+    public void setOnCallRejected(Consumer<ChatMessage> cb) {
+        this.onCallRejected = cb;
+    }
+
+    public void setOnMeetingInvite(Consumer<ChatMessage> cb) {
+        this.onMeetingInvite = cb;
+    }
+
+    public void setOnMeetingStarted(Consumer<ChatMessage> cb) {
+        this.onMeetingStarted = cb;
+    }
+
+    public void setOnMeetingEnded(Consumer<ChatMessage> cb) {
+        this.onMeetingEnded = cb;
+    }
+
+    public void setOnMeetingParticipantJoined(Consumer<ChatMessage> cb) {
+        this.onMeetingParticipantJoined = cb;
+    }
+
+    public void setOnMeetingParticipantLeft(Consumer<ChatMessage> cb) {
+        this.onMeetingParticipantLeft = cb;
+    }
+
+    public void setOnMeetingInfo(Consumer<ChatMessage> cb) {
+        this.onMeetingInfo = cb;
+    }
 
     // ── Connexion ─────────────────────────────────────────────
 
@@ -86,6 +142,59 @@ public class NetworkClient {
 
     public void requestHistory(String otherUser) {
         send(new ChatMessage(MessageType.HISTORY_REQUEST, username, "SERVER", null, otherUser));
+    }
+
+    public void startMeeting(int groupId, String meetingType) {
+        ChatMessage msg = new ChatMessage(MessageType.MEETING_INVITE, username, "SERVER", null, "Démarrage réunion");
+        msg.setGroupId(groupId);
+        msg.setMeetingType(meetingType);
+        send(msg);
+    }
+
+    public void joinMeeting(int meetingId) {
+        ChatMessage msg = new ChatMessage(MessageType.MEETING_PARTICIPANT_JOINED, username, "SERVER", null, "Rejoint réunion");
+        msg.setMeetingId(meetingId);
+        send(msg);
+    }
+
+    public void leaveMeeting(int meetingId) {
+        ChatMessage msg = new ChatMessage(MessageType.MEETING_PARTICIPANT_LEFT, username, "SERVER", null, "Quitte réunion");
+        msg.setMeetingId(meetingId);
+        send(msg);
+    }
+
+    public void endMeeting(int meetingId) {
+        ChatMessage msg = new ChatMessage(MessageType.MEETING_ENDED, username, "SERVER", null, "Fin de réunion");
+        msg.setMeetingId(meetingId);
+        send(msg);
+    }
+
+    public void startMeetingAudio(int localPort, int serverPort, String serverHost) throws Exception {
+        if (meetingAudioService != null) {
+            meetingAudioService.stop();
+        }
+        meetingAudioService = new AudioTransmissionService();
+        meetingAudioService.initiate(serverHost, serverPort, localPort);
+    }
+
+    public void startMeetingVideo(int localPort, int serverPort, String serverHost) throws Exception {
+        if (meetingVideoCapture != null) {
+            meetingVideoCapture.stop();
+        }
+        meetingVideoCapture = new MeetingVideoCapture();
+        meetingVideoCapture.start(serverHost, serverPort, localPort);
+    }
+
+    public void sendMeetingAudioFrame(byte[] frame) {
+        if (meetingAudioService != null) {
+            meetingAudioService.sendAudioFrame(frame);
+        }
+    }
+
+    public void sendMeetingVideoFrame(byte[] frame) {
+        if (meetingVideoCapture != null) {
+            meetingVideoCapture.sendFrame(frame);
+        }
     }
 
     // ── Envoi ────────────────────────────────────────────────
@@ -165,6 +274,67 @@ public class NetworkClient {
                 }
                 case SYNC_HISTORY -> {
                     if (onHistoryReceived != null) onHistoryReceived.accept(msg);
+                }
+                case CALL_INCOMING -> {
+                    if (onIncomingCall != null) {
+                        onIncomingCall.accept(msg);
+                    }
+                }
+                case CALL_ANSWER -> {
+                    if (onCallAnswered != null) {
+                        onCallAnswered.accept(msg);
+                    }
+                }
+                case CALL_REJECT -> {
+                    if (onCallRejected != null) {
+                        onCallRejected.accept(msg);
+                    }
+                }
+                case MEETING_INVITE -> {
+                    if (onMeetingInvite != null) {
+                        onMeetingInvite.accept(msg);
+                    }
+                }
+                case MEETING_STARTED -> {
+                    if (onMeetingStarted != null) {
+                        onMeetingStarted.accept(msg);
+                    }
+                }
+                case MEETING_ENDED -> {
+                    if (onMeetingEnded != null) {
+                        onMeetingEnded.accept(msg);
+                    }
+                }
+                case MEETING_PARTICIPANT_JOINED -> {
+                    if (onMeetingParticipantJoined != null) {
+                        onMeetingParticipantJoined.accept(msg);
+                    }
+                    if (activeMeetingController != null) {
+                        activeMeetingController.addParticipant(msg.getFrom(), msg.getFrom());
+                    }
+                }
+                case MEETING_PARTICIPANT_LEFT -> {
+                    if (onMeetingParticipantLeft != null) {
+                        onMeetingParticipantLeft.accept(msg);
+                    }
+                    if (activeMeetingController != null) {
+                        activeMeetingController.removeParticipant(msg.getFrom(), msg.getFrom());
+                    }
+                }
+                case MEETING_INFO -> {
+                    if (onMeetingInfo != null) {
+                        onMeetingInfo.accept(msg);
+                    }
+                }
+                case MEETING_AUDIO_FRAME -> {
+                    if (activeMeetingController != null) {
+                        activeMeetingController.addAudioFrame(msg.getFrom(), msg.getBinaryData());
+                    }
+                }
+                case MEETING_VIDEO_FRAME -> {
+                    if (activeMeetingController != null) {
+                        activeMeetingController.updateParticipantFrame(msg.getFrom(), msg.getBinaryData());
+                    }
                 }
                 default -> {
                     if (onMessageReceived != null) onMessageReceived.accept(msg);

@@ -105,7 +105,14 @@ public class ChatServer {
             case VIDEO_CALL_REQUEST, VIDEO_CALL_ACCEPT,
                  VIDEO_CALL_REJECT,  VIDEO_CALL_END, VIDEO_FRAME,
                  VOICE_CALL_REQUEST, VOICE_CALL_ACCEPT,
-                 VOICE_CALL_REJECT,  VOICE_CALL_END, VOICE_FRAME    -> forwardToTarget(msg);
+                 VOICE_CALL_REJECT,  VOICE_CALL_END, VOICE_FRAME,
+                 CALL_REQUEST, CALL_ANSWER, CALL_REJECT, CALL_END,
+                 CALL_INCOMING, CALL_INFO -> handleCallMessage(msg, from);
+            case GROUP_CREATE, GROUP_UPDATE, GROUP_DELETE, GROUP_JOIN,
+                 GROUP_LEAVE, GROUP_MESSAGE, GROUP_MEMBER_ADD, GROUP_MEMBER_REMOVE,
+                 MEETING_INVITE, MEETING_STARTED, MEETING_ENDED,
+                 MEETING_PARTICIPANT_JOINED, MEETING_PARTICIPANT_LEFT,
+                 MEETING_INFO, MEETING_AUDIO_FRAME, MEETING_VIDEO_FRAME -> handleMeetingMessage(msg, from);
             case USER_LIST_REQUEST -> broadcastUserList();
             default -> {} // LOGIN / REGISTER traités dans ClientHandler
         }
@@ -136,5 +143,71 @@ public class ChatServer {
                 target.send(msg);
             }
         }
+    }
+
+    // ── Gestion des appels ─────────────────────────────────────
+
+    private static void handleCallMessage(ChatMessage msg, ClientHandler from) {
+        switch (msg.getType()) {
+            case CALL_REQUEST -> handleCallRequest(msg, from);
+            case CALL_ANSWER -> handleCallAnswer(msg, from);
+            case CALL_REJECT, CALL_END -> forwardToTarget(msg); // Simple routage
+            default -> forwardToTarget(msg); // Anciens types ou autres
+        }
+    }
+
+    private static void handleCallRequest(ChatMessage msg, ClientHandler from) {
+        // Vérifier que l'utilisateur cible est connecté
+        Set<ClientHandler> targets = clients.get(msg.getTo());
+        if (targets == null || targets.isEmpty()) {
+            // Utilisateur non connecté - refuser automatiquement
+            ChatMessage rejectMsg = new ChatMessage(MessageType.CALL_REJECT, "SERVER", msg.getFrom(), msg.getConversationId(), "Utilisateur non connecté");
+            from.send(rejectMsg);
+            return;
+        }
+
+        // Créer message d'appel entrant pour le destinataire
+        ChatMessage incomingMsg = new ChatMessage(MessageType.CALL_INCOMING, msg.getFrom(), msg.getTo(), msg.getConversationId(), msg.getCallType());
+        incomingMsg.setCallType(msg.getCallType()); // AUDIO ou VIDEO
+
+        // Notifier tous les clients du destinataire
+        for (ClientHandler target : targets) {
+            target.send(incomingMsg);
+        }
+    }
+
+    private static void handleCallAnswer(ChatMessage msg, ClientHandler from) {
+        // L'appel est accepté - transmettre les infos P2P
+        ChatMessage infoMsg = new ChatMessage(MessageType.CALL_INFO, msg.getFrom(), msg.getTo(), msg.getConversationId(), "Connexion P2P établie");
+        infoMsg.setCallType(msg.getCallType());
+        infoMsg.setRemoteHost(from.getSocket().getInetAddress().getHostAddress()); // IP de l'appelant
+        infoMsg.setRemotePort(0); // Le port sera déterminé côté client pour UDP
+
+        // Envoyer les infos au destinataire
+        Set<ClientHandler> targets = clients.get(msg.getTo());
+        if (targets != null) {
+            for (ClientHandler target : targets) {
+                target.send(infoMsg);
+            }
+        }
+
+        // Confirmer à l'appelant que l'appel est accepté
+        ChatMessage confirmMsg = new ChatMessage(MessageType.CALL_ANSWER, msg.getTo(), msg.getFrom(), msg.getConversationId(), "Appel accepté");
+        from.send(confirmMsg);
+    }
+
+    private static void handleMeetingMessage(ChatMessage msg, ClientHandler from) {
+        if (msg.getTo() != null && !msg.getTo().isBlank()) {
+            forwardToTarget(msg);
+            return;
+        }
+
+        if (msg.getGroupId() > 0) {
+            broadcastToAll(msg);
+            return;
+        }
+
+        // Par défaut, router sur le destinataire s'il a été fourni.
+        forwardToTarget(msg);
     }
 }

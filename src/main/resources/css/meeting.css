@@ -1,0 +1,66 @@
+.meeting-top-bar {
+    -fx-background-color: #181825;
+    -fx-padding: 15;
+    -fx-border-color: transparent transparent #313244 transparent;
+    -fx-border-width: 1;
+}
+
+.meeting-title {
+    -fx-text-fill: #cba6f7;
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+}
+
+.meeting-grid {
+    -fx-background-color: #1e1e2e;
+}
+
+.meeting-sidebar {
+    -fx-background-color: #11111b;
+    -fx-border-color: transparent transparent transparent #313244;
+    -fx-border-width: 1;
+}
+
+.meeting-sidebar-title {
+    -fx-text-fill: #89b4fa;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+}
+
+.list-view {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+}
+
+.list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #cdd6f4;
+    -fx-padding: 8 12;
+}
+
+.list-cell:filled:selected {
+    -fx-background-color: #313244;
+}
+
+.button {
+    -fx-background-color: #313244;
+    -fx-text-fill: #cdd6f4;
+    -fx-font-weight: bold;
+    -fx-background-radius: 8;
+    -fx-padding: 8 16;
+    -fx-cursor: hand;
+}
+
+.button:hover {
+    -fx-background-color: #45475a;
+}
+
+#leaveButton {
+    -fx-background-color: #f38ba8;
+    -fx-text-fill: #1e1e2e;
+}
+
+#leaveButton:hover {
+    -fx-background-color: #eba0ac;
+}

@@ -1,0 +1,356 @@
+WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::load has been called by org.fusesource.jansi.internal.JansiLoader in an unnamed module (file:/C:/Users/LENOVO/.m2/wrapper/dists/apache-maven-3.8.5-bin/5i5jha092a3i37g0paqnfr15e0/apache-maven-3.8.5/lib/jansi-2.4.0.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by com.google.common.util.concurrent.AbstractFuture$UnsafeAtomicHelper (file:/C:/Users/LENOVO/.m2/wrapper/dists/apache-maven-3.8.5-bin/5i5jha092a3i37g0paqnfr15e0/apache-maven-3.8.5/lib/guava-25.1-android.jar)
+WARNING: Please consider reporting this to the maintainers of class com.google.common.util.concurrent.AbstractFuture$UnsafeAtomicHelper
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+[ERROR] COMPILATION ERROR : 
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/NetworkClient.java:[72,35] variable onIncomingCall is already defined in class org.example.tpchatjavafx.client.NetworkClient
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/NetworkClient.java:[73,35] variable onCallAnswered is already defined in class org.example.tpchatjavafx.client.NetworkClient
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/NetworkClient.java:[74,35] variable onCallRejected is already defined in class org.example.tpchatjavafx.client.NetworkClient
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[39,38] cannot find symbol
+  symbol:   class Utilisateur
+  location: package org.example.tpchatjavafx.model
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[74,13] cannot find symbol
+  symbol:   class Utilisateur
+  location: class org.example.tpchatjavafx.client.controller.MainChatController
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/ContactDAO.java:[3,38] cannot find symbol
+  symbol:   class Utilisateur
+  location: package org.example.tpchatjavafx.model
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/UtilisateurDAO.java:[3,38] cannot find symbol
+  symbol:   class Utilisateur
+  location: package org.example.tpchatjavafx.model
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/MessageDAO.java:[4,38] cannot find symbol
+  symbol:   class Utilisateur
+  location: package org.example.tpchatjavafx.model
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[114,13] cannot find symbol
+  symbol:   class Consumer
+  location: class org.example.tpchatjavafx.client.controller.MainChatController
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[115,13] cannot find symbol
+  symbol:   class Consumer
+  location: class org.example.tpchatjavafx.client.controller.MainChatController
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[116,13] cannot find symbol
+  symbol:   class Consumer
+  location: class org.example.tpchatjavafx.client.controller.MainChatController
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[1122,18] method handleIncomingCall(org.example.tpchatjavafx.client.model.ChatMessage) is already defined in class org.example.tpchatjavafx.client.controller.MainChatController
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[1212,18] method endAudioCall() is already defined in class org.example.tpchatjavafx.client.controller.MainChatController
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[1238,18] method handleCallRejected(org.example.tpchatjavafx.client.model.ChatMessage) is already defined in class org.example.tpchatjavafx.client.controller.MainChatController
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/model/Message.java:[17,23] cannot find symbol
+  symbol:   class Utilisateur
+  location: class org.example.tpchatjavafx.model.Message
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/model/Message.java:[56,12] cannot find symbol
+  symbol:   class Utilisateur
+  location: class org.example.tpchatjavafx.model.Message
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/model/Message.java:[57,31] cannot find symbol
+  symbol:   class Utilisateur
+  location: class org.example.tpchatjavafx.model.Message
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/UtilisateurDAO.java:[11,31] cannot find symbol
+  symbol:   class Utilisateur
+  location: class org.example.tpchatjavafx.dao.UtilisateurDAO
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/UtilisateurDAO.java:[11,12] cannot find symbol
+  symbol:   class Utilisateur
+  location: class org.example.tpchatjavafx.dao.UtilisateurDAO
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/UtilisateurDAO.java:[28,12] cannot find symbol
+  symbol:   class Utilisateur
+  location: class org.example.tpchatjavafx.dao.UtilisateurDAO
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/UtilisateurDAO.java:[42,12] cannot find symbol
+  symbol:   class Utilisateur
+  location: class org.example.tpchatjavafx.dao.UtilisateurDAO
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/UtilisateurDAO.java:[56,17] cannot find symbol
+  symbol:   class Utilisateur
+  location: class org.example.tpchatjavafx.dao.UtilisateurDAO
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/UtilisateurDAO.java:[69,17] cannot find symbol
+  symbol:   class Utilisateur
+  location: class org.example.tpchatjavafx.dao.UtilisateurDAO
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/UtilisateurDAO.java:[84,13] cannot find symbol
+  symbol:   class Utilisateur
+  location: class org.example.tpchatjavafx.dao.UtilisateurDAO
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/ContactDAO.java:[30,17] cannot find symbol
+  symbol:   class Utilisateur
+  location: class org.example.tpchatjavafx.dao.ContactDAO
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/server/ClientHandler.java:[10,38] cannot find symbol
+  symbol:   class Utilisateur
+  location: package org.example.tpchatjavafx.model
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/service/AuthService.java:[4,38] cannot find symbol
+  symbol:   class Utilisateur
+  location: package org.example.tpchatjavafx.model
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/server/ClientHandler.java:[195,31] cannot find symbol
+  symbol:   class Utilisateur
+  location: class org.example.tpchatjavafx.server.ClientHandler
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/service/AuthService.java:[23,12] cannot find symbol
+  symbol:   class Utilisateur
+  location: class org.example.tpchatjavafx.service.AuthService
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[136,32] cannot find symbol
+  symbol:   class Utilisateur
+  location: class org.example.tpchatjavafx.client.controller.MainChatController
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[241,13] cannot find symbol
+  symbol:   method showAlert(java.lang.String)
+  location: class org.example.tpchatjavafx.client.controller.MainChatController
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[247,13] cannot find symbol
+  symbol:   method showAlert(java.lang.String)
+  location: class org.example.tpchatjavafx.client.controller.MainChatController
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[253,29] incompatible types: java.lang.String cannot be converted to org.example.tpchatjavafx.common.MessageType
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[268,13] cannot find symbol
+  symbol:   method showAlert(java.lang.String)
+  location: class org.example.tpchatjavafx.client.controller.MainChatController
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[273,29] incompatible types: java.lang.String cannot be converted to org.example.tpchatjavafx.common.MessageType
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[669,33] constructor AudioTransmissionService in class org.example.tpchatjavafx.client.audio.AudioTransmissionService cannot be applied to given types;
+  required: no arguments
+  found:    org.example.tpchatjavafx.client.audio.AudioCaptureService,org.example.tpchatjavafx.client.audio.AudioPlaybackService
+  reason: actual and formal argument lists differ in length
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[1140,32] incompatible types: java.lang.String cannot be converted to org.example.tpchatjavafx.common.MessageType
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[1156,32] incompatible types: java.lang.String cannot be converted to org.example.tpchatjavafx.common.MessageType
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[1189,13] cannot find symbol
+  symbol:   method showAlert(java.lang.String)
+  location: class org.example.tpchatjavafx.client.controller.MainChatController
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[1208,13] cannot find symbol
+  symbol:   method showAlert(java.lang.String)
+  location: class org.example.tpchatjavafx.client.controller.MainChatController
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[1220,24] incompatible types: java.lang.String cannot be converted to org.example.tpchatjavafx.common.MessageType
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[1239,9] cannot find symbol
+  symbol:   method showAlert(java.lang.String)
+  location: class org.example.tpchatjavafx.client.controller.MainChatController
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/ContactDAO.java:[31,14] cannot find symbol
+  symbol:   class Utilisateur
+  location: class org.example.tpchatjavafx.dao.ContactDAO
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/ContactDAO.java:[40,21] cannot find symbol
+  symbol:   class Utilisateur
+  location: class org.example.tpchatjavafx.dao.ContactDAO
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/ContactDAO.java:[40,41] cannot find symbol
+  symbol:   class Utilisateur
+  location: class org.example.tpchatjavafx.dao.ContactDAO
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/UtilisateurDAO.java:[57,14] cannot find symbol
+  symbol:   class Utilisateur
+  location: class org.example.tpchatjavafx.dao.UtilisateurDAO
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/UtilisateurDAO.java:[70,14] cannot find symbol
+  symbol:   class Utilisateur
+  location: class org.example.tpchatjavafx.dao.UtilisateurDAO
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/UtilisateurDAO.java:[85,9] cannot find symbol
+  symbol:   class Utilisateur
+  location: class org.example.tpchatjavafx.dao.UtilisateurDAO
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/UtilisateurDAO.java:[85,29] cannot find symbol
+  symbol:   class Utilisateur
+  location: class org.example.tpchatjavafx.dao.UtilisateurDAO
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/MessageDAO.java:[93,9] cannot find symbol
+  symbol:   class Utilisateur
+  location: class org.example.tpchatjavafx.dao.MessageDAO
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/MessageDAO.java:[93,38] cannot find symbol
+  symbol:   class Utilisateur
+  location: class org.example.tpchatjavafx.dao.MessageDAO
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/server/ClientHandler.java:[126,9] cannot find symbol
+  symbol:   class Utilisateur
+  location: class org.example.tpchatjavafx.server.ClientHandler
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/server/ClientHandler.java:[148,13] cannot find symbol
+  symbol:   class Utilisateur
+  location: class org.example.tpchatjavafx.server.ClientHandler
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/server/ClientHandler.java:[160,13] cannot find symbol
+  symbol:   class Utilisateur
+  location: class org.example.tpchatjavafx.server.ClientHandler
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/server/ClientHandler.java:[184,18] cannot find symbol
+  symbol:   class Utilisateur
+  location: class org.example.tpchatjavafx.server.ClientHandler
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/server/ClientHandler.java:[186,26] cannot find symbol
+  symbol:   variable Utilisateur
+  location: class org.example.tpchatjavafx.server.ClientHandler
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/server/ClientHandler.java:[253,17] cannot find symbol
+  symbol:   class Utilisateur
+  location: class org.example.tpchatjavafx.server.ClientHandler
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/server/ClientHandler.java:[343,34] incompatible types: java.lang.String cannot be converted to org.example.tpchatjavafx.common.MessageType
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/server/ClientHandler.java:[356,30] incompatible types: java.lang.String cannot be converted to org.example.tpchatjavafx.common.MessageType
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/server/ClientHandler.java:[371,28] incompatible types: java.lang.String cannot be converted to org.example.tpchatjavafx.common.MessageType
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/server/ClientHandler.java:[391,31] incompatible types: java.lang.String cannot be converted to org.example.tpchatjavafx.common.MessageType
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/server/ClientHandler.java:[408,13] cannot find symbol
+  symbol:   class Utilisateur
+  location: class org.example.tpchatjavafx.server.ClientHandler
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/service/AuthService.java:[28,13] cannot find symbol
+  symbol:   class Utilisateur
+  location: class org.example.tpchatjavafx.service.AuthService
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/service/AuthService.java:[56,13] cannot find symbol
+  symbol:   class Utilisateur
+  location: class org.example.tpchatjavafx.service.AuthService
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/service/AuthService.java:[56,33] cannot find symbol
+  symbol:   class Utilisateur
+  location: class org.example.tpchatjavafx.service.AuthService
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/service/AuthService.java:[61,13] cannot find symbol
+  symbol:   class Utilisateur
+  location: class org.example.tpchatjavafx.service.AuthService
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.13.0:compile (default-compile) on project TPchatJavaFX: Compilation failure: Compilation failure: 
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/NetworkClient.java:[72,35] variable onIncomingCall is already defined in class org.example.tpchatjavafx.client.NetworkClient
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/NetworkClient.java:[73,35] variable onCallAnswered is already defined in class org.example.tpchatjavafx.client.NetworkClient
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/NetworkClient.java:[74,35] variable onCallRejected is already defined in class org.example.tpchatjavafx.client.NetworkClient
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[39,38] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: package org.example.tpchatjavafx.model
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[74,13] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: class org.example.tpchatjavafx.client.controller.MainChatController
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/ContactDAO.java:[3,38] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: package org.example.tpchatjavafx.model
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/UtilisateurDAO.java:[3,38] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: package org.example.tpchatjavafx.model
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/MessageDAO.java:[4,38] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: package org.example.tpchatjavafx.model
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[114,13] cannot find symbol
+[ERROR]   symbol:   class Consumer
+[ERROR]   location: class org.example.tpchatjavafx.client.controller.MainChatController
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[115,13] cannot find symbol
+[ERROR]   symbol:   class Consumer
+[ERROR]   location: class org.example.tpchatjavafx.client.controller.MainChatController
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[116,13] cannot find symbol
+[ERROR]   symbol:   class Consumer
+[ERROR]   location: class org.example.tpchatjavafx.client.controller.MainChatController
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[1122,18] method handleIncomingCall(org.example.tpchatjavafx.client.model.ChatMessage) is already defined in class org.example.tpchatjavafx.client.controller.MainChatController
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[1212,18] method endAudioCall() is already defined in class org.example.tpchatjavafx.client.controller.MainChatController
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[1238,18] method handleCallRejected(org.example.tpchatjavafx.client.model.ChatMessage) is already defined in class org.example.tpchatjavafx.client.controller.MainChatController
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/model/Message.java:[17,23] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: class org.example.tpchatjavafx.model.Message
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/model/Message.java:[56,12] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: class org.example.tpchatjavafx.model.Message
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/model/Message.java:[57,31] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: class org.example.tpchatjavafx.model.Message
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/UtilisateurDAO.java:[11,31] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: class org.example.tpchatjavafx.dao.UtilisateurDAO
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/UtilisateurDAO.java:[11,12] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: class org.example.tpchatjavafx.dao.UtilisateurDAO
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/UtilisateurDAO.java:[28,12] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: class org.example.tpchatjavafx.dao.UtilisateurDAO
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/UtilisateurDAO.java:[42,12] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: class org.example.tpchatjavafx.dao.UtilisateurDAO
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/UtilisateurDAO.java:[56,17] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: class org.example.tpchatjavafx.dao.UtilisateurDAO
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/UtilisateurDAO.java:[69,17] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: class org.example.tpchatjavafx.dao.UtilisateurDAO
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/UtilisateurDAO.java:[84,13] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: class org.example.tpchatjavafx.dao.UtilisateurDAO
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/ContactDAO.java:[30,17] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: class org.example.tpchatjavafx.dao.ContactDAO
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/server/ClientHandler.java:[10,38] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: package org.example.tpchatjavafx.model
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/service/AuthService.java:[4,38] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: package org.example.tpchatjavafx.model
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/server/ClientHandler.java:[195,31] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: class org.example.tpchatjavafx.server.ClientHandler
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/service/AuthService.java:[23,12] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: class org.example.tpchatjavafx.service.AuthService
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[136,32] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: class org.example.tpchatjavafx.client.controller.MainChatController
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[241,13] cannot find symbol
+[ERROR]   symbol:   method showAlert(java.lang.String)
+[ERROR]   location: class org.example.tpchatjavafx.client.controller.MainChatController
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[247,13] cannot find symbol
+[ERROR]   symbol:   method showAlert(java.lang.String)
+[ERROR]   location: class org.example.tpchatjavafx.client.controller.MainChatController
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[253,29] incompatible types: java.lang.String cannot be converted to org.example.tpchatjavafx.common.MessageType
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[268,13] cannot find symbol
+[ERROR]   symbol:   method showAlert(java.lang.String)
+[ERROR]   location: class org.example.tpchatjavafx.client.controller.MainChatController
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[273,29] incompatible types: java.lang.String cannot be converted to org.example.tpchatjavafx.common.MessageType
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[669,33] constructor AudioTransmissionService in class org.example.tpchatjavafx.client.audio.AudioTransmissionService cannot be applied to given types;
+[ERROR]   required: no arguments
+[ERROR]   found:    org.example.tpchatjavafx.client.audio.AudioCaptureService,org.example.tpchatjavafx.client.audio.AudioPlaybackService
+[ERROR]   reason: actual and formal argument lists differ in length
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[1140,32] incompatible types: java.lang.String cannot be converted to org.example.tpchatjavafx.common.MessageType
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[1156,32] incompatible types: java.lang.String cannot be converted to org.example.tpchatjavafx.common.MessageType
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[1189,13] cannot find symbol
+[ERROR]   symbol:   method showAlert(java.lang.String)
+[ERROR]   location: class org.example.tpchatjavafx.client.controller.MainChatController
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[1208,13] cannot find symbol
+[ERROR]   symbol:   method showAlert(java.lang.String)
+[ERROR]   location: class org.example.tpchatjavafx.client.controller.MainChatController
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[1220,24] incompatible types: java.lang.String cannot be converted to org.example.tpchatjavafx.common.MessageType
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/client/controller/MainChatController.java:[1239,9] cannot find symbol
+[ERROR]   symbol:   method showAlert(java.lang.String)
+[ERROR]   location: class org.example.tpchatjavafx.client.controller.MainChatController
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/ContactDAO.java:[31,14] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: class org.example.tpchatjavafx.dao.ContactDAO
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/ContactDAO.java:[40,21] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: class org.example.tpchatjavafx.dao.ContactDAO
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/ContactDAO.java:[40,41] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: class org.example.tpchatjavafx.dao.ContactDAO
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/UtilisateurDAO.java:[57,14] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: class org.example.tpchatjavafx.dao.UtilisateurDAO
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/UtilisateurDAO.java:[70,14] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: class org.example.tpchatjavafx.dao.UtilisateurDAO
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/UtilisateurDAO.java:[85,9] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: class org.example.tpchatjavafx.dao.UtilisateurDAO
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/UtilisateurDAO.java:[85,29] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: class org.example.tpchatjavafx.dao.UtilisateurDAO
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/MessageDAO.java:[93,9] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: class org.example.tpchatjavafx.dao.MessageDAO
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/dao/MessageDAO.java:[93,38] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: class org.example.tpchatjavafx.dao.MessageDAO
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/server/ClientHandler.java:[126,9] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: class org.example.tpchatjavafx.server.ClientHandler
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/server/ClientHandler.java:[148,13] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: class org.example.tpchatjavafx.server.ClientHandler
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/server/ClientHandler.java:[160,13] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: class org.example.tpchatjavafx.server.ClientHandler
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/server/ClientHandler.java:[184,18] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: class org.example.tpchatjavafx.server.ClientHandler
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/server/ClientHandler.java:[186,26] cannot find symbol
+[ERROR]   symbol:   variable Utilisateur
+[ERROR]   location: class org.example.tpchatjavafx.server.ClientHandler
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/server/ClientHandler.java:[253,17] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: class org.example.tpchatjavafx.server.ClientHandler
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/server/ClientHandler.java:[343,34] incompatible types: java.lang.String cannot be converted to org.example.tpchatjavafx.common.MessageType
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/server/ClientHandler.java:[356,30] incompatible types: java.lang.String cannot be converted to org.example.tpchatjavafx.common.MessageType
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/server/ClientHandler.java:[371,28] incompatible types: java.lang.String cannot be converted to org.example.tpchatjavafx.common.MessageType
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/server/ClientHandler.java:[391,31] incompatible types: java.lang.String cannot be converted to org.example.tpchatjavafx.common.MessageType
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/server/ClientHandler.java:[408,13] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: class org.example.tpchatjavafx.server.ClientHandler
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/service/AuthService.java:[28,13] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: class org.example.tpchatjavafx.service.AuthService
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/service/AuthService.java:[56,13] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: class org.example.tpchatjavafx.service.AuthService
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/service/AuthService.java:[56,33] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: class org.example.tpchatjavafx.service.AuthService
+[ERROR] /c:/Users/LENOVO/IdeaProjects/Chatt-App/src/main/java/org/example/tpchatjavafx/service/AuthService.java:[61,13] cannot find symbol
+[ERROR]   symbol:   class Utilisateur
+[ERROR]   location: class org.example.tpchatjavafx.service.AuthService
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException

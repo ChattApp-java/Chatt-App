@@ -62,6 +62,13 @@
             <version>0.3.12</version>
         </dependency>
 
+        <!-- JavaCV / OpenCV pour capture vidéo et traitement image -->
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>javacv-platform</artifactId>
+            <version>1.5.9</version>
+        </dependency>
+
         <!-- SLF4J + Logback -->
         <dependency>
             <groupId>org.slf4j</groupId>

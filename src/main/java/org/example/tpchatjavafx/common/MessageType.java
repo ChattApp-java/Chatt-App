@@ -1,50 +1,79 @@
 package org.example.tpchatjavafx.common;
 
 /**
- * Tous les types de messages échangés entre client et serveur.
+ * Tous les types de messages �chang�s entre client et serveur.
  */
 public enum MessageType {
 
-    // ── Auth ──────────────────────────────────────────────────
-    LOGIN,          // client → server : connexion (from=username, content=password)
-    REGISTER,       // client → server : inscription (from=username, content=password|email)
-    AUTH_SUCCESS,   // server → client : auth réussie (content=username, to=userId)
-    AUTH_FAIL,      // server → client : auth échouée (content=raison)
-    LOGOUT,         // client → server : déconnexion
+    // -- Auth --------------------------------------------------
+    LOGIN,
+    REGISTER,
+    AUTH_SUCCESS,
+    AUTH_FAIL,
+    LOGOUT,
 
-    // ── Système ───────────────────────────────────────────────
-    SYSTEM,         // server → client : message informatif
-    USER_LIST,      // server → tous  : liste des connectés (content=user1,user2,...)
-    STATUS_UPDATE,  // server → tous  : statut (from=username, content=EN_LIGNE/NON_CONNECTE)
-    USER_LIST_REQUEST, // client → server : demande de rafraîchir la liste
-    SYNC_HISTORY,   // server → client : historique des messages (content=JSON history)
+    // -- Syst�me -----------------------------------------------
+    SYSTEM,
+    USER_LIST,
+    STATUS_UPDATE,
+    USER_LIST_REQUEST,
+    SYNC_HISTORY,
 
-    // ── Messagerie texte ──────────────────────────────────────
-    PRIVATE,        // message privé 1-à-1
+    // -- Messagerie texte --------------------------------------
+    PRIVATE,
 
-    // ── Médias ────────────────────────────────────────────────
-    PRIVATE_AUDIO,  // audio privé
-    PRIVATE_IMAGE,  // image privée
-    PRIVATE_FILE,   // fichier privé
+    // -- M�dias --------------------------------------------
+    PRIVATE_AUDIO,
+    PRIVATE_IMAGE,
+    PRIVATE_FILE,
 
-    // ── Appel vidéo ───────────────────────────────────────────
+    // -- Appel vid�o -------------------------------------------
     VIDEO_CALL_REQUEST,
     VIDEO_CALL_ACCEPT,
     VIDEO_CALL_REJECT,
     VIDEO_CALL_END,
     VIDEO_FRAME,
 
-    // ── Appel vocal ───────────────────────────────────────────
+    // -- Appel vocal -------------------------------------------
     VOICE_CALL_REQUEST,
     VOICE_CALL_ACCEPT,
     VOICE_CALL_REJECT,
     VOICE_CALL_END,
     VOICE_FRAME,
 
-    // ── Contacts ──────────────────────────────────────────────
-    CONTACT_ADD,    // client → server : ajouter un contact (content=username_to_add)
-    CONTACT_LOAD,   // client → server : charger ses contacts
-    CONTACT_LIST,   // server → client : liste des noms (content=CSV ou content vide si JSON)
-    ERROR,          // server → client : message d'erreur (content=message)
-    HISTORY_REQUEST // client → server : demande l'historique (content=otherUsername)
+    // -- Signalisation appels g�n�rique ------------------------
+    CALL_REQUEST,
+    CALL_ANSWER,
+    CALL_REJECT,
+    CALL_END,
+    CALL_INCOMING,
+    CALL_INFO,
+
+    // -- Groupes ----------------------------------------------
+    GROUP_CREATE,
+    GROUP_UPDATE,
+    GROUP_DELETE,
+    GROUP_JOIN,
+    GROUP_LEAVE,
+    GROUP_MESSAGE,
+    GROUP_MEMBER_ADD,
+    GROUP_MEMBER_REMOVE,
+
+    // -- R�unions / Meeting ------------------------------------
+    MEETING_INVITE,
+    MEETING_STARTED,
+    MEETING_ENDED,
+    MEETING_PARTICIPANT_JOINED,
+    MEETING_PARTICIPANT_LEFT,
+    MEETING_INFO,
+    MEETING_AUDIO_FRAME,
+    MEETING_VIDEO_FRAME,
+
+    // -- Contacts ----------------------------------------------
+    CONTACT_ADD,
+    CONTACT_LOAD,
+    CONTACT_LIST,
+    HISTORY_REQUEST,
+
+    ERROR
 }

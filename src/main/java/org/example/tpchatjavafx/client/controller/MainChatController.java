@@ -24,6 +24,9 @@ import org.example.tpchatjavafx.client.util.UiMessage;
 import org.example.tpchatjavafx.client.video.VideoCallController;
 import org.example.tpchatjavafx.client.video.VideoCallWindow;
 import org.example.tpchatjavafx.client.voice.VoiceCallSession;
+import org.example.tpchatjavafx.client.audio.AudioCaptureService;
+import org.example.tpchatjavafx.client.audio.AudioPlaybackService;
+import org.example.tpchatjavafx.client.audio.AudioTransmissionService;
 import org.example.tpchatjavafx.common.MessageType;
 import org.example.tpchatjavafx.dao.ContactDAO;
 import org.example.tpchatjavafx.dao.UtilisateurDAO;
@@ -100,6 +103,20 @@ public class MainChatController {
     private VoiceCallSession currentVoiceCall;
     private String voiceCallPeer = null;
 
+    // ===== SERVICES AUDIO =====
+    private AudioCaptureService audioCapture;
+    private AudioPlaybackService audioPlayback;
+    private AudioTransmissionService audioTransmission;
+    private String currentCallType = null; // "AUDIO" ou "VIDEO"
+    private String remoteHost = null;
+    private int remotePort = 0;
+
+    private Consumer<ChatMessage> onIncomingCall;
+    private Consumer<ChatMessage> onCallAnswered;
+    private Consumer<ChatMessage> onCallRejected;
+    private AudioTransmissionService audioService;
+    private String incomingCallFrom = null;
+
     @FXML
     private void initialize() {
         buildEmojiPicker();
@@ -126,6 +143,48 @@ public class MainChatController {
         networkClient.setOnHistoryReceived(this::onHistoryReceived);
         networkClient.setOnUserStatusChanged(this::onUserStatusChanged);
         networkClient.setOnError(this::showInfo);
+        
+        // ===== CALLBACKS RÉSEAU =====
+        networkClient.setOnIncomingCall(msg -> {
+            handleIncomingCall(msg);
+        });
+        
+        networkClient.setOnCallAnswered(msg -> {
+            handleCallAnswered(msg);
+        });
+        
+        networkClient.setOnCallRejected(msg -> {
+            handleCallRejected(msg);
+        });
+
+        networkClient.setOnMeetingInvite(msg -> {
+            Platform.runLater(() -> {
+                try {
+                    IncomingMeetingDialogController.showInvite(msg.getFrom(), msg.getMeetingType(), accepted -> {
+                        if (accepted) {
+                            networkClient.joinMeeting(msg.getMeetingId());
+                            try {
+                                MeetingController.openMeetingWindow(networkClient, msg.getMeetingId(), "Réunion de " + msg.getFrom());
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    });
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
+        });
+
+        networkClient.setOnMeetingInfo(msg -> {
+            try {
+                // Le serveur envoie les infos UDP pour se connecter au relais
+                networkClient.startMeetingAudio(0, msg.getServerUdpAudioPort(), msg.getServerHost());
+                networkClient.startMeetingVideo(0, msg.getServerUdpVideoPort(), msg.getServerHost());
+            } catch (Exception e) {
+                System.err.println("Erreur démarrage services UDP réunion : " + e.getMessage());
+            }
+        });
 
         privateListView.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
             if (n != null) openPrivateChat(n);
@@ -203,6 +262,50 @@ public class MainChatController {
         // Request server to add contact
         networkClient.addContact(contactName);
         searchContactField.clear();
+    }
+
+    @FXML
+    private void onVoiceCall() {
+        if (currentPrivateTarget == null) {
+            showAlert("Sélectionnez un contact d'abord");
+            return;
+        }
+        
+        // Vérifier que le contact est en ligne
+        if (!userStatuses.getOrDefault(currentPrivateTarget, "NON_CONNECTE").equals("EN_LIGNE")) {
+            showAlert("Utilisateur hors ligne");
+            return;
+        }
+        
+        // Envoyer demande d'appel
+        ChatMessage callRequest = new ChatMessage();
+        callRequest.setType("CALL_REQUEST");
+        callRequest.setFrom(username);
+        callRequest.setTo(currentPrivateTarget);
+        callRequest.setCallType("AUDIO");
+        
+        networkClient.send(callRequest);
+        
+        // UI: afficher état "Appel en cours..."
+        showCallPending(currentPrivateTarget, "Appel vocal en cours...");
+    }
+
+    @FXML
+    private void onVideoCall() {
+        // Similaire à voice call mais avec callType = "VIDEO"
+        if (currentPrivateTarget == null) {
+            showAlert("Sélectionnez un contact d'abord");
+            return;
+        }
+        
+        ChatMessage callRequest = new ChatMessage();
+        callRequest.setType("CALL_REQUEST");
+        callRequest.setFrom(username);
+        callRequest.setTo(currentPrivateTarget);
+        callRequest.setCallType("VIDEO");
+        
+        networkClient.send(callRequest);
+        showCallPending(currentPrivateTarget, "Appel vidéo en cours...");
     }
 
     private void setupContactCellFactory() {
@@ -390,6 +493,10 @@ public class MainChatController {
             // Appel vocal
             case VOICE_CALL_REQUEST -> Platform.runLater(() -> handleVoiceCallRequest(msg));
             case VOICE_CALL_ACCEPT  -> Platform.runLater(() -> startVoiceSession(msg.getFrom()));
+            case CALL_INCOMING      -> Platform.runLater(() -> handleIncomingCall(msg));
+            case CALL_ANSWER        -> Platform.runLater(() -> handleCallAccepted(msg));
+            case CALL_REJECT        -> Platform.runLater(() -> handleCallRejected(msg));
+            case CALL_INFO          -> Platform.runLater(() -> handleCallInfo(msg));
             case VOICE_CALL_REJECT  -> Platform.runLater(() -> showInfo("Appel vocal refusé par " + msg.getFrom()));
             case VOICE_CALL_END     -> Platform.runLater(this::endVoiceCall);
             case VOICE_FRAME        -> Platform.runLater(() -> { 
@@ -478,50 +585,168 @@ public class MainChatController {
         alert.setTitle("WeChat - Appel Vocal");
         alert.setHeaderText("Appel vocal entrant de " + msg.getFrom());
         alert.setContentText("Souhaitez-vous accepter l'appel ?");
-        
+
         ButtonType accept = new ButtonType("Accepter", ButtonBar.ButtonData.OK_DONE);
         ButtonType reject = new ButtonType("Refuser", ButtonBar.ButtonData.CANCEL_CLOSE);
         alert.getButtonTypes().setAll(accept, reject);
 
         alert.showAndWait().ifPresent(result -> {
             if (result == accept) {
-                networkClient.send(new ChatMessage(MessageType.VOICE_CALL_ACCEPT, username, msg.getFrom(), null, ""));
-                startVoiceSession(msg.getFrom());
+                // Utiliser les nouveaux types de messages
+                ChatMessage answerMsg = new ChatMessage(MessageType.CALL_ANSWER, username, msg.getFrom(), null, "Appel accepté");
+                answerMsg.setCallType("AUDIO");
+                networkClient.send(answerMsg);
+                // Attendre CALL_INFO avant de démarrer la session
             } else {
-                networkClient.send(new ChatMessage(MessageType.VOICE_CALL_REJECT, username, msg.getFrom(), null, ""));
+                ChatMessage rejectMsg = new ChatMessage(MessageType.CALL_REJECT, username, msg.getFrom(), null, "Appel refusé");
+                networkClient.send(rejectMsg);
             }
         });
     }
 
+    // ===== NOUVELLES MÉTHODES POUR LES APPELS =====
+
+    private void handleIncomingCall(ChatMessage msg) {
+        if (currentCallType != null) {
+            // Refuser automatiquement si déjà en appel
+            ChatMessage rejectMsg = new ChatMessage(MessageType.CALL_REJECT, username, msg.getFrom(), null, "Occupé");
+            networkClient.send(rejectMsg);
+            return;
+        }
+
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("WeChat - Appel " + msg.getCallType());
+        alert.setHeaderText("Appel " + msg.getCallType().toLowerCase() + " entrant de " + msg.getFrom());
+        alert.setContentText("Souhaitez-vous accepter l'appel ?");
+
+        ButtonType accept = new ButtonType("Accepter", ButtonBar.ButtonData.OK_DONE);
+        ButtonType reject = new ButtonType("Refuser", ButtonBar.ButtonData.CANCEL_CLOSE);
+        alert.getButtonTypes().setAll(accept, reject);
+
+        alert.showAndWait().ifPresent(result -> {
+            if (result == accept) {
+                ChatMessage answerMsg = new ChatMessage(MessageType.CALL_ANSWER, username, msg.getFrom(), null, "Appel accepté");
+                answerMsg.setCallType(msg.getCallType());
+                networkClient.send(answerMsg);
+            } else {
+                ChatMessage rejectMsg = new ChatMessage(MessageType.CALL_REJECT, username, msg.getFrom(), null, "Appel refusé");
+                networkClient.send(rejectMsg);
+            }
+        });
+    }
+
+    private void handleCallAccepted(ChatMessage msg) {
+        // L'appel a été accepté, démarrer la session audio
+        startAudioCall(msg.getFrom(), "AUDIO");
+    }
+
+    private void handleCallRejected(ChatMessage msg) {
+        showInfo("Appel refusé par " + msg.getFrom());
+    }
+
+    private void handleCallInfo(ChatMessage msg) {
+        // Recevoir les infos P2P pour la connexion directe
+        remoteHost = msg.getRemoteHost();
+        remotePort = msg.getRemotePort();
+        currentCallType = msg.getCallType();
+
+        // Démarrer la transmission audio P2P
+        if ("AUDIO".equals(currentCallType) && remoteHost != null) {
+            startAudioTransmission(msg.getFrom());
+        }
+    }
+
     private void startVoiceSession(String otherUser) {
-        if (currentVoiceCall != null) {
-            showInfo("A voice call is already in progress.");
+        // Ancienne méthode - maintenant déléguée à startAudioCall
+        startAudioCall(otherUser, "AUDIO");
+    }
+
+    private void startAudioCall(String otherUser, String callType) {
+        if (currentCallType != null) {
+            showInfo("Un appel est déjà en cours.");
             return;
         }
 
         try {
-            currentVoiceCall = new VoiceCallSession(networkClient, username, otherUser);
-            currentVoiceCall.start();
+            currentCallType = callType;
             voiceCallPeer = otherUser;
 
+            // Initialiser les services audio
+            audioCapture = new AudioCaptureService();
+            audioPlayback = new AudioPlaybackService();
+
+            // Ouvrir la fenêtre d'appel
             VoiceCallWindow.open(username, otherUser, () -> {
-                if (voiceCallPeer != null) {
-                    networkClient.send(new ChatMessage(MessageType.VOICE_CALL_END, username, voiceCallPeer, null, ""));
-                }
-                endVoiceCall();
+                endAudioCall();
             });
+
+            showInfo("Appel " + callType.toLowerCase() + " démarré avec " + otherUser);
+
         } catch (Exception e) {
-            showInfo("Unable to start voice call: " + e.getMessage());
+            showInfo("Impossible de démarrer l'appel: " + e.getMessage());
+            endAudioCall();
+        }
+    }
+
+    private void startAudioTransmission(String otherUser) {
+        if (audioTransmission != null) {
+            audioTransmission.stop();
+        }
+
+        try {
+            // Démarrer la transmission P2P
+            audioTransmission = new AudioTransmissionService(audioCapture, audioPlayback);
+            audioTransmission.initiate(remoteHost, remotePort);
+
+            showInfo("Connexion audio établie avec " + otherUser);
+
+        } catch (Exception e) {
+            showInfo("Erreur de connexion audio: " + e.getMessage());
+            endAudioCall();
         }
     }
 
     private void endVoiceCall() {
+        // Ancienne méthode - déléguer à endAudioCall
+        endAudioCall();
+    }
+
+    private void endAudioCall() {
+        // Arrêter tous les services audio
+        if (audioTransmission != null) {
+            audioTransmission.stop();
+            audioTransmission = null;
+        }
+
+        if (audioCapture != null) {
+            audioCapture.stop();
+            audioCapture = null;
+        }
+
+        if (audioPlayback != null) {
+            audioPlayback.stop();
+            audioPlayback = null;
+        }
+
+        // Ancienne logique
         if (currentVoiceCall != null) {
             currentVoiceCall.stop();
             currentVoiceCall = null;
         }
+
+        // Nettoyer l'état
         voiceCallPeer = null;
+        currentCallType = null;
+        remoteHost = null;
+        remotePort = 0;
+
         VoiceCallWindow.close();
+
+        // Notifier l'autre utilisateur si nécessaire
+        if (voiceCallPeer != null) {
+            ChatMessage endMsg = new ChatMessage(MessageType.CALL_END, username, voiceCallPeer, null, "Appel terminé");
+            networkClient.send(endMsg);
+        }
     }
 
     private void showInfo(String msg) {
@@ -607,14 +832,21 @@ public class MainChatController {
     @FXML
     private void onStartVoiceCall() {
         if (currentPrivateTarget == null) {
-            showInfo("Select a private contact first.");
+            showInfo("Sélectionnez un contact privé d'abord.");
             return;
         }
-        if (currentVoiceCall != null) {
-            showInfo("A voice call is already in progress.");
+        if (currentCallType != null) {
+            showInfo("Un appel est déjà en cours.");
             return;
         }
-        networkClient.send(new ChatMessage(MessageType.VOICE_CALL_REQUEST, username, currentPrivateTarget, null, "voice_call_request"));
+
+        // Envoyer une demande d'appel audio
+        ChatMessage callRequest = new ChatMessage(MessageType.CALL_REQUEST, username, currentPrivateTarget, null, "Demande d'appel audio");
+        callRequest.setCallType("AUDIO");
+        networkClient.send(callRequest);
+
+        showInfo("Appel audio demandé à " + currentPrivateTarget);
+    }
     }
 
     private void buildEmojiPicker() {
@@ -915,5 +1147,125 @@ public class MainChatController {
             Files.copy(Path.of(path), dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
             showInfo("Fichier sauvegardé : " + dest.getAbsolutePath());
         } catch (IOException e) { showInfo("Erreur lors de la sauvegarde : " + e.getMessage()); }
+    }
+
+    private void handleIncomingCall(ChatMessage msg) {
+        String caller = msg.getFrom();
+        String callType = msg.getCallType();
+        
+        System.out.println("[UI] Appel entrant de " + caller + " (" + callType + ")");
+        
+        incomingCallFrom = caller;
+        
+        // Afficher dialog
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Appel entrant");
+        alert.setHeaderText("Appel " + callType.toLowerCase() + " de " + caller);
+        alert.setContentText("Accepter l'appel?");
+        
+        alert.showAndWait().ifPresent(result -> {
+            if (result == ButtonType.OK) {
+                // Accepter appel
+                ChatMessage answer = new ChatMessage();
+                answer.setType("CALL_ANSWER");
+                answer.setFrom(username);
+                answer.setTo(caller);
+                answer.setCallType(callType);
+                
+                networkClient.send(answer);
+                
+                // Démarrer transmission
+                if (callType.equals("AUDIO")) {
+                    startAudioCall(caller, false);
+                } else {
+                    startVideoCall(caller, false);
+                }
+            } else {
+                // Refuser
+                ChatMessage reject = new ChatMessage();
+                reject.setType("CALL_REJECT");
+                reject.setFrom(username);
+                reject.setTo(caller);
+                
+                networkClient.send(reject);
+            }
+        });
+    }
+
+    private void handleCallAnswered(ChatMessage msg) {
+        String answerer = msg.getFrom();
+        String remoteHost = msg.getRemoteHost();
+        int remotePort = msg.getRemotePort();
+        
+        System.out.println("[UI] " + answerer + " a accepté l'appel");
+        
+        // Démarrer transmission avec P2P
+        startAudioCall(answerer, true, remoteHost, remotePort);
+    }
+
+    private void startAudioCall(String remoteUser, boolean isCaller) {
+        try {
+            // Afficher window VoiceCallWindow
+            org.example.tpchatjavafx.client.voice.VoiceCallWindow.open(
+                username, 
+                remoteUser,
+                this::endAudioCall
+            );
+            
+            // TODO: Implémenter la transmission audio réelle
+            // Actuellement c'est juste la UI
+        } catch (Exception e) {
+            e.printStackTrace();
+            showAlert("Erreur: " + e.getMessage());
+        }
+    }
+
+    private void startAudioCall(String remoteUser, boolean isCaller, 
+                               String remoteHost, int remotePort) {
+        try {
+            if (audioService != null) audioService.stop();
+            
+            audioService = new AudioTransmissionService();
+            audioService.initiate(remoteHost, remotePort);
+            
+            org.example.tpchatjavafx.client.voice.VoiceCallWindow.open(
+                username,
+                remoteUser,
+                this::endAudioCall
+            );
+        } catch (Exception e) {
+            e.printStackTrace();
+            showAlert("Erreur audio: " + e.getMessage());
+        }
+    }
+
+    private void endAudioCall() {
+        if (audioService != null) {
+            audioService.stop();
+            audioService = null;
+        }
+        
+        // Notifier l'autre utilisateur
+        ChatMessage endMsg = new ChatMessage();
+        endMsg.setType("CALL_END");
+        endMsg.setFrom(username);
+        endMsg.setTo(incomingCallFrom != null ? incomingCallFrom : currentPrivateTarget);
+        
+        networkClient.send(endMsg);
+        
+        incomingCallFrom = null;
+    }
+
+    private void startVideoCall(String remoteUser, boolean isCaller) {
+        // TODO: Similaire mais avec vidéo
+    }
+
+    private void showCallPending(String user, String message) {
+        // TODO: Afficher un dialog/notification
+        System.out.println(message);
+    }
+
+    private void handleCallRejected(ChatMessage msg) {
+        showAlert("L'appel a été refusé");
     }
 }

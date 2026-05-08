@@ -1,4 +1,4 @@
-package org.example.tpchatjavafx.service;
+package org.example.tpchatjavafx.service;//position
 
 import org.example.tpchatjavafx.dao.UtilisateurDAO;
 import org.example.tpchatjavafx.model.Utilisateur;
@@ -6,19 +6,19 @@ import org.mindrot.jbcrypt.BCrypt;
 
 import java.sql.SQLException;
 
-/**
- * Service d'authentification : login et inscription.
- */
+
+ // Service d'authentification : login et inscription.
+
 public class AuthService {
 
     private final UtilisateurDAO utilisateurDAO = new UtilisateurDAO();
 
-    // ── Résultat d'inscription ──────────────────────────────────
+    //  Résultat d'inscription
     public record RegisterResult(boolean success, String reason) {}
 
-    /**
-     * Authentifie un utilisateur existant.
-     * @return Utilisateur si OK, null si identifiants invalides
+    /*
+     Authentifie un utilisateur existant
+     return Utilisateur si OK, null si identifiants invalides
      */
     public Utilisateur login(String username, String password) {
         if (username == null || username.isBlank()) return null;
@@ -28,17 +28,16 @@ public class AuthService {
             Utilisateur u = utilisateurDAO.findByUsername(username.trim());
             if (u == null) return null;
             if (!BCrypt.checkpw(password, u.getPassword())) return null;
-            // The connection status and last login will be updated by ConnexionDAO when sockets connect.
-            return u;
+            return u;//return utilisateur avec tout ces informations
         } catch (SQLException e) {
             e.printStackTrace();
             return null;
         }
     }
 
-    /**
-     * Inscrit un nouvel utilisateur.
-     */
+
+    // Inscrit un nouvel utilisateur
+
     public RegisterResult register(String username, String password, String email) {
         if (username == null || username.isBlank())
             return new RegisterResult(false, "Nom d'utilisateur requis");
