@@ -1,5 +1,6 @@
 package org.example.tpchatjavafx.common;
 
+<<<<<<< HEAD
 /**
  * Tous les types de messages �chang�s entre client et serveur.
  */
@@ -28,19 +29,53 @@ public enum MessageType {
     PRIVATE_FILE,
 
     // -- Appel vid�o -------------------------------------------
+=======
+//Tous les types de messages échangés entre client et serveur.
+ 
+public enum MessageType {
+
+    //Auth
+    LOGIN,          //  connexion 
+    REGISTER,       // inscription 
+    AUTH_SUCCESS,   //auth réussie 
+    AUTH_FAIL,      //auth échouée 
+    LOGOUT,         // déconnexion
+
+    //Système
+    SYSTEM,         // message informatif
+    USER_LIST,      // liste des connectés 
+    STATUS_UPDATE,  // statut 
+    USER_LIST_REQUEST, //  demande de rafraîchir la liste
+    SYNC_HISTORY,   // historique des messages 
+
+    //Messagerie texte
+    PRIVATE,        // message privé (pas utiliser pour le moment)
+
+    // Médias
+    PRIVATE_AUDIO,  // audio privé
+    PRIVATE_IMAGE,  // image privée
+    PRIVATE_FILE,   // fichier privé
+
+    // Appel vidéo
+>>>>>>> a31ef27d82bb99f123d2561c113075e3f77704c8
     VIDEO_CALL_REQUEST,
     VIDEO_CALL_ACCEPT,
     VIDEO_CALL_REJECT,
     VIDEO_CALL_END,
-    VIDEO_FRAME,
+    VIDEO_FRAME,//nombre d image envoiyer par seconde
 
+<<<<<<< HEAD
     // -- Appel vocal -------------------------------------------
+=======
+    // Appel vocal
+>>>>>>> a31ef27d82bb99f123d2561c113075e3f77704c8
     VOICE_CALL_REQUEST,
     VOICE_CALL_ACCEPT,
     VOICE_CALL_REJECT,
     VOICE_CALL_END,
-    VOICE_FRAME,
+    VOICE_FRAME,//paquetes des donner d audio 
 
+<<<<<<< HEAD
     // -- Signalisation appels g�n�rique ------------------------
     CALL_REQUEST,
     CALL_ANSWER,
@@ -76,4 +111,12 @@ public enum MessageType {
     HISTORY_REQUEST,
 
     ERROR
+=======
+    // Contacts
+    CONTACT_ADD,    // ajouter un contact 
+    CONTACT_LOAD,   // charger ses contacts
+    CONTACT_LIST,   // liste des noms 
+    ERROR,          //  message d'erreur 
+    HISTORY_REQUEST // demande l'historique 
+>>>>>>> a31ef27d82bb99f123d2561c113075e3f77704c8
 }

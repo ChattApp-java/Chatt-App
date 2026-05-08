@@ -9,7 +9,7 @@ import java.util.List;
 public class ConversationDAO {
 
     public Conversation createConversation(int user1Id, int user2Id) throws SQLException {
-        // Check if conversation already exists between these two users
+        // Check si la conversation est deja existe
         Conversation existing = findConversationBetween(user1Id, user2Id);
         if (existing != null) {
             return existing;
@@ -18,7 +18,7 @@ public class ConversationDAO {
         Connection conn = DatabaseConnection.getInstance().getConnection();
         conn.setAutoCommit(false);
         try {
-            // 1. Create conversation
+            // Create conversation
             String sqlConv = "INSERT INTO conversation () VALUES ()"; // Values default
             int convId = -1;
             try (PreparedStatement stmt = conn.prepareStatement(sqlConv, Statement.RETURN_GENERATED_KEYS)) {
@@ -30,7 +30,7 @@ public class ConversationDAO {
                 }
             }
 
-            // 2. Add participants
+            // Add participants
             String sqlPart = "INSERT INTO participant_conversation (conversation_id, utilisateur_id) VALUES (?, ?)";
             try (PreparedStatement stmt = conn.prepareStatement(sqlPart)) {
                 stmt.setInt(1, convId);
