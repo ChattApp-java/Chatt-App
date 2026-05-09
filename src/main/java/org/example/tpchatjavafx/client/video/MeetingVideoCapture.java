@@ -73,7 +73,7 @@ public class MeetingVideoCapture {
                     }
                 }
                 Thread.sleep(100);
-            } catch (FrameGrabber.Exception | IOException | InterruptedException e) {
+            } catch (IOException | InterruptedException e) {
                 if (running.get()) {
                     System.err.println("Erreur capture vidéo réunion : " + e.getMessage());
                 }

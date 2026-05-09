@@ -2,6 +2,7 @@ package org.example.tpchatjavafx.client;
 
 import javafx.application.Platform;
 import org.example.tpchatjavafx.client.audio.AudioTransmissionService;
+import org.example.tpchatjavafx.client.controller.MeetingController;
 import org.example.tpchatjavafx.client.model.ChatMessage;
 import org.example.tpchatjavafx.client.video.MeetingVideoCapture;
 import org.example.tpchatjavafx.common.MessageType;
@@ -220,7 +221,7 @@ public class NetworkClient {
     private void startListenerThread() {
         Thread t = new Thread(() -> {
             try (BufferedReader in = new BufferedReader(
-                         new InputStreamReader(socket.getInputStream()))) {
+                    new InputStreamReader(socket.getInputStream()))) {
                 String line;
                 while ((line = in.readLine()) != null) {
                     dispatch(ChatMessage.deserialize(line));

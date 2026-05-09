@@ -50,6 +50,7 @@ import java.nio.file.StandardCopyOption;
 import java.sql.SQLException;
 import java.text.DecimalFormat;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class MainChatController {
@@ -66,7 +67,7 @@ public class MainChatController {
     @FXML private Button    voiceCallButton;
     @FXML private Button    videoCallButton;
     @FXML private TabPane   tabPane;
-    
+
     @FXML private TextField searchContactField;
 
     private NetworkClient networkClient;
@@ -91,9 +92,9 @@ public class MainChatController {
 
     private ContextMenu emojiPicker;
     private static final List<String> EMOJIS = Arrays.asList(
-            "😀","😁","😂","🤣","😊","😍","😘","😎","🤩","😇",
-            "😅","😢","😭","🤔","😴","😡","👍","🙏","👏","🔥",
-            "🥳","🤗","💡","✅","❤️","💬","🎉","⚡","🍀","☕"
+            "ðŸ˜€","ðŸ˜","ðŸ˜‚","ðŸ¤£","ðŸ˜Š","ðŸ˜","ðŸ˜˜","ðŸ˜Ž","ðŸ¤©","ðŸ˜‡",
+            "ðŸ˜…","ðŸ˜¢","ðŸ˜­","ðŸ¤”","ðŸ˜´","ðŸ˜¡","ðŸ‘","ðŸ™","ðŸ‘","ðŸ”¥",
+            "ðŸ¥³","ðŸ¤—","ðŸ’¡","âœ…","â¤ï¸","ðŸ’¬","ðŸŽ‰","âš¡","ðŸ€","â˜•"
     );
 
     private volatile boolean recordingAudio = false;
@@ -123,7 +124,7 @@ public class MainChatController {
         updateRecordButtonState();
         setupMessageBubbles();
         setupContactCellFactory();
-        
+
         // Remove groups tab if it exists
         if (tabPane != null && tabPane.getTabs().size() > 1) {
             tabPane.getTabs().remove(1);
@@ -136,23 +137,21 @@ public class MainChatController {
         this.currentUser = new Utilisateur();
         this.currentUser.setId(userId);
         this.currentUser.setUsername(username);
-        
+
         networkClient.setOnMessageReceived(this::onMessageReceived);
         networkClient.setOnUserListReceived(this::updateOnlineUsers);
         networkClient.setOnContactListReceived(this::updateContactList);
         networkClient.setOnHistoryReceived(this::onHistoryReceived);
         networkClient.setOnUserStatusChanged(this::onUserStatusChanged);
         networkClient.setOnError(this::showInfo);
-        
-        // ===== CALLBACKS RÉSEAU =====
+
+        // ===== CALLBACKS RÃ‰SEAU =====
         networkClient.setOnIncomingCall(msg -> {
             handleIncomingCall(msg);
         });
-        
-        networkClient.setOnCallAnswered(msg -> {
-            handleCallAnswered(msg);
-        });
-        
+
+        networkClient.setOnCallAnswered(this::handleCallAccepted);
+
         networkClient.setOnCallRejected(msg -> {
             handleCallRejected(msg);
         });
@@ -164,7 +163,7 @@ public class MainChatController {
                         if (accepted) {
                             networkClient.joinMeeting(msg.getMeetingId());
                             try {
-                                MeetingController.openMeetingWindow(networkClient, msg.getMeetingId(), "Réunion de " + msg.getFrom());
+                                MeetingController.openMeetingWindow(networkClient, msg.getMeetingId(), "RÃ©union de " + msg.getFrom());
                             } catch (IOException e) {
                                 e.printStackTrace();
                             }
@@ -182,16 +181,16 @@ public class MainChatController {
                 networkClient.startMeetingAudio(0, msg.getServerUdpAudioPort(), msg.getServerHost());
                 networkClient.startMeetingVideo(0, msg.getServerUdpVideoPort(), msg.getServerHost());
             } catch (Exception e) {
-                System.err.println("Erreur démarrage services UDP réunion : " + e.getMessage());
+                System.err.println("Erreur dÃ©marrage services UDP rÃ©union : " + e.getMessage());
             }
         });
 
         privateListView.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
             if (n != null) openPrivateChat(n);
         });
-        
+
         setupSearchContactAutoCompletion();
-        
+
         // Request current online users and contact list
         networkClient.requestUserList();
         networkClient.requestContacts();
@@ -216,14 +215,14 @@ public class MainChatController {
 
     private void setupSearchContactAutoCompletion() {
         if (searchContactField == null) return;
-        
+
         searchContactField.textProperty().addListener((observable, oldValue, newValue) -> {
             String query = newValue.trim().toLowerCase();
             if (query.isEmpty()) {
                 privateListView.setItems(allContacts);
                 return;
             }
-            
+
             // Filter the master list of contacts
             ObservableList<String> filtered = FXCollections.observableArrayList();
             for (String contact : allContacts) {
@@ -238,11 +237,11 @@ public class MainChatController {
     @FXML
     private void onAddContact() {
         String contactName = (searchContactField != null) ? searchContactField.getText().trim() : "";
-        
+
         if (contactName.isEmpty()) {
             TextInputDialog dialog = new TextInputDialog();
             dialog.setTitle("Ajouter un contact");
-            dialog.setHeaderText("Entrez le nom d'utilisateur du contact à ajouter");
+            dialog.setHeaderText("Entrez le nom d'utilisateur du contact Ã  ajouter");
             dialog.setContentText("Nom d'utilisateur :");
             Optional<String> result = dialog.showAndWait();
             if (result.isPresent()) {
@@ -251,11 +250,11 @@ public class MainChatController {
                 return;
             }
         }
-        
+
         if (contactName.isEmpty()) return;
-        
+
         if (contactName.equals(username)) {
-            showInfo("Vous ne pouvez pas vous ajouter vous-même.");
+            showInfo("Vous ne pouvez pas vous ajouter vous-mÃªme.");
             return;
         }
 
@@ -267,45 +266,45 @@ public class MainChatController {
     @FXML
     private void onVoiceCall() {
         if (currentPrivateTarget == null) {
-            showAlert("Sélectionnez un contact d'abord");
+            showAlert("SÃ©lectionnez un contact d'abord");
             return;
         }
-        
-        // Vérifier que le contact est en ligne
+
+        // VÃ©rifier que le contact est en ligne
         if (!userStatuses.getOrDefault(currentPrivateTarget, "NON_CONNECTE").equals("EN_LIGNE")) {
             showAlert("Utilisateur hors ligne");
             return;
         }
-        
+
         // Envoyer demande d'appel
         ChatMessage callRequest = new ChatMessage();
         callRequest.setType("CALL_REQUEST");
         callRequest.setFrom(username);
         callRequest.setTo(currentPrivateTarget);
         callRequest.setCallType("AUDIO");
-        
+
         networkClient.send(callRequest);
-        
-        // UI: afficher état "Appel en cours..."
+
+        // UI: afficher Ã©tat "Appel en cours..."
         showCallPending(currentPrivateTarget, "Appel vocal en cours...");
     }
 
     @FXML
     private void onVideoCall() {
-        // Similaire à voice call mais avec callType = "VIDEO"
+        // Similaire Ã  voice call mais avec callType = "VIDEO"
         if (currentPrivateTarget == null) {
-            showAlert("Sélectionnez un contact d'abord");
+            showAlert("SÃ©lectionnez un contact d'abord");
             return;
         }
-        
+
         ChatMessage callRequest = new ChatMessage();
         callRequest.setType("CALL_REQUEST");
         callRequest.setFrom(username);
         callRequest.setTo(currentPrivateTarget);
         callRequest.setCallType("VIDEO");
-        
+
         networkClient.send(callRequest);
-        showCallPending(currentPrivateTarget, "Appel vidéo en cours...");
+        showCallPending(currentPrivateTarget, "Appel vidÃ©o en cours...");
     }
 
     private void setupContactCellFactory() {
@@ -315,23 +314,22 @@ public class MainChatController {
                 super.updateItem(user, empty);
                 if (empty || user == null) { setGraphic(null); setText(null); return; }
                 String initial = user.substring(0, 1).toUpperCase();
-                
+
                 Label av = new Label(initial);
                 av.getStyleClass().add("avatar-letter");
                 StackPane avatar = new StackPane(av);
                 avatar.getStyleClass().add("avatar-circle");
-                
-                String[] colors = {"#00A884","#2196F3","#9C27B0","#FF5722","#FF9800"};
-                avatar.setStyle("-fx-background-color:" + colors[Math.abs(user.hashCode()) % colors.length] + "; -fx-background-radius:50%; -fx-min-width:42px; -fx-min-height:42px; -fx-max-width:42px; -fx-max-height:42px;");
-                
+
+                avatar.setStyle("-fx-background-color:" + pickAvatarColor(user) + "; -fx-background-radius:50%; -fx-min-width:42px; -fx-min-height:42px; -fx-max-width:42px; -fx-max-height:42px;");
+
                 Label name = new Label(user);
                 name.getStyleClass().add("chat-contact-name");
-                
+
                 String statut = userStatuses.getOrDefault(user, "NON_CONNECTE");
-                Label sub = new Label(statut.equals("EN_LIGNE") ? "● En ligne" : "● Non connecté");
+                Label sub = new Label(statut.equals("EN_LIGNE") ? "â— En ligne" : "â— Non connectÃ©");
                 sub.getStyleClass().add("chat-contact-status");
                 if (statut.equals("EN_LIGNE")) sub.setStyle("-fx-text-fill: #25D366;");
-                
+
                 VBox info = new VBox(3, name, sub);
                 HBox row = new HBox(12, avatar, info);
                 row.setAlignment(Pos.CENTER_LEFT);
@@ -357,13 +355,23 @@ public class MainChatController {
         String targetUser = msg.getFrom();
         String status = msg.getContent();
         userStatuses.put(targetUser, status);
-        
+
         Platform.runLater(() -> {
             privateListView.refresh();
             if (targetUser.equals(currentPrivateTarget)) {
                 updateChatHeaderStatus(status);
             }
         });
+    }
+
+    private String pickAvatarColor(String user) {
+        return switch (Math.abs(user.hashCode()) % 5) {
+            case 0 -> "#00A884";
+            case 1 -> "#2196F3";
+            case 2 -> "#9C27B0";
+            case 3 -> "#FF5722";
+            default -> "#FF9800";
+        };
     }
 
     private void updateOnlineUsers(List<String> users) {
@@ -387,20 +395,20 @@ public class MainChatController {
         currentPrivateTarget = other;
         if (chatTitleLabel  != null) chatTitleLabel.setText(other);
         if (chatAvatarLabel != null) chatAvatarLabel.setText(other.substring(0,1).toUpperCase());
-        
+
         String status = userStatuses.getOrDefault(other, "NON_CONNECTE");
         updateChatHeaderStatus(status);
-        
+
         ObservableList<UiMessage> msgs = privateConversations.get(other);
         if (msgs == null) {
             msgs = FXCollections.observableArrayList();
             privateConversations.put(other, msgs);
             loadConversationHistory(other);
         }
-        
+
         messagesListView.setItems(msgs);
         updateCallButtonsVisibility();
-        
+
         // Reset unread count
         unreadCounts.put(other, 0);
         privateListView.refresh();
@@ -409,31 +417,31 @@ public class MainChatController {
     private void loadConversationHistory(String otherName) {
         networkClient.requestHistory(otherName);
     }
-    
+
     private void onHistoryReceived(ChatMessage msg) {
         Platform.runLater(() -> {
             boolean own = msg.getFrom().equals(username);
             String other = own ? msg.getTo() : msg.getFrom();
-            
+
             ObservableList<UiMessage> uiMsgs = privateConversations.computeIfAbsent(other, k -> FXCollections.observableArrayList());
-            
+
             // Avoid duplicates
             if (msg.getMessageId() != -1) {
                 if (processedMessageIds.contains(msg.getMessageId())) return;
                 processedMessageIds.add(msg.getMessageId());
             }
-            
+
             String time = msg.getTimestamp();
             if (time == null || time.isEmpty()) time = java.time.LocalDateTime.now().format(timeFormatter);
-            
+
             UiMessage uiMsg = null;
-            String typeStr = msg.getConversationId(); 
+            String typeStr = msg.getConversationId();
             if (typeStr == null || typeStr.isEmpty()) typeStr = "TEXTE";
 
             if (typeStr.contains("AUDIO") || typeStr.contains("IMAGE") || typeStr.contains("FILE")) {
                 UiMessage.Kind kind = typeStr.contains("IMAGE") ? UiMessage.Kind.IMAGE :
-                                     typeStr.contains("AUDIO") ? UiMessage.Kind.AUDIO : UiMessage.Kind.FILE;
-                
+                        typeStr.contains("AUDIO") ? UiMessage.Kind.AUDIO : UiMessage.Kind.FILE;
+
                 String localPath = null;
                 if (msg.getBinaryData() != null) {
                     try {
@@ -443,28 +451,28 @@ public class MainChatController {
                         }
                         localPath = temp.getAbsolutePath();
                     } catch (java.io.IOException e) {
-                        System.err.println("Erreur sauvegarde média historique: " + e.getMessage());
+                        System.err.println("Erreur sauvegarde mÃ©dia historique: " + e.getMessage());
                     }
                 }
                 uiMsg = new UiMessage(kind, own, msg.getContent(), localPath, time);
             } else {
                 uiMsg = new UiMessage(UiMessage.Kind.TEXT, own, msg.getContent(), null, time);
             }
-            
+
             if (uiMsg != null) {
                 uiMsgs.add(uiMsg);
             }
-            
+
             // Auto-scroll if it's the current view
             if (other.equals(currentPrivateTarget)) {
                 messagesListView.scrollTo(uiMsgs.size() - 1);
             }
         });
     }
-    
+
     private void updateChatHeaderStatus(String status) {
         if (chatStatusLabel != null) {
-            chatStatusLabel.setText(status.equals("EN_LIGNE") ? "● En ligne" : "● Non connecté");
+            chatStatusLabel.setText(status.equals("EN_LIGNE") ? "â— En ligne" : "â— Non connectÃ©");
             chatStatusLabel.setStyle(status.equals("EN_LIGNE") ? "-fx-text-fill: #25D366;" : "-fx-text-fill: #8e8e8e;");
         }
     }
@@ -484,10 +492,10 @@ public class MainChatController {
             case PRIVATE_AUDIO -> handleIncomingPrivateAudio(msg);
             case PRIVATE_IMAGE -> handleIncomingPrivateImage(msg);
             case PRIVATE_FILE -> handleIncomingPrivateFile(msg);
-            // Appel vidéo
+            // Appel vidÃ©o
             case VIDEO_CALL_REQUEST -> Platform.runLater(() -> handleCallRequest(msg));
             case VIDEO_CALL_ACCEPT  -> Platform.runLater(() -> startVideoWindow(msg.getFrom(), true));
-            case VIDEO_CALL_REJECT  -> Platform.runLater(() -> showInfo("Appel refusé par " + msg.getFrom()));
+            case VIDEO_CALL_REJECT  -> Platform.runLater(() -> showInfo("Appel refusÃ© par " + msg.getFrom()));
             case VIDEO_CALL_END     -> Platform.runLater(this::endVideo);
             case VIDEO_FRAME        -> Platform.runLater(() -> VideoCallController.receiveFrame(msg.getBinaryData()));
             // Appel vocal
@@ -497,15 +505,15 @@ public class MainChatController {
             case CALL_ANSWER        -> Platform.runLater(() -> handleCallAccepted(msg));
             case CALL_REJECT        -> Platform.runLater(() -> handleCallRejected(msg));
             case CALL_INFO          -> Platform.runLater(() -> handleCallInfo(msg));
-            case VOICE_CALL_REJECT  -> Platform.runLater(() -> showInfo("Appel vocal refusé par " + msg.getFrom()));
+            case VOICE_CALL_REJECT  -> Platform.runLater(() -> showInfo("Appel vocal refusÃ© par " + msg.getFrom()));
             case VOICE_CALL_END     -> Platform.runLater(this::endVoiceCall);
-            case VOICE_FRAME        -> Platform.runLater(() -> { 
-                if (currentVoiceCall != null) currentVoiceCall.playRemoteAudio(msg.getBinaryData()); 
+            case VOICE_FRAME        -> Platform.runLater(() -> {
+                if (currentVoiceCall != null) currentVoiceCall.playRemoteAudio(msg.getBinaryData());
                 else org.example.tpchatjavafx.client.video.VideoCallController.receiveAudio(msg.getBinaryData());
             });
             default -> {}
         }
-        
+
         // Increment unread count if not in current chat
         if (!msg.getType().name().contains("CALL") && msg.getType() != MessageType.SYSTEM) {
             String sender = msg.getFrom();
@@ -532,16 +540,16 @@ public class MainChatController {
     private void addPrivateMessage(ChatMessage msg) {
         String other = msg.getFrom().equals(username) ? msg.getTo() : msg.getFrom();
         boolean isOwn = msg.getFrom().equals(username);
-        
+
         Platform.runLater(() -> {
             ObservableList<UiMessage> msgs = privateConversations.computeIfAbsent(other, k -> FXCollections.observableArrayList());
-            
+
             String time = msg.getTimestamp();
             if (time == null || time.isEmpty()) time = java.time.LocalDateTime.now().format(timeFormatter);
-            
+
             UiMessage uiMsg = new UiMessage(UiMessage.Kind.TEXT, isOwn, msg.getContent(), null, time);
             msgs.add(uiMsg);
-            
+
             if (other.equals(currentPrivateTarget)) {
                 messagesListView.scrollTo(msgs.size() - 1);
             }
@@ -554,10 +562,10 @@ public class MainChatController {
 
     private void handleCallRequest(ChatMessage msg) {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("WeChat - Appel Vidéo");
-        alert.setHeaderText("Appel vidéo entrant de " + msg.getFrom());
+        alert.setTitle("WeChat - Appel VidÃ©o");
+        alert.setHeaderText("Appel vidÃ©o entrant de " + msg.getFrom());
         alert.setContentText("Souhaitez-vous accepter l'appel ?");
-        
+
         ButtonType accept = new ButtonType("Accepter", ButtonBar.ButtonData.OK_DONE);
         ButtonType reject = new ButtonType("Refuser", ButtonBar.ButtonData.CANCEL_CLOSE);
         alert.getButtonTypes().setAll(accept, reject);
@@ -593,23 +601,23 @@ public class MainChatController {
         alert.showAndWait().ifPresent(result -> {
             if (result == accept) {
                 // Utiliser les nouveaux types de messages
-                ChatMessage answerMsg = new ChatMessage(MessageType.CALL_ANSWER, username, msg.getFrom(), null, "Appel accepté");
+                ChatMessage answerMsg = new ChatMessage(MessageType.CALL_ANSWER, username, msg.getFrom(), null, "Appel acceptÃ©");
                 answerMsg.setCallType("AUDIO");
                 networkClient.send(answerMsg);
-                // Attendre CALL_INFO avant de démarrer la session
+                // Attendre CALL_INFO avant de dÃ©marrer la session
             } else {
-                ChatMessage rejectMsg = new ChatMessage(MessageType.CALL_REJECT, username, msg.getFrom(), null, "Appel refusé");
+                ChatMessage rejectMsg = new ChatMessage(MessageType.CALL_REJECT, username, msg.getFrom(), null, "Appel refusÃ©");
                 networkClient.send(rejectMsg);
             }
         });
     }
 
-    // ===== NOUVELLES MÉTHODES POUR LES APPELS =====
+    // ===== NOUVELLES MÃ‰THODES POUR LES APPELS =====
 
     private void handleIncomingCall(ChatMessage msg) {
         if (currentCallType != null) {
-            // Refuser automatiquement si déjà en appel
-            ChatMessage rejectMsg = new ChatMessage(MessageType.CALL_REJECT, username, msg.getFrom(), null, "Occupé");
+            // Refuser automatiquement si dÃ©jÃ  en appel
+            ChatMessage rejectMsg = new ChatMessage(MessageType.CALL_REJECT, username, msg.getFrom(), null, "OccupÃ©");
             networkClient.send(rejectMsg);
             return;
         }
@@ -625,23 +633,23 @@ public class MainChatController {
 
         alert.showAndWait().ifPresent(result -> {
             if (result == accept) {
-                ChatMessage answerMsg = new ChatMessage(MessageType.CALL_ANSWER, username, msg.getFrom(), null, "Appel accepté");
+                ChatMessage answerMsg = new ChatMessage(MessageType.CALL_ANSWER, username, msg.getFrom(), null, "Appel acceptÃ©");
                 answerMsg.setCallType(msg.getCallType());
                 networkClient.send(answerMsg);
             } else {
-                ChatMessage rejectMsg = new ChatMessage(MessageType.CALL_REJECT, username, msg.getFrom(), null, "Appel refusé");
+                ChatMessage rejectMsg = new ChatMessage(MessageType.CALL_REJECT, username, msg.getFrom(), null, "Appel refusÃ©");
                 networkClient.send(rejectMsg);
             }
         });
     }
 
     private void handleCallAccepted(ChatMessage msg) {
-        // L'appel a été accepté, démarrer la session audio
+        // L'appel a Ã©tÃ© acceptÃ©, dÃ©marrer la session audio
         startAudioCall(msg.getFrom(), "AUDIO");
     }
 
     private void handleCallRejected(ChatMessage msg) {
-        showInfo("Appel refusé par " + msg.getFrom());
+        showInfo("Appel refusÃ© par " + msg.getFrom());
     }
 
     private void handleCallInfo(ChatMessage msg) {
@@ -650,20 +658,20 @@ public class MainChatController {
         remotePort = msg.getRemotePort();
         currentCallType = msg.getCallType();
 
-        // Démarrer la transmission audio P2P
+        // DÃ©marrer la transmission audio P2P
         if ("AUDIO".equals(currentCallType) && remoteHost != null) {
             startAudioTransmission(msg.getFrom());
         }
     }
 
     private void startVoiceSession(String otherUser) {
-        // Ancienne méthode - maintenant déléguée à startAudioCall
+        // Ancienne mÃ©thode - maintenant dÃ©lÃ©guÃ©e Ã  startAudioCall
         startAudioCall(otherUser, "AUDIO");
     }
 
     private void startAudioCall(String otherUser, String callType) {
         if (currentCallType != null) {
-            showInfo("Un appel est déjà en cours.");
+            showInfo("Un appel est dÃ©jÃ  en cours.");
             return;
         }
 
@@ -675,15 +683,15 @@ public class MainChatController {
             audioCapture = new AudioCaptureService();
             audioPlayback = new AudioPlaybackService();
 
-            // Ouvrir la fenêtre d'appel
+            // Ouvrir la fenÃªtre d'appel
             VoiceCallWindow.open(username, otherUser, () -> {
                 endAudioCall();
             });
 
-            showInfo("Appel " + callType.toLowerCase() + " démarré avec " + otherUser);
+            showInfo("Appel " + callType.toLowerCase() + " dÃ©marrÃ© avec " + otherUser);
 
         } catch (Exception e) {
-            showInfo("Impossible de démarrer l'appel: " + e.getMessage());
+            showInfo("Impossible de dÃ©marrer l'appel: " + e.getMessage());
             endAudioCall();
         }
     }
@@ -694,11 +702,11 @@ public class MainChatController {
         }
 
         try {
-            // Démarrer la transmission P2P
-            audioTransmission = new AudioTransmissionService(audioCapture, audioPlayback);
+            // DÃ©marrer la transmission P2P
+            audioTransmission = new AudioTransmissionService();
             audioTransmission.initiate(remoteHost, remotePort);
 
-            showInfo("Connexion audio établie avec " + otherUser);
+            showInfo("Connexion audio Ã©tablie avec " + otherUser);
 
         } catch (Exception e) {
             showInfo("Erreur de connexion audio: " + e.getMessage());
@@ -707,65 +715,51 @@ public class MainChatController {
     }
 
     private void endVoiceCall() {
-        // Ancienne méthode - déléguer à endAudioCall
+        // Ancienne mÃ©thode - dÃ©lÃ©guer Ã  endAudioCall
         endAudioCall();
     }
 
+
     private void endAudioCall() {
-        // Arrêter tous les services audio
         if (audioTransmission != null) {
             audioTransmission.stop();
             audioTransmission = null;
         }
-
+        if (audioService != null) {
+            audioService.stop();
+            audioService = null;
+        }
         if (audioCapture != null) {
             audioCapture.stop();
             audioCapture = null;
         }
-
         if (audioPlayback != null) {
             audioPlayback.stop();
             audioPlayback = null;
         }
-
-        // Ancienne logique
-        if (currentVoiceCall != null) {
-            currentVoiceCall.stop();
-            currentVoiceCall = null;
-        }
-
-        // Nettoyer l'état
-        voiceCallPeer = null;
-        currentCallType = null;
-        remoteHost = null;
-        remotePort = 0;
-
-        VoiceCallWindow.close();
-
-        // Notifier l'autre utilisateur si nécessaire
-        if (voiceCallPeer != null) {
-            ChatMessage endMsg = new ChatMessage(MessageType.CALL_END, username, voiceCallPeer, null, "Appel terminé");
+        if (voiceCallPeer != null && networkClient != null) {
+            ChatMessage endMsg = new ChatMessage(MessageType.CALL_END, username, voiceCallPeer, null, "Appel termine");
             networkClient.send(endMsg);
         }
+        currentCallType = null;
+        voiceCallPeer = null;
+        incomingCallFrom = null;
     }
 
     private void showInfo(String msg) {
-        Alert a = new Alert(Alert.AlertType.INFORMATION, msg);
-        a.show();
+        Alert alert = new Alert(Alert.AlertType.INFORMATION, msg);
+        alert.show();
     }
 
-    @FXML
-    private void onSend() {
-        String text = messageField.getText().trim();
-        if (text.isEmpty()) return;
+    private void showAlert(String msg) {
+        showInfo(msg);
+    }
 
-        if (currentPrivateTarget != null) {
-            ChatMessage msg = new ChatMessage(MessageType.PRIVATE, username, currentPrivateTarget, null, text);
-            addPrivateMessage(msg);
-            networkClient.send(msg);
+    private void showCallPending(String user, String message) {
+        if (chatStatusLabel != null) {
+            chatStatusLabel.setText(message);
         }
-
-        messageField.clear();
+        showInfo(message);
     }
 
     @FXML
@@ -832,11 +826,11 @@ public class MainChatController {
     @FXML
     private void onStartVoiceCall() {
         if (currentPrivateTarget == null) {
-            showInfo("Sélectionnez un contact privé d'abord.");
+            showInfo("SÃ©lectionnez un contact privÃ© d'abord.");
             return;
         }
         if (currentCallType != null) {
-            showInfo("Un appel est déjà en cours.");
+            showInfo("Un appel est dÃ©jÃ  en cours.");
             return;
         }
 
@@ -845,9 +839,9 @@ public class MainChatController {
         callRequest.setCallType("AUDIO");
         networkClient.send(callRequest);
 
-        showInfo("Appel audio demandé à " + currentPrivateTarget);
+        showInfo("Appel audio demandÃ© Ã  " + currentPrivateTarget);
     }
-    }
+
 
     private void buildEmojiPicker() {
         emojiPicker = new ContextMenu();
@@ -885,7 +879,7 @@ public class MainChatController {
         AudioFormat format = new AudioFormat(16000, 16, 1, true, false);
         DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
         if (!AudioSystem.isLineSupported(info)) {
-            showInfo("L'enregistrement audio n'est pas supporté sur cet appareil.");
+            showInfo("L'enregistrement audio n'est pas supportÃ© sur cet appareil.");
             return;
         }
         try {
@@ -898,7 +892,7 @@ public class MainChatController {
             recordingThread.setDaemon(true);
             recordingThread.start();
         } catch (LineUnavailableException e) {
-            showInfo("Impossible d'accéder au micro: " + e.getMessage());
+            showInfo("Impossible d'accÃ©der au micro: " + e.getMessage());
         }
     }
 
@@ -950,10 +944,10 @@ public class MainChatController {
     private void updateRecordButtonState() {
         if (recordAudioButton == null) return;
         if (recordingAudio) {
-            recordAudioButton.setText("■");
+            recordAudioButton.setText("â– ");
             recordAudioButton.setStyle("-fx-text-fill: #f87171;");
         } else {
-            recordAudioButton.setText("🎙");
+            recordAudioButton.setText("ðŸŽ™");
             recordAudioButton.setStyle("");
         }
     }
@@ -980,10 +974,10 @@ public class MainChatController {
                         bubble.setWrapText(true);
                         bubble.setMaxWidth(420);
                         bubble.getStyleClass().add(isOwn ? "bubble-sent" : "bubble-received");
-                        
+
                         Label time = new Label(item.getTimestamp());
                         time.getStyleClass().add(isOwn ? "timestamp-sent" : "timestamp-received");
-                        
+
                         VBox content = new VBox(2, bubble, time);
                         content.setAlignment(isOwn ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
                         row.getChildren().add(content);
@@ -992,21 +986,21 @@ public class MainChatController {
                         ImageView imageView = new ImageView();
                         try { imageView.setImage(new Image(new File(item.getFilePath()).toURI().toString(), 200, 0, true, true)); } catch (Exception ignored) {}
                         imageView.getStyleClass().add(isOwn ? "bubble-sent" : "bubble-received");
-                        
+
                         Label time = new Label(item.getTimestamp());
                         time.getStyleClass().add(isOwn ? "timestamp-sent" : "timestamp-received");
-                        
+
                         VBox content = new VBox(2, imageView, time);
                         content.setAlignment(isOwn ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
                         row.getChildren().add(content);
                     }
                     case AUDIO -> {
-                        Button play = new Button("▶");
+                        Button play = new Button("â–¶");
                         play.getStyleClass().add("btn-icon");
                         play.setOnAction(e -> playAudio(item.getFilePath()));
                         Label label = new Label(" Message vocal");
                         label.getStyleClass().add(isOwn ? "bubble-sent" : "bubble-received");
-                        
+
                         Label time = new Label(item.getTimestamp());
                         time.getStyleClass().add(isOwn ? "timestamp-sent" : "timestamp-received");
 
@@ -1016,12 +1010,12 @@ public class MainChatController {
                         row.getChildren().add(content);
                     }
                     case FILE -> {
-                        Label nameLabel = new Label("📎 " + item.getText());
+                        Label nameLabel = new Label("ðŸ“Ž " + item.getText());
                         nameLabel.getStyleClass().add(isOwn ? "bubble-sent" : "bubble-received");
-                        Button downloadBtn = new Button("💾");
+                        Button downloadBtn = new Button("ðŸ’¾");
                         downloadBtn.getStyleClass().add("btn-icon");
                         downloadBtn.setOnAction(e -> downloadFile(item.getFilePath(), item.getText()));
-                        
+
                         Label time = new Label(item.getTimestamp());
                         time.getStyleClass().add(isOwn ? "timestamp-sent" : "timestamp-received");
 
@@ -1074,7 +1068,7 @@ public class MainChatController {
             privateConversations.get(other).add(new UiMessage(UiMessage.Kind.AUDIO, msg.getFrom().equals(username), "Audio", path, time));
             if (other.equals(currentPrivateTarget)) messagesListView.setItems(privateConversations.get(other));
             if (!privateListView.getItems().contains(other)) privateListView.getItems().add(other);
-        } catch (IOException e) { showInfo("Impossible de sauvegarder l'audio reçu."); }
+        } catch (IOException e) { showInfo("Impossible de sauvegarder l'audio reÃ§u."); }
     }
 
     private void addLocalImageMessage(boolean own, String path) {
@@ -1098,7 +1092,7 @@ public class MainChatController {
             privateConversations.get(other).add(new UiMessage(UiMessage.Kind.IMAGE, msg.getFrom().equals(username), "", path, time));
             if (other.equals(currentPrivateTarget)) messagesListView.setItems(privateConversations.get(other));
             if (!privateListView.getItems().contains(other)) privateListView.getItems().add(other);
-        } catch (IOException e) { showInfo("Impossible de sauvegarder l'image reçue."); }
+        } catch (IOException e) { showInfo("Impossible de sauvegarder l'image reÃ§ue."); }
     }
 
     private void handleIncomingPrivateFile(ChatMessage msg) {
@@ -1114,7 +1108,7 @@ public class MainChatController {
             privateConversations.get(other).add(new UiMessage(UiMessage.Kind.FILE, msg.getFrom().equals(username), name != null ? name : "Fichier", path, time));
             if (other.equals(currentPrivateTarget)) messagesListView.setItems(privateConversations.get(other));
             if (!privateListView.getItems().contains(other)) privateListView.getItems().add(other);
-        } catch (IOException e) { showInfo("Impossible de sauvegarder le fichier reçu."); }
+        } catch (IOException e) { showInfo("Impossible de sauvegarder le fichier reÃ§u."); }
     }
 
     private void playAudio(String path) {
@@ -1145,127 +1139,8 @@ public class MainChatController {
         if (dest == null) return;
         try {
             Files.copy(Path.of(path), dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            showInfo("Fichier sauvegardé : " + dest.getAbsolutePath());
+            showInfo("Fichier sauvegardÃ© : " + dest.getAbsolutePath());
         } catch (IOException e) { showInfo("Erreur lors de la sauvegarde : " + e.getMessage()); }
     }
 
-    private void handleIncomingCall(ChatMessage msg) {
-        String caller = msg.getFrom();
-        String callType = msg.getCallType();
-        
-        System.out.println("[UI] Appel entrant de " + caller + " (" + callType + ")");
-        
-        incomingCallFrom = caller;
-        
-        // Afficher dialog
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Appel entrant");
-        alert.setHeaderText("Appel " + callType.toLowerCase() + " de " + caller);
-        alert.setContentText("Accepter l'appel?");
-        
-        alert.showAndWait().ifPresent(result -> {
-            if (result == ButtonType.OK) {
-                // Accepter appel
-                ChatMessage answer = new ChatMessage();
-                answer.setType("CALL_ANSWER");
-                answer.setFrom(username);
-                answer.setTo(caller);
-                answer.setCallType(callType);
-                
-                networkClient.send(answer);
-                
-                // Démarrer transmission
-                if (callType.equals("AUDIO")) {
-                    startAudioCall(caller, false);
-                } else {
-                    startVideoCall(caller, false);
-                }
-            } else {
-                // Refuser
-                ChatMessage reject = new ChatMessage();
-                reject.setType("CALL_REJECT");
-                reject.setFrom(username);
-                reject.setTo(caller);
-                
-                networkClient.send(reject);
-            }
-        });
-    }
-
-    private void handleCallAnswered(ChatMessage msg) {
-        String answerer = msg.getFrom();
-        String remoteHost = msg.getRemoteHost();
-        int remotePort = msg.getRemotePort();
-        
-        System.out.println("[UI] " + answerer + " a accepté l'appel");
-        
-        // Démarrer transmission avec P2P
-        startAudioCall(answerer, true, remoteHost, remotePort);
-    }
-
-    private void startAudioCall(String remoteUser, boolean isCaller) {
-        try {
-            // Afficher window VoiceCallWindow
-            org.example.tpchatjavafx.client.voice.VoiceCallWindow.open(
-                username, 
-                remoteUser,
-                this::endAudioCall
-            );
-            
-            // TODO: Implémenter la transmission audio réelle
-            // Actuellement c'est juste la UI
-        } catch (Exception e) {
-            e.printStackTrace();
-            showAlert("Erreur: " + e.getMessage());
-        }
-    }
-
-    private void startAudioCall(String remoteUser, boolean isCaller, 
-                               String remoteHost, int remotePort) {
-        try {
-            if (audioService != null) audioService.stop();
-            
-            audioService = new AudioTransmissionService();
-            audioService.initiate(remoteHost, remotePort);
-            
-            org.example.tpchatjavafx.client.voice.VoiceCallWindow.open(
-                username,
-                remoteUser,
-                this::endAudioCall
-            );
-        } catch (Exception e) {
-            e.printStackTrace();
-            showAlert("Erreur audio: " + e.getMessage());
-        }
-    }
-
-    private void endAudioCall() {
-        if (audioService != null) {
-            audioService.stop();
-            audioService = null;
-        }
-        
-        // Notifier l'autre utilisateur
-        ChatMessage endMsg = new ChatMessage();
-        endMsg.setType("CALL_END");
-        endMsg.setFrom(username);
-        endMsg.setTo(incomingCallFrom != null ? incomingCallFrom : currentPrivateTarget);
-        
-        networkClient.send(endMsg);
-        
-        incomingCallFrom = null;
-    }
-
-    private void startVideoCall(String remoteUser, boolean isCaller) {
-        // TODO: Similaire mais avec vidéo
-    }
-
-    private void showCallPending(String user, String message) {
-        // TODO: Afficher un dialog/notification
-        System.out.println(message);
-    }
-
-    private void handleCallRejected(ChatMessage msg) {
-        showAlert("L'appel a été refusé");
-    }
 }
