@@ -6,11 +6,12 @@
 <VBox xmlns="http://javafx.com/javafx/21"
       xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="org.example.tpchatjavafx.client.controller.AddMemberDialogController"
-      spacing="10" prefWidth="320">
-    <padding><Insets top="15" right="15" bottom="15" left="15"/></padding>
+      spacing="12" prefWidth="360"
+      styleClass="group-dialog-content">
+    <padding><Insets top="18" right="18" bottom="18" left="18"/></padding>
 
-    <Label text="Sélectionnez les contacts à ajouter"
-           styleClass="chat-contact-name"/>
+    <Label text="Ajouter des membres" styleClass="group-dialog-title"/>
+    <Label text="Selectionnez les contacts a ajouter" styleClass="field-label"/>
     <ListView fx:id="availableContactsList" prefHeight="220"
-              styleClass="contact-list"/>
+              styleClass="contact-list group-dialog-list"/>
 </VBox>

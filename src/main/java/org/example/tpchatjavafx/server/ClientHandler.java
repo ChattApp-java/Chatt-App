@@ -119,13 +119,16 @@ public class ClientHandler implements Runnable {
             case GROUP_REMOVE_MEMBER, GROUP_MEMBER_REMOVE -> {
                 if (username != null) handleGroupRemoveMember(msg);
             }
+            case GROUP_LEAVE -> {
+                if (username != null) handleGroupLeave(msg);
+            }
             case GROUP_LIST -> {
                 if (username != null) handleGroupList(msg);
             }
             case GROUP_MEMBERS -> {
                 if (username != null) handleGroupMembers(msg);
             }
-            case GROUP_MESSAGE -> {
+            case GROUP_MESSAGE, GROUP_AUDIO, GROUP_IMAGE, GROUP_FILE -> {
                 if (username != null) handleGroupMessage(msg);
             }
             case GROUP_HISTORY_REQUEST -> {
@@ -363,11 +366,12 @@ public class ClientHandler implements Runnable {
             org.example.tpchatjavafx.model.Groupe groupe = ChatServer.getGroupManager()
                     .createGroup(parts[0], parts.length > 1 ? parts[1] : "", userId, members);
 
-            ChatMessage created = new ChatMessage(MessageType.GROUP_CREATED, "SERVER", username, null, groupe.toString());
+            ChatMessage created = new ChatMessage(MessageType.GROUP_CREATED, "SERVER", username, null, serializeGroupCreated(groupe));
             created.setGroupId(groupe.getId());
             send(created);
+            handleGroupList(msg);
 
-            ChatMessage invite = new ChatMessage(MessageType.GROUP_CREATED, "SERVER", null, null, groupe.toString());
+            ChatMessage invite = new ChatMessage(MessageType.GROUP_CREATED, "SERVER", null, null, serializeGroupCreated(groupe));
             invite.setGroupId(groupe.getId());
             ChatServer.broadcastToGroup(groupe.getId(), invite);
         } catch (Exception e) {
@@ -400,6 +404,19 @@ public class ClientHandler implements Runnable {
         }
     }
 
+    private void handleGroupLeave(ChatMessage msg) {
+        try {
+            ChatServer.getGroupManager().leaveGroup(msg.getGroupId(), userId);
+            ChatMessage notification = new ChatMessage(MessageType.GROUP_REMOVE_MEMBER, username, null, null, username);
+            notification.setGroupId(msg.getGroupId());
+            send(notification);
+            ChatServer.broadcastToGroup(msg.getGroupId(), notification);
+            handleGroupList(msg);
+        } catch (Exception e) {
+            sendError("Impossible de quitter le groupe : " + e.getMessage());
+        }
+    }
+
     private void handleGroupList(ChatMessage msg) {
         try {
             List<org.example.tpchatjavafx.model.Groupe> groups = ChatServer.getGroupManager().getGroupsForUser(userId);
@@ -413,7 +430,7 @@ public class ClientHandler implements Runnable {
         try {
             List<Utilisateur> members = ChatServer.getGroupManager().getMembers(msg.getGroupId(), userId);
             String content = members.stream()
-                    .map(u -> u.getId() + ":" + u.getUsername())
+                    .map(u -> u.getId() + ":" + u.getUsername() + ":" + safeRole(msg.getGroupId(), u.getId()))
                     .reduce((a, b) -> a + "," + b)
                     .orElse("");
             ChatMessage response = new ChatMessage(MessageType.GROUP_MEMBERS, "SERVER", username, null, content);
@@ -426,7 +443,7 @@ public class ClientHandler implements Runnable {
 
     private void handleGroupMessage(ChatMessage msg) {
         try {
-            ChatServer.getGroupManager().saveAndBroadcastGroupMessage(msg.getGroupId(), userId, username, msg.getContent());
+            ChatServer.getGroupManager().saveAndBroadcastGroupMessage(msg, userId, username);
         } catch (Exception e) {
             sendError("Message de groupe refuse : " + e.getMessage());
         }
@@ -555,6 +572,19 @@ public class ClientHandler implements Runnable {
     }
 
     // ── Nettoyage ─────────────────────────────────────────────
+
+    private String serializeGroupCreated(org.example.tpchatjavafx.model.Groupe groupe) {
+        String name = groupe.getNom() == null ? "" : groupe.getNom().replace("|", " ").replace(",", " ");
+        return groupe.getId() + "|" + name;
+    }
+
+    private String safeRole(int groupId, int memberId) {
+        try {
+            return ChatServer.getGroupManager().getRole(groupId, memberId);
+        } catch (Exception e) {
+            return "MEMBRE";
+        }
+    }
 
     private void cleanup() {
         if (username != null) {

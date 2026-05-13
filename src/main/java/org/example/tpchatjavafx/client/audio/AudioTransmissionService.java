@@ -18,16 +18,24 @@ public class AudioTransmissionService {
     private AudioPlaybackService playbackService;
     private volatile boolean running = false;
     private Thread receiveThread;
+    private int meetingId;
+    private int userId;
 
     public void initiate(String remoteHost, int remotePort) throws Exception {
         initiate(remoteHost, remotePort, 0);
     }
 
     public void initiate(String remoteHost, int remotePort, int localPort) throws Exception {
+        initiate(remoteHost, remotePort, localPort, 0, 0);
+    }
+
+    public void initiate(String remoteHost, int remotePort, int localPort, int meetingId, int userId) throws Exception {
         if (running) stop();
 
         this.remoteAddress = InetAddress.getByName(remoteHost);
         this.remotePort = remotePort;
+        this.meetingId = meetingId;
+        this.userId = userId;
         this.socket = (localPort > 0) ? new DatagramSocket(localPort) : new DatagramSocket();
         this.socket.setSoTimeout(1000);
 
@@ -54,7 +62,8 @@ public class AudioTransmissionService {
         }
 
         try {
-            DatagramPacket packet = new DatagramPacket(audioData, audioData.length, remoteAddress, remotePort);
+            byte[] payload = addRelayHeader(audioData);
+            DatagramPacket packet = new DatagramPacket(payload, payload.length, remoteAddress, remotePort);
             socket.send(packet);
         } catch (IOException e) {
             if (running) {
@@ -72,8 +81,9 @@ public class AudioTransmissionService {
                 socket.receive(packet);
                 int length = packet.getLength();
                 if (length > 0 && playbackService != null) {
-                    byte[] audioData = new byte[length];
-                    System.arraycopy(packet.getData(), 0, audioData, 0, length);
+                    int offset = hasRelayHeader(packet.getData(), length) ? 8 : 0;
+                    byte[] audioData = new byte[length - offset];
+                    System.arraycopy(packet.getData(), offset, audioData, 0, audioData.length);
                     playbackService.playAudio(audioData);
                 }
             } catch (SocketTimeoutException ignored) {
@@ -115,5 +125,32 @@ public class AudioTransmissionService {
 
     public boolean isRunning() {
         return running;
+    }
+
+    private byte[] addRelayHeader(byte[] data) {
+        if (meetingId <= 0 || userId <= 0) return data;
+        byte[] payload = new byte[data.length + 8];
+        writeInt(payload, 0, meetingId);
+        writeInt(payload, 4, userId);
+        System.arraycopy(data, 0, payload, 8, data.length);
+        return payload;
+    }
+
+    private boolean hasRelayHeader(byte[] data, int length) {
+        return length > 8 && readInt(data, 0) > 0 && readInt(data, 4) > 0;
+    }
+
+    private void writeInt(byte[] data, int offset, int value) {
+        data[offset] = (byte) (value >>> 24);
+        data[offset + 1] = (byte) (value >>> 16);
+        data[offset + 2] = (byte) (value >>> 8);
+        data[offset + 3] = (byte) value;
+    }
+
+    private int readInt(byte[] data, int offset) {
+        return ((data[offset] & 0xFF) << 24)
+                | ((data[offset + 1] & 0xFF) << 16)
+                | ((data[offset + 2] & 0xFF) << 8)
+                | (data[offset + 3] & 0xFF);
     }
 }

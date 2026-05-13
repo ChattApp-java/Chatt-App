@@ -125,15 +125,15 @@ public class ChatServer {
 
     static void handleMessage(ChatMessage msg, ClientHandler from) {
         if (msg == null) return;
-        switch (msg.getType()) {
-            case PRIVATE, PRIVATE_AUDIO, PRIVATE_IMAGE, PRIVATE_FILE -> routePrivate(msg, from);
-            case VIDEO_CALL_REQUEST, VIDEO_CALL_ACCEPT, VIDEO_CALL_REJECT, VIDEO_CALL_END, VIDEO_FRAME,
-                 VOICE_CALL_REQUEST, VOICE_CALL_ACCEPT, VOICE_CALL_REJECT, VOICE_CALL_END, VOICE_FRAME,
-                 CALL_REQUEST, CALL_ANSWER, CALL_REJECT, CALL_END, CALL_INCOMING, CALL_INFO -> handleCallMessage(msg, from);
-            case USER_LIST_REQUEST -> broadcastUserList();
-            default -> {
-                if (msg.getTo() != null && !msg.getTo().isBlank()) forwardToTarget(msg);
-            }
+        MessageType type = msg.getType();
+        if (isPrivateMessage(type)) {
+            routePrivate(msg, from);
+        } else if (isCallMessage(type)) {
+            handleCallMessage(msg, from);
+        } else if (type == MessageType.USER_LIST_REQUEST) {
+            broadcastUserList();
+        } else if (msg.getTo() != null && !msg.getTo().isBlank()) {
+            forwardToTarget(msg);
         }
     }
 
@@ -155,12 +155,40 @@ public class ChatServer {
     }
 
     private static void handleCallMessage(ChatMessage msg, ClientHandler from) {
-        switch (msg.getType()) {
-            case CALL_REQUEST -> handleCallRequest(msg, from);
-            case CALL_ANSWER -> handleCallAnswer(msg, from);
-            case CALL_REJECT, CALL_END -> forwardToTarget(msg);
-            default -> forwardToTarget(msg);
+        MessageType type = msg.getType();
+        if (type == MessageType.CALL_REQUEST) {
+            handleCallRequest(msg, from);
+        } else if (type == MessageType.CALL_ANSWER) {
+            handleCallAnswer(msg, from);
+        } else {
+            forwardToTarget(msg);
         }
+    }
+
+    private static boolean isPrivateMessage(MessageType type) {
+        return type == MessageType.PRIVATE
+                || type == MessageType.PRIVATE_AUDIO
+                || type == MessageType.PRIVATE_IMAGE
+                || type == MessageType.PRIVATE_FILE;
+    }
+
+    private static boolean isCallMessage(MessageType type) {
+        return type == MessageType.VIDEO_CALL_REQUEST
+                || type == MessageType.VIDEO_CALL_ACCEPT
+                || type == MessageType.VIDEO_CALL_REJECT
+                || type == MessageType.VIDEO_CALL_END
+                || type == MessageType.VIDEO_FRAME
+                || type == MessageType.VOICE_CALL_REQUEST
+                || type == MessageType.VOICE_CALL_ACCEPT
+                || type == MessageType.VOICE_CALL_REJECT
+                || type == MessageType.VOICE_CALL_END
+                || type == MessageType.VOICE_FRAME
+                || type == MessageType.CALL_REQUEST
+                || type == MessageType.CALL_ANSWER
+                || type == MessageType.CALL_REJECT
+                || type == MessageType.CALL_END
+                || type == MessageType.CALL_INCOMING
+                || type == MessageType.CALL_INFO;
     }
 
     private static void handleCallRequest(ChatMessage msg, ClientHandler from) {

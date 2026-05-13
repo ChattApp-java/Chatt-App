@@ -8,6 +8,7 @@
 <BorderPane xmlns="http://javafx.com/javafx/21"
             xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="org.example.tpchatjavafx.client.controller.MainChatController"
+            fx:id="rootPane"
             styleClass="root-pane"
             prefWidth="1100" prefHeight="700">
 
@@ -48,7 +49,7 @@
          ZONE CENTRALE — CHAT
          ══════════════════════════════════════════════════════ -->
     <center>
-        <VBox styleClass="chat-area">
+        <VBox fx:id="privateChatPane" styleClass="chat-area">
 
             <!-- Barre supérieure du chat -->
             <HBox fx:id="chatTopBar" styleClass="chat-top-bar" alignment="CENTER_LEFT" spacing="12">

@@ -2,8 +2,10 @@ package org.example.tpchatjavafx.server;
 
 import org.example.tpchatjavafx.client.model.ChatMessage;
 import org.example.tpchatjavafx.common.MessageType;
+import org.example.tpchatjavafx.dao.GroupeDAO;
 import org.example.tpchatjavafx.dao.GroupeMembreDAO;
 import org.example.tpchatjavafx.dao.ReunionDAO;
+import org.example.tpchatjavafx.model.Groupe;
 import org.example.tpchatjavafx.model.Reunion;
 import org.example.tpchatjavafx.model.Utilisateur;
 
@@ -19,21 +21,23 @@ import java.util.stream.Collectors;
 public class MeetingManager {
     private final ReunionDAO reunionDAO;
     private final GroupeMembreDAO membreDAO;
+    private final GroupeDAO groupeDAO;
     private final UDPRelayServer udpRelayServer;
     private final Map<Integer, MeetingSession> activeMeetings = new ConcurrentHashMap<>();
 
     public MeetingManager(UDPRelayServer udpRelayServer) {
-        this(new ReunionDAO(), new GroupeMembreDAO(), udpRelayServer);
+        this(new ReunionDAO(), new GroupeMembreDAO(), new GroupeDAO(), udpRelayServer);
     }
 
-    MeetingManager(ReunionDAO reunionDAO, GroupeMembreDAO membreDAO, UDPRelayServer udpRelayServer) {
+    MeetingManager(ReunionDAO reunionDAO, GroupeMembreDAO membreDAO, GroupeDAO groupeDAO, UDPRelayServer udpRelayServer) {
         this.reunionDAO = reunionDAO;
         this.membreDAO = membreDAO;
+        this.groupeDAO = groupeDAO;
         this.udpRelayServer = udpRelayServer;
     }
 
     public MeetingSession startMeeting(int groupeId, int initiatorId, String initiatorUsername, String type, ClientHandler handler) throws SQLException {
-        if (!membreDAO.isMember(groupeId, initiatorId)) throw new SecurityException("Utilisateur non membre du groupe.");
+        if (!isMemberOrCreator(groupeId, initiatorId)) throw new SecurityException("Utilisateur non membre du groupe.");
         Reunion active = reunionDAO.findActiveByGroupeId(groupeId);
         if (active != null || activeMeetings.values().stream().anyMatch(s -> s.getGroupeId() == groupeId)) {
             throw new IllegalStateException("Une reunion est deja active pour ce groupe.");
@@ -47,7 +51,7 @@ public class MeetingManager {
 
     public ParticipantInfo joinMeeting(int meetingId, int userId, String username, ClientHandler handler, int udpAudioPort, int udpVideoPort) throws SQLException {
         MeetingSession session = requireSession(meetingId);
-        if (!membreDAO.isMember(session.getGroupeId(), userId)) throw new SecurityException("Utilisateur non membre du groupe.");
+        if (!isMemberOrCreator(session.getGroupeId(), userId)) throw new SecurityException("Utilisateur non membre du groupe.");
         reunionDAO.addParticipant(meetingId, userId);
 
         String address = handler.getSocket().getInetAddress().getHostAddress();
@@ -132,6 +136,12 @@ public class MeetingManager {
         MeetingSession session = activeMeetings.get(meetingId);
         if (session == null) throw new IllegalArgumentException("Reunion inactive ou introuvable.");
         return session;
+    }
+
+    private boolean isMemberOrCreator(int groupeId, int userId) throws SQLException {
+        Groupe groupe = groupeDAO.findById(groupeId);
+        if (groupe != null && groupe.getCreateurId() == userId) return true;
+        return membreDAO.isMember(groupeId, userId);
     }
 
     private void notifyParticipants(MeetingSession session, ChatMessage msg, int exceptUserId) {

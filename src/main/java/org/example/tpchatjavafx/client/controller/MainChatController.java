@@ -12,6 +12,8 @@ import javafx.geometry.Side;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.Node;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
@@ -55,6 +57,8 @@ import java.util.stream.Collectors;
 
 public class MainChatController {
 
+    @FXML private BorderPane rootPane;
+    @FXML private VBox       privateChatPane;
     @FXML private Label     chatTitleLabel;
     @FXML private Label     chatStatusLabel;
     @FXML private Label     chatAvatarLabel;
@@ -118,6 +122,7 @@ public class MainChatController {
     private AudioTransmissionService audioService;
     private String incomingCallFrom = null;
     private GroupController groupController;
+    private Tab groupTab;
 
     @FXML
     private void initialize() {
@@ -127,11 +132,18 @@ public class MainChatController {
         setupContactCellFactory();
 // Ajouter l'onglet Groupes
         groupController = new GroupController();
-        Tab groupTab = new Tab("👥 Groupes");
+        groupTab = new Tab("Groupes");
         groupTab.setClosable(false);
-        groupTab.setContent(groupController);
+        groupTab.setContent(buildGroupSidebarHint());
         if (tabPane != null) {
             tabPane.getTabs().add(groupTab);
+            tabPane.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> {
+                if (newTab == groupTab) {
+                    showGroupCenter();
+                } else if (newTab == privateTab) {
+                    showPrivateCenter();
+                }
+            });
         }
     }
 
@@ -192,8 +204,8 @@ public class MainChatController {
         networkClient.setOnMeetingInfo(msg -> {
             try {
                 // Le serveur envoie les infos UDP pour se connecter au relais
-                networkClient.startMeetingAudio(0, msg.getServerUdpAudioPort(), msg.getServerHost());
-                networkClient.startMeetingVideo(0, msg.getServerUdpVideoPort(), msg.getServerHost());
+                networkClient.startMeetingAudio(msg.getMeetingId(), 0, msg.getServerUdpAudioPort(), msg.getServerHost());
+                networkClient.startMeetingVideo(msg.getMeetingId(), 0, msg.getServerUdpVideoPort(), msg.getServerHost());
             } catch (Exception e) {
                 System.err.println("Erreur dÃ©marrage services UDP rÃ©union : " + e.getMessage());
             }
@@ -226,6 +238,32 @@ public class MainChatController {
             privateListView.setItems(allContacts);
             privateListView.refresh();
         });
+    }
+
+    private Node buildGroupSidebarHint() {
+        Label title = new Label("Groupes");
+        title.getStyleClass().add("group-tab-hint-title");
+
+        Label subtitle = new Label("La liste des groupes et le chat s'affichent a droite.");
+        subtitle.setWrapText(true);
+        subtitle.getStyleClass().add("group-tab-hint-text");
+
+        VBox box = new VBox(8, title, subtitle);
+        box.getStyleClass().add("group-tab-hint");
+        box.setAlignment(Pos.CENTER);
+        return box;
+    }
+
+    private void showGroupCenter() {
+        if (rootPane != null && groupController != null) {
+            rootPane.setCenter(groupController);
+        }
+    }
+
+    private void showPrivateCenter() {
+        if (rootPane != null && privateChatPane != null) {
+            rootPane.setCenter(privateChatPane);
+        }
     }
 
     private void setupSearchContactAutoCompletion() {

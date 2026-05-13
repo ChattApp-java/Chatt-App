@@ -61,6 +61,7 @@ public class MeetingController {
         
         if (networkClient != null) {
             networkClient.setActiveMeetingController(this);
+            addParticipant(String.valueOf(networkClient.getUserId()), networkClient.getUsername());
         }
 
         try {
@@ -77,6 +78,16 @@ public class MeetingController {
                 participantsList.getItems().add(displayName);
             }
         });
+    }
+
+    public void syncParticipants(String serialized) {
+        if (serialized == null || serialized.isBlank()) return;
+        for (String entry : serialized.split(",")) {
+            String[] parts = entry.split(":", 2);
+            if (parts.length == 2) {
+                addParticipant(parts[0], parts[1]);
+            }
+        }
     }
 
     public void removeParticipant(String participantId, String displayName) {

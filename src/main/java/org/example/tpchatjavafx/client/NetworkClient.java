@@ -24,6 +24,7 @@ public class NetworkClient {
     private Socket      socket;
     private PrintWriter out;
     private String      username;
+    private int         userId;
 
     // ── Callbacks ────────────────────────────────────────────
     private Consumer<ChatMessage>  onMessageReceived;
@@ -74,6 +75,8 @@ public class NetworkClient {
     private Consumer<ChatMessage> onGroupListResponse;
     private Consumer<ChatMessage> onGroupMessage;
     private Consumer<ChatMessage> onGroupMemberAdded;
+    private Consumer<ChatMessage> onGroupMemberRemoved;
+    private Consumer<ChatMessage> onGroupMembersResponse;
     private Consumer<ChatMessage> onGroupHistoryResponse;
 
     public void setOnIncomingCall(Consumer<ChatMessage> cb) {
@@ -115,6 +118,8 @@ public class NetworkClient {
     public void setOnGroupListResponse(Consumer<ChatMessage> cb)    { this.onGroupListResponse = cb; }
     public void setOnGroupMessage(Consumer<ChatMessage> cb)         { this.onGroupMessage = cb; }
     public void setOnGroupMemberAdded(Consumer<ChatMessage> cb)     { this.onGroupMemberAdded = cb; }
+    public void setOnGroupMemberRemoved(Consumer<ChatMessage> cb)   { this.onGroupMemberRemoved = cb; }
+    public void setOnGroupMembersResponse(Consumer<ChatMessage> cb) { this.onGroupMembersResponse = cb; }
     public void setOnGroupHistoryResponse(Consumer<ChatMessage> cb) { this.onGroupHistoryResponse = cb; }
     // ── Connexion ─────────────────────────────────────────────
 
@@ -181,19 +186,32 @@ public class NetworkClient {
     }
 
     public void startMeetingAudio(int localPort, int serverPort, String serverHost) throws Exception {
+        startMeetingAudio(0, localPort, serverPort, serverHost);
+    }
+
+    public void startMeetingAudio(int meetingId, int localPort, int serverPort, String serverHost) throws Exception {
         if (meetingAudioService != null) {
             meetingAudioService.stop();
         }
         meetingAudioService = new AudioTransmissionService();
-        meetingAudioService.initiate(serverHost, serverPort, localPort);
+        meetingAudioService.initiate(serverHost, serverPort, localPort, meetingId, userId);
     }
 
     public void startMeetingVideo(int localPort, int serverPort, String serverHost) throws Exception {
+        startMeetingVideo(0, localPort, serverPort, serverHost);
+    }
+
+    public void startMeetingVideo(int meetingId, int localPort, int serverPort, String serverHost) throws Exception {
         if (meetingVideoCapture != null) {
             meetingVideoCapture.stop();
         }
         meetingVideoCapture = new MeetingVideoCapture();
-        meetingVideoCapture.start(serverHost, serverPort, localPort);
+        meetingVideoCapture.setOnRemoteFrame((senderId, frame) -> {
+            if (activeMeetingController != null) {
+                activeMeetingController.updateParticipantFrame(String.valueOf(senderId), frame);
+            }
+        });
+        meetingVideoCapture.start(serverHost, serverPort, localPort, meetingId, userId);
     }
 
     public void sendMeetingAudioFrame(byte[] frame) {
@@ -229,8 +247,21 @@ public class NetworkClient {
         send(msg);
     }
 
+    public void sendGroupMedia(int groupId, MessageType type, String fileName, byte[] data) {
+        ChatMessage msg = new ChatMessage(type, username, "SERVER", null, fileName);
+        msg.setGroupId(groupId);
+        msg.setBinaryData(data);
+        send(msg);
+    }
+
     public void addGroupMember(int groupId, String pseudo) {
         ChatMessage msg = new ChatMessage(MessageType.GROUP_ADD_MEMBER, username, "SERVER", null, pseudo);
+        msg.setGroupId(groupId);
+        send(msg);
+    }
+
+    public void leaveGroup(int groupId) {
+        ChatMessage msg = new ChatMessage(MessageType.GROUP_LEAVE, username, "SERVER", null, "");
         msg.setGroupId(groupId);
         send(msg);
     }
@@ -241,6 +272,12 @@ public class NetworkClient {
 
     public void requestGroupHistory(int groupId) {
         ChatMessage msg = new ChatMessage(MessageType.GROUP_HISTORY_REQUEST, username, "SERVER", null, "");
+        msg.setGroupId(groupId);
+        send(msg);
+    }
+
+    public void requestGroupMembers(int groupId) {
+        ChatMessage msg = new ChatMessage(MessageType.GROUP_MEMBERS, username, "SERVER", null, "");
         msg.setGroupId(groupId);
         send(msg);
     }
@@ -259,7 +296,16 @@ public class NetworkClient {
 
     // ── Getters ──────────────────────────────────────────────
 
+    private int parseIntSafe(String value, int defaultValue) {
+        try {
+            return value == null || value.isBlank() ? defaultValue : Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+
     public String getUsername() { return username; }
+    public int getUserId() { return userId; }
 
     public void close() {
         try { if (socket != null) socket.close(); }
@@ -294,6 +340,7 @@ public class NetworkClient {
             switch (msg.getType()) {
                 case AUTH_SUCCESS -> {
                     username = msg.getContent();
+                    userId = parseIntSafe(msg.getTo(), 0);
                     if (onAuthSuccess != null) onAuthSuccess.accept(msg);
                 }
                 case AUTH_FAIL -> {
@@ -361,7 +408,7 @@ public class NetworkClient {
                         onMeetingParticipantJoined.accept(msg);
                     }
                     if (activeMeetingController != null) {
-                        activeMeetingController.addParticipant(msg.getFrom(), msg.getFrom());
+                        activeMeetingController.syncParticipants(msg.getContent());
                     }
                 }
                 case MEETING_PARTICIPANT_LEFT -> {
@@ -370,6 +417,11 @@ public class NetworkClient {
                     }
                     if (activeMeetingController != null) {
                         activeMeetingController.removeParticipant(msg.getFrom(), msg.getFrom());
+                    }
+                }
+                case MEETING_PARTICIPANTS -> {
+                    if (activeMeetingController != null) {
+                        activeMeetingController.syncParticipants(msg.getContent());
                     }
                 }
                 case MEETING_INFO -> {
@@ -393,11 +445,17 @@ public class NetworkClient {
                 case GROUP_LIST_RESPONSE -> {
                     if (onGroupListResponse != null) onGroupListResponse.accept(msg);
                 }
-                case GROUP_MESSAGE -> {
+                case GROUP_MESSAGE, GROUP_AUDIO, GROUP_IMAGE, GROUP_FILE -> {
                     if (onGroupMessage != null) onGroupMessage.accept(msg);
+                }
+                case GROUP_MEMBERS -> {
+                    if (onGroupMembersResponse != null) onGroupMembersResponse.accept(msg);
                 }
                 case GROUP_ADD_MEMBER, GROUP_MEMBER_ADD -> {
                     if (onGroupMemberAdded != null) onGroupMemberAdded.accept(msg);
+                }
+                case GROUP_REMOVE_MEMBER, GROUP_MEMBER_REMOVE -> {
+                    if (onGroupMemberRemoved != null) onGroupMemberRemoved.accept(msg);
                 }
                 case GROUP_HISTORY_RESPONSE -> {
                     if (onGroupHistoryResponse != null) onGroupHistoryResponse.accept(msg);

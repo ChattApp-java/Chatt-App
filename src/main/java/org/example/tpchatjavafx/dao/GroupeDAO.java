@@ -39,11 +39,17 @@ public class GroupeDAO {
 
     public List<Groupe> findByUtilisateurId(int utilisateurId) throws SQLException {
         List<Groupe> groupes = new ArrayList<>();
-        String sql = "SELECT g.* FROM groupe g JOIN groupe_membre gm ON gm.groupe_id = g.id " +
-                "WHERE gm.utilisateur_id = ? ORDER BY g.date_creation DESC";
+        String sql = "SELECT DISTINCT g.* FROM groupe g " +
+                "LEFT JOIN groupe_membre gm ON gm.groupe_id = g.id " +
+                "WHERE gm.utilisateur_id = ? " +
+                "OR (g.createur_id = ? AND NOT EXISTS (" +
+                "    SELECT 1 FROM groupe_membre gm2 WHERE gm2.groupe_id = g.id" +
+                ")) " +
+                "ORDER BY g.date_creation DESC";
         try (Connection conn = DatabaseConnection.getInstance().getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, utilisateurId);
+            stmt.setInt(2, utilisateurId);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) groupes.add(map(rs));
             }
