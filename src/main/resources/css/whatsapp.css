@@ -275,3 +275,32 @@
 .scroll-bar .thumb {
     -fx-background-color: #CED0D1;
 }
+/* ================== Groupes (thème WhatsApp) ================== */
+.group-panel-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #00A884;
+    -fx-padding: 0 0 8 0;
+}
+
+.group-list-cell {
+    -fx-font-size: 14px;
+    -fx-padding: 10 12;
+    -fx-text-fill: #111B21;
+    -fx-border-color: transparent transparent #F0F2F5 transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.group-list-cell:selected {
+    -fx-background-color: #F0F2F5;
+    -fx-border-color: transparent transparent transparent #00A884;
+    -fx-border-width: 0 0 0 4;
+    -fx-text-fill: #111B21;
+}
+
+.group-system-msg {
+    -fx-text-fill: #667781;
+    -fx-font-size: 11px;
+    -fx-alignment: center;
+    -fx-padding: 4 0;
+}
