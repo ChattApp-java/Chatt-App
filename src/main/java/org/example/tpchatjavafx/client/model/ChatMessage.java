@@ -42,6 +42,7 @@ public class ChatMessage {
 
     public MessageType getType() { return type; }
     public void setType(MessageType type) { this.type = type; }
+    public void setType(String type) { this.type = MessageType.valueOf(type); }
 
     public int getMessageId() { return messageId; }
     public void setMessageId(int messageId) { this.messageId = messageId; }

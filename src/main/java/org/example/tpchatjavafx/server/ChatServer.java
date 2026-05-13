@@ -3,29 +3,44 @@ package org.example.tpchatjavafx.server;
 import org.example.tpchatjavafx.client.model.ChatMessage;
 import org.example.tpchatjavafx.common.MessageType;
 import org.example.tpchatjavafx.dao.ConnexionDAO;
+import org.example.tpchatjavafx.dao.GroupeMembreDAO;
 
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 /**
- * Serveur TCP du chat.
- * Gère les connexions et le routage multi-fenêtres pour un même utilisateur.
+ * Serveur TCP du chat. Gere les connexions et le routage multi-fenetres.
  */
 public class ChatServer {
 
     static final int PORT = 5555;
 
-    /** username -> Ensemble de sockets/handlers (pour multi-clients) */
     static final Map<String, Set<ClientHandler>> clients = new ConcurrentHashMap<>();
-    
+    private static final Map<Integer, Set<ClientHandler>> clientsById = new ConcurrentHashMap<>();
     private static final ConnexionDAO connexionDAO = new ConnexionDAO();
+    private static final GroupeMembreDAO groupeMembreDAO = new GroupeMembreDAO();
+
+    private static final UDPRelayServer udpRelayServer = new UDPRelayServer();
+    private static final GroupManager groupManager = new GroupManager();
+    private static final MeetingManager meetingManager = new MeetingManager(udpRelayServer);
 
     public static void main(String[] args) {
-        System.out.println("=== Chat Server démarré sur le port " + PORT + " ===");
+        try {
+            udpRelayServer.start();
+            Runtime.getRuntime().addShutdownHook(new Thread(ChatServer::shutdown, "chat-server-shutdown"));
+            System.out.println("=== Chat Server demarre sur le port " + PORT + " ===");
+            System.out.println("=== UDP Relay audio=" + udpRelayServer.getAudioPort() + " video=" + udpRelayServer.getVideoPort() + " ===");
+        } catch (IOException e) {
+            System.err.println("[Server] Impossible de demarrer le relais UDP : " + e.getMessage());
+            return;
+        }
+
         try (ServerSocket ss = new ServerSocket(PORT)) {
             while (true) {
                 Socket socket = ss.accept();
@@ -34,22 +49,24 @@ public class ChatServer {
             }
         } catch (IOException e) {
             System.err.println("[Server] Erreur : " + e.getMessage());
+        } finally {
+            shutdown();
         }
     }
 
-    // ── Gestion des sessions ───────────────────────────────────
+    public static GroupManager getGroupManager() { return groupManager; }
+    public static MeetingManager getMeetingManager() { return meetingManager; }
+    public static UDPRelayServer getUdpRelayServer() { return udpRelayServer; }
 
     static void registerClient(String username, int userId, ClientHandler handler) {
         clients.computeIfAbsent(username, k -> Collections.synchronizedSet(new HashSet<>())).add(handler);
-        System.out.println("[Server] Connecté : " + username + " (Total sessions: " + clients.get(username).size() + ")");
-        
-        // Mettre à jour la BDD : En ligne
+        clientsById.computeIfAbsent(userId, k -> Collections.synchronizedSet(new HashSet<>())).add(handler);
+        System.out.println("[Server] Connecte : " + username + " (sessions: " + clients.get(username).size() + ")");
         try {
             connexionDAO.setEnLigne(userId, handler.getSocketId(), true);
         } catch (Exception e) {
-            System.err.println("Erreur MàJ statut En ligne: " + e.getMessage());
+            System.err.println("Erreur statut en ligne: " + e.getMessage());
         }
-        
         broadcastUserStatus(username, "EN_LIGNE");
         broadcastUserList();
     }
@@ -59,78 +76,74 @@ public class ChatServer {
         Set<ClientHandler> userHandlers = clients.get(username);
         if (userHandlers != null) {
             userHandlers.remove(handler);
-            if (userHandlers.isEmpty()) {
-                clients.remove(username);
-            }
+            if (userHandlers.isEmpty()) clients.remove(username);
         }
-        System.out.println("[Server] Déconnecté : " + username);
-        
-        // Mettre à jour la BDD : Déconnecté (pour CE socket précis)
+        Set<ClientHandler> idHandlers = clientsById.get(userId);
+        if (idHandlers != null) {
+            idHandlers.remove(handler);
+            if (idHandlers.isEmpty()) clientsById.remove(userId);
+        }
+        System.out.println("[Server] Deconnecte : " + username);
         try {
             connexionDAO.setEnLigne(userId, handler.getSocketId(), false);
         } catch (Exception e) {
-            System.err.println("Erreur MàJ statut Déconnecté: " + e.getMessage());
+            System.err.println("Erreur statut hors ligne: " + e.getMessage());
         }
-
-        // S'il n'y a plus aucune session pour cet utilisateur, on diffuse son statut hors ligne
         if (!clients.containsKey(username)) {
             broadcastUserStatus(username, "NON_CONNECTE");
             broadcastUserList();
         }
     }
 
-    /** Diffuse la liste globale des utilisateurs connectés (usernames) */
     static void broadcastUserList() {
-        String userListContent = String.join(",", clients.keySet());
-        ChatMessage msg = new ChatMessage(MessageType.USER_LIST, "SERVER", null, null, userListContent);
+        ChatMessage msg = new ChatMessage(MessageType.USER_LIST, "SERVER", null, null, String.join(",", clients.keySet()));
         broadcastToAll(msg);
     }
-    
-    /** Diffuse le statut d'un utilisateur spécifique */
+
     static void broadcastUserStatus(String username, String status) {
-        ChatMessage msg = new ChatMessage(MessageType.STATUS_UPDATE, username, null, null, status);
-        broadcastToAll(msg);
+        broadcastToAll(new ChatMessage(MessageType.STATUS_UPDATE, username, null, null, status));
+    }
+
+    public static void broadcastToGroup(int groupeId, ChatMessage msg) {
+        try {
+            for (Integer memberId : groupeMembreDAO.getMemberIds(groupeId)) {
+                sendToUserId(memberId, msg);
+            }
+        } catch (Exception e) {
+            System.err.println("Erreur broadcast groupe " + groupeId + ": " + e.getMessage());
+        }
+    }
+
+    public static void sendToUserId(int userId, ChatMessage msg) {
+        Set<ClientHandler> handlers = clientsById.get(userId);
+        if (handlers != null) handlers.forEach(h -> h.send(msg));
     }
 
     private static void broadcastToAll(ChatMessage msg) {
         clients.values().forEach(handlers -> handlers.forEach(h -> h.send(msg)));
     }
 
-    // ── Routage des messages ───────────────────────────────────
-
     static void handleMessage(ChatMessage msg, ClientHandler from) {
         if (msg == null) return;
         switch (msg.getType()) {
             case PRIVATE, PRIVATE_AUDIO, PRIVATE_IMAGE, PRIVATE_FILE -> routePrivate(msg, from);
-            case VIDEO_CALL_REQUEST, VIDEO_CALL_ACCEPT,
-                 VIDEO_CALL_REJECT,  VIDEO_CALL_END, VIDEO_FRAME,
-                 VOICE_CALL_REQUEST, VOICE_CALL_ACCEPT,
-                 VOICE_CALL_REJECT,  VOICE_CALL_END, VOICE_FRAME,
-                 CALL_REQUEST, CALL_ANSWER, CALL_REJECT, CALL_END,
-                 CALL_INCOMING, CALL_INFO -> handleCallMessage(msg, from);
-            case GROUP_CREATE, GROUP_UPDATE, GROUP_DELETE, GROUP_JOIN,
-                 GROUP_LEAVE, GROUP_MESSAGE, GROUP_MEMBER_ADD, GROUP_MEMBER_REMOVE,
-                 MEETING_INVITE, MEETING_STARTED, MEETING_ENDED,
-                 MEETING_PARTICIPANT_JOINED, MEETING_PARTICIPANT_LEFT,
-                 MEETING_INFO, MEETING_AUDIO_FRAME, MEETING_VIDEO_FRAME -> handleMeetingMessage(msg, from);
+            case VIDEO_CALL_REQUEST, VIDEO_CALL_ACCEPT, VIDEO_CALL_REJECT, VIDEO_CALL_END, VIDEO_FRAME,
+                 VOICE_CALL_REQUEST, VOICE_CALL_ACCEPT, VOICE_CALL_REJECT, VOICE_CALL_END, VOICE_FRAME,
+                 CALL_REQUEST, CALL_ANSWER, CALL_REJECT, CALL_END, CALL_INCOMING, CALL_INFO -> handleCallMessage(msg, from);
             case USER_LIST_REQUEST -> broadcastUserList();
-            default -> {} // LOGIN / REGISTER traités dans ClientHandler
+            default -> {
+                if (msg.getTo() != null && !msg.getTo().isBlank()) forwardToTarget(msg);
+            }
         }
     }
 
-    // ── Helpers ───────────────────────────────────────────────
-
     private static void routePrivate(ChatMessage msg, ClientHandler from) {
-        forwardToTarget(msg); // Envoie à toutes les fenêtres du destinataire
-        
-        // Envoie aussi aux autres fenêtres de l'expéditeur pour synchronisation (s'il en a plusieurs)
+        forwardToTarget(msg);
         if (from.getUsername() != null) {
             Set<ClientHandler> senderHandlers = clients.get(from.getUsername());
             if (senderHandlers != null) {
                 for (ClientHandler h : senderHandlers) {
-                    if (h != from) { // Ne pas renvoyer à l'onglet qui a émis
-                        h.send(msg);
-                    }
+                    if (h != from) h.send(msg);
                 }
             }
         }
@@ -138,76 +151,39 @@ public class ChatServer {
 
     private static void forwardToTarget(ChatMessage msg) {
         Set<ClientHandler> targets = clients.get(msg.getTo());
-        if (targets != null && !targets.isEmpty()) {
-            for (ClientHandler target : targets) {
-                target.send(msg);
-            }
-        }
+        if (targets != null) targets.forEach(target -> target.send(msg));
     }
-
-    // ── Gestion des appels ─────────────────────────────────────
 
     private static void handleCallMessage(ChatMessage msg, ClientHandler from) {
         switch (msg.getType()) {
             case CALL_REQUEST -> handleCallRequest(msg, from);
             case CALL_ANSWER -> handleCallAnswer(msg, from);
-            case CALL_REJECT, CALL_END -> forwardToTarget(msg); // Simple routage
-            default -> forwardToTarget(msg); // Anciens types ou autres
+            case CALL_REJECT, CALL_END -> forwardToTarget(msg);
+            default -> forwardToTarget(msg);
         }
     }
 
     private static void handleCallRequest(ChatMessage msg, ClientHandler from) {
-        // Vérifier que l'utilisateur cible est connecté
         Set<ClientHandler> targets = clients.get(msg.getTo());
         if (targets == null || targets.isEmpty()) {
-            // Utilisateur non connecté - refuser automatiquement
-            ChatMessage rejectMsg = new ChatMessage(MessageType.CALL_REJECT, "SERVER", msg.getFrom(), msg.getConversationId(), "Utilisateur non connecté");
-            from.send(rejectMsg);
+            from.send(new ChatMessage(MessageType.CALL_REJECT, "SERVER", msg.getFrom(), msg.getConversationId(), "Utilisateur non connecte"));
             return;
         }
-
-        // Créer message d'appel entrant pour le destinataire
         ChatMessage incomingMsg = new ChatMessage(MessageType.CALL_INCOMING, msg.getFrom(), msg.getTo(), msg.getConversationId(), msg.getCallType());
-        incomingMsg.setCallType(msg.getCallType()); // AUDIO ou VIDEO
-
-        // Notifier tous les clients du destinataire
-        for (ClientHandler target : targets) {
-            target.send(incomingMsg);
-        }
+        incomingMsg.setCallType(msg.getCallType());
+        targets.forEach(target -> target.send(incomingMsg));
     }
 
     private static void handleCallAnswer(ChatMessage msg, ClientHandler from) {
-        // L'appel est accepté - transmettre les infos P2P
-        ChatMessage infoMsg = new ChatMessage(MessageType.CALL_INFO, msg.getFrom(), msg.getTo(), msg.getConversationId(), "Connexion P2P établie");
+        ChatMessage infoMsg = new ChatMessage(MessageType.CALL_INFO, msg.getFrom(), msg.getTo(), msg.getConversationId(), "Connexion P2P etablie");
         infoMsg.setCallType(msg.getCallType());
-        infoMsg.setRemoteHost(from.getSocket().getInetAddress().getHostAddress()); // IP de l'appelant
-        infoMsg.setRemotePort(0); // Le port sera déterminé côté client pour UDP
-
-        // Envoyer les infos au destinataire
-        Set<ClientHandler> targets = clients.get(msg.getTo());
-        if (targets != null) {
-            for (ClientHandler target : targets) {
-                target.send(infoMsg);
-            }
-        }
-
-        // Confirmer à l'appelant que l'appel est accepté
-        ChatMessage confirmMsg = new ChatMessage(MessageType.CALL_ANSWER, msg.getTo(), msg.getFrom(), msg.getConversationId(), "Appel accepté");
-        from.send(confirmMsg);
+        infoMsg.setRemoteHost(from.getSocket().getInetAddress().getHostAddress());
+        infoMsg.setRemotePort(0);
+        forwardToTarget(infoMsg);
+        from.send(new ChatMessage(MessageType.CALL_ANSWER, msg.getTo(), msg.getFrom(), msg.getConversationId(), "Appel accepte"));
     }
 
-    private static void handleMeetingMessage(ChatMessage msg, ClientHandler from) {
-        if (msg.getTo() != null && !msg.getTo().isBlank()) {
-            forwardToTarget(msg);
-            return;
-        }
-
-        if (msg.getGroupId() > 0) {
-            broadcastToAll(msg);
-            return;
-        }
-
-        // Par défaut, router sur le destinataire s'il a été fourni.
-        forwardToTarget(msg);
+    private static void shutdown() {
+        udpRelayServer.close();
     }
 }

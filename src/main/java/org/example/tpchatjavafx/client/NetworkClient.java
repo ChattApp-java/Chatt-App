@@ -2,6 +2,7 @@ package org.example.tpchatjavafx.client;
 
 import javafx.application.Platform;
 import org.example.tpchatjavafx.client.audio.AudioTransmissionService;
+import org.example.tpchatjavafx.client.controller.MeetingController;
 import org.example.tpchatjavafx.client.model.ChatMessage;
 import org.example.tpchatjavafx.client.video.MeetingVideoCapture;
 import org.example.tpchatjavafx.common.MessageType;
@@ -68,6 +69,12 @@ public class NetworkClient {
     private Consumer<ChatMessage> onMeetingParticipantJoined;
     private Consumer<ChatMessage> onMeetingParticipantLeft;
     private Consumer<ChatMessage> onMeetingInfo;
+    // ── Callbacks Groupes ─────────────────────────────────────
+    private Consumer<ChatMessage> onGroupCreated;
+    private Consumer<ChatMessage> onGroupListResponse;
+    private Consumer<ChatMessage> onGroupMessage;
+    private Consumer<ChatMessage> onGroupMemberAdded;
+    private Consumer<ChatMessage> onGroupHistoryResponse;
 
     public void setOnIncomingCall(Consumer<ChatMessage> cb) {
         this.onIncomingCall = cb;
@@ -104,7 +111,11 @@ public class NetworkClient {
     public void setOnMeetingInfo(Consumer<ChatMessage> cb) {
         this.onMeetingInfo = cb;
     }
-
+    public void setOnGroupCreated(Consumer<ChatMessage> cb)         { this.onGroupCreated = cb; }
+    public void setOnGroupListResponse(Consumer<ChatMessage> cb)    { this.onGroupListResponse = cb; }
+    public void setOnGroupMessage(Consumer<ChatMessage> cb)         { this.onGroupMessage = cb; }
+    public void setOnGroupMemberAdded(Consumer<ChatMessage> cb)     { this.onGroupMemberAdded = cb; }
+    public void setOnGroupHistoryResponse(Consumer<ChatMessage> cb) { this.onGroupHistoryResponse = cb; }
     // ── Connexion ─────────────────────────────────────────────
 
     /** Ouvre la socket TCP et démarre le thread d'écoute. Ne se logue PAS encore. */
@@ -198,7 +209,38 @@ public class NetworkClient {
     }
 
     // ── Envoi ────────────────────────────────────────────────
+    public void createGroup(String nom, String description) {
+        ChatMessage msg = new ChatMessage(MessageType.GROUP_CREATE, username, "SERVER", null, nom + "|" + description);
+        send(msg);
+    }
 
+    public void sendGroupMessage(int groupId, String content) {
+        ChatMessage msg = new ChatMessage(MessageType.GROUP_MESSAGE, username, "SERVER", null, content);
+        msg.setGroupId(groupId);
+        send(msg);
+    }
+
+    public void addGroupMember(int groupId, String targetUsername) {
+        ChatMessage msg = new ChatMessage(MessageType.GROUP_ADD_MEMBER, username, "SERVER", null, targetUsername);
+        msg.setGroupId(groupId);
+        send(msg);
+    }
+
+    public void requestGroupList() {
+        send(new ChatMessage(MessageType.GROUP_LIST, username, "SERVER", null, ""));
+    }
+
+    public void requestGroupHistory(int groupId) {
+        ChatMessage msg = new ChatMessage(MessageType.GROUP_HISTORY_REQUEST, username, "SERVER", null, "");
+        msg.setGroupId(groupId);
+        send(msg);
+    }
+
+    public void startGroupMeeting(int groupId, String meetingType) {
+        ChatMessage msg = new ChatMessage(MessageType.MEETING_START, username, "SERVER", null, meetingType);
+        msg.setGroupId(groupId);
+        send(msg);
+    }
     public void send(ChatMessage msg) {
         if (out != null) {
             out.println(msg.serialize());
@@ -220,7 +262,7 @@ public class NetworkClient {
     private void startListenerThread() {
         Thread t = new Thread(() -> {
             try (BufferedReader in = new BufferedReader(
-                         new InputStreamReader(socket.getInputStream()))) {
+                    new InputStreamReader(socket.getInputStream()))) {
                 String line;
                 while ((line = in.readLine()) != null) {
                     dispatch(ChatMessage.deserialize(line));
@@ -335,6 +377,21 @@ public class NetworkClient {
                     if (activeMeetingController != null) {
                         activeMeetingController.updateParticipantFrame(msg.getFrom(), msg.getBinaryData());
                     }
+                }
+                case GROUP_CREATED -> {
+                    if (onGroupCreated != null) onGroupCreated.accept(msg);
+                }
+                case GROUP_LIST_RESPONSE -> {
+                    if (onGroupListResponse != null) onGroupListResponse.accept(msg);
+                }
+                case GROUP_MESSAGE -> {
+                    if (onGroupMessage != null) onGroupMessage.accept(msg);
+                }
+                case GROUP_MEMBER_ADD -> {
+                    if (onGroupMemberAdded != null) onGroupMemberAdded.accept(msg);
+                }
+                case GROUP_HISTORY_RESPONSE -> {
+                    if (onGroupHistoryResponse != null) onGroupHistoryResponse.accept(msg);
                 }
                 default -> {
                     if (onMessageReceived != null) onMessageReceived.accept(msg);

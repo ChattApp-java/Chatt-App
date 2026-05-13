@@ -11,6 +11,8 @@ public class Message {
     private int expediteurId;
     private Integer destinataireId; // Peut être null si groupe
     private int conversationId;
+    private Integer groupeId;
+    private Integer reunionId;
     private boolean estLu;
 
     // Champs transient (non persistés) pour l'affichage
@@ -49,6 +51,12 @@ public class Message {
 
     public int getConversationId() { return conversationId; }
     public void setConversationId(int conversationId) { this.conversationId = conversationId; }
+
+    public Integer getGroupeId() { return groupeId; }
+    public void setGroupeId(Integer groupeId) { this.groupeId = groupeId; }
+
+    public Integer getReunionId() { return reunionId; }
+    public void setReunionId(Integer reunionId) { this.reunionId = reunionId; }
 
     public boolean isEstLu() { return estLu; }
     public void setEstLu(boolean estLu) { this.estLu = estLu; }

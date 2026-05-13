@@ -38,12 +38,13 @@ public class ClientHandler implements Runnable {
     private final ConversationDAO convDAO  = new ConversationDAO();
     private final ContactDAO contactDAO    = new ContactDAO();
 
-    public ClientHandler(Socket socket) { 
+    public ClientHandler(Socket socket) {
         this.socket = socket;
         this.socketId = UUID.randomUUID().toString();
     }
 
     public String getUsername() { return username; }
+    public int getUserId() { return userId; }
     public String getSocketId() { return socketId; }
     public Socket getSocket() { return socket; }
 
@@ -61,7 +62,7 @@ public class ClientHandler implements Runnable {
     @Override
     public void run() {
         try (BufferedReader in = new BufferedReader(
-                     new InputStreamReader(socket.getInputStream()))) {
+                new InputStreamReader(socket.getInputStream()))) {
             out = new PrintWriter(
                     new OutputStreamWriter(socket.getOutputStream()), true);
 
@@ -95,7 +96,7 @@ public class ClientHandler implements Runnable {
                 if (username != null) handleHistoryRequest(msg);
             }
             case LOGOUT   -> cleanup();
-            
+
             // ===== APPELS =====
             case CALL_REQUEST -> {
                 if (username != null) handleCallRequest(msg);
@@ -109,7 +110,43 @@ public class ClientHandler implements Runnable {
             case CALL_END -> {
                 if (username != null) handleCallEnd(msg);
             }
-            
+            case GROUP_CREATE -> {
+                if (username != null) handleGroupCreate(msg);
+            }
+            case GROUP_ADD_MEMBER, GROUP_MEMBER_ADD -> {
+                if (username != null) handleGroupAddMember(msg);
+            }
+            case GROUP_REMOVE_MEMBER, GROUP_MEMBER_REMOVE -> {
+                if (username != null) handleGroupRemoveMember(msg);
+            }
+            case GROUP_LIST -> {
+                if (username != null) handleGroupList(msg);
+            }
+            case GROUP_MEMBERS -> {
+                if (username != null) handleGroupMembers(msg);
+            }
+            case GROUP_MESSAGE -> {
+                if (username != null) handleGroupMessage(msg);
+            }
+            case GROUP_HISTORY_REQUEST -> {
+                if (username != null) handleGroupHistoryRequest(msg);
+            }
+            case GROUP_DELETE -> {
+                if (username != null) handleGroupDelete(msg);
+            }
+            case MEETING_START, MEETING_INVITE -> {
+                if (username != null) handleMeetingStart(msg);
+            }
+            case MEETING_JOIN, MEETING_PARTICIPANT_JOINED -> {
+                if (username != null) handleMeetingJoin(msg);
+            }
+            case MEETING_LEAVE, MEETING_PARTICIPANT_LEFT -> {
+                if (username != null) handleMeetingLeave(msg);
+            }
+            case MEETING_END, MEETING_ENDED -> {
+                if (username != null) handleMeetingEnd(msg);
+            }
+
             default       -> {
                 // N'autoriser que les utilisateurs authentifiés
                 if (username != null) persistAndRoute(msg);
@@ -128,7 +165,7 @@ public class ClientHandler implements Runnable {
             send(new ChatMessage(MessageType.AUTH_FAIL, "SERVER", uname, null, "Identifiants incorrects"));
             return;
         }
-        
+
         setupSession(user);
     }
 
@@ -143,7 +180,7 @@ public class ClientHandler implements Runnable {
             send(new ChatMessage(MessageType.AUTH_FAIL, "SERVER", uname, null, res.reason()));
             return;
         }
-        
+
         try {
             Utilisateur user = userDAO.findByUsername(uname);
             setupSession(user);
@@ -191,26 +228,26 @@ public class ClientHandler implements Runnable {
             send(new ChatMessage(MessageType.ERROR, "SERVER", username, null, "Erreur chargement contacts : " + e.getMessage()));
         }
     }
-    
+
     private void setupSession(Utilisateur user) {
         this.username = user.getUsername();
         this.userId = user.getId();
         ChatServer.registerClient(username, userId, this);
-        
+
         // Envoi auth success avec l'ID
         send(new ChatMessage(MessageType.AUTH_SUCCESS, "SERVER", String.valueOf(userId), null, username));
         System.out.println("[Auth] Connecté : " + username);
-        
+
         // Push messages non lus
         try {
             List<Message> unread = messageDAO.getUnreadMessages(userId);
             for (Message m : unread) {
                 ChatMessage cmsg = new ChatMessage(
-                    MessageType.valueOf(m.getType()),
-                    m.getExpediteur().getUsername(),
-                    this.username,
-                    String.valueOf(m.getConversationId()),
-                    m.getContenu()
+                        MessageType.valueOf(m.getType()),
+                        m.getExpediteur().getUsername(),
+                        this.username,
+                        String.valueOf(m.getConversationId()),
+                        m.getContenu()
                 );
                 cmsg.setMessageId(m.getId());
                 if (m.getDateEnvoi() != null) {
@@ -247,8 +284,8 @@ public class ClientHandler implements Runnable {
 
     private void persistAndRoute(ChatMessage msg) {
         msg.setTimestamp(LocalDateTime.now().format(timeFormatter));
-        if (msg.getType() == MessageType.PRIVATE || msg.getType() == MessageType.PRIVATE_AUDIO || 
-            msg.getType() == MessageType.PRIVATE_IMAGE || msg.getType() == MessageType.PRIVATE_FILE) {
+        if (msg.getType() == MessageType.PRIVATE || msg.getType() == MessageType.PRIVATE_AUDIO ||
+                msg.getType() == MessageType.PRIVATE_IMAGE || msg.getType() == MessageType.PRIVATE_FILE) {
             try {
                 Utilisateur receiver = userDAO.findByUsername(msg.getTo());
                 if (receiver != null) {
@@ -266,24 +303,24 @@ public class ClientHandler implements Runnable {
                     m.setExpediteurId(userId);
                     m.setDestinataireId(receiver.getId());
                     m.setConversationId(convId);
-                    
+
                     Message saved = messageDAO.create(m);
-                    msg.setMessageId(saved.getId()); 
-                    
+                    msg.setMessageId(saved.getId());
+
                     // Handling FichierMedia
                     if (msg.getBinaryData() != null && msg.getBinaryData().length > 0) {
                         String uploadDir = "server_uploads";
                         File dir = new File(uploadDir);
                         if (!dir.exists()) dir.mkdirs();
-                        
+
                         String originalName = msg.getContent() != null ? msg.getContent() : "file.bin";
                         String safeName = System.currentTimeMillis() + "_" + originalName.replaceAll("[^a-zA-Z0-9.-]", "_");
                         File destFile = new File(dir, safeName);
-                        
+
                         try (FileOutputStream fos = new FileOutputStream(destFile)) {
                             fos.write(msg.getBinaryData());
                         }
-                        
+
                         org.example.tpchatjavafx.model.FichierMedia fm;
                         if (msg.getType() == MessageType.PRIVATE_AUDIO) {
                             org.example.tpchatjavafx.model.Vocal vocal = new org.example.tpchatjavafx.model.Vocal();
@@ -292,14 +329,14 @@ public class ClientHandler implements Runnable {
                         } else {
                             fm = new org.example.tpchatjavafx.model.FichierMedia();
                         }
-                        
+
                         fm.setMessageId(saved.getId());
                         fm.setNomFichier(originalName);
                         fm.setCheminAcces(destFile.getAbsolutePath());
                         fm.setTaille(msg.getBinaryData().length);
-                        fm.setType(msg.getType() == MessageType.PRIVATE_AUDIO ? "AUDIO" : 
-                                   (msg.getType() == MessageType.PRIVATE_IMAGE ? "IMAGE" : "FILE"));
-                        
+                        fm.setType(msg.getType() == MessageType.PRIVATE_AUDIO ? "AUDIO" :
+                                (msg.getType() == MessageType.PRIVATE_IMAGE ? "IMAGE" : "FILE"));
+
                         fichierMediaDAO.create(fm);
                     }
 
@@ -315,8 +352,186 @@ public class ClientHandler implements Runnable {
                 e.printStackTrace();
             }
         }
-        
+
         ChatServer.handleMessage(msg, this);
+    }
+
+    private void handleGroupCreate(ChatMessage msg) {
+        try {
+            String[] parts = splitContent(msg.getContent(), 3);
+            List<Integer> members = parseIds(parts.length > 2 ? parts[2] : "");
+            org.example.tpchatjavafx.model.Groupe groupe = ChatServer.getGroupManager()
+                    .createGroup(parts[0], parts.length > 1 ? parts[1] : "", userId, members);
+
+            ChatMessage created = new ChatMessage(MessageType.GROUP_CREATED, "SERVER", username, null, groupe.toString());
+            created.setGroupId(groupe.getId());
+            send(created);
+
+            ChatMessage invite = new ChatMessage(MessageType.GROUP_CREATED, "SERVER", null, null, groupe.toString());
+            invite.setGroupId(groupe.getId());
+            ChatServer.broadcastToGroup(groupe.getId(), invite);
+        } catch (Exception e) {
+            sendError("Creation du groupe impossible : " + e.getMessage());
+        }
+    }
+
+    private void handleGroupAddMember(ChatMessage msg) {
+        try {
+            int memberId = parseTargetUserId(msg);
+            ChatServer.getGroupManager().addMember(msg.getGroupId(), userId, memberId);
+            ChatMessage notification = new ChatMessage(MessageType.GROUP_ADD_MEMBER, username, null, null, String.valueOf(memberId));
+            notification.setGroupId(msg.getGroupId());
+            ChatServer.broadcastToGroup(msg.getGroupId(), notification);
+        } catch (Exception e) {
+            sendError("Ajout de membre impossible : " + e.getMessage());
+        }
+    }
+
+    private void handleGroupRemoveMember(ChatMessage msg) {
+        try {
+            int memberId = parseTargetUserId(msg);
+            ChatServer.getGroupManager().removeMember(msg.getGroupId(), userId, memberId);
+            ChatMessage notification = new ChatMessage(MessageType.GROUP_REMOVE_MEMBER, username, null, null, String.valueOf(memberId));
+            notification.setGroupId(msg.getGroupId());
+            ChatServer.broadcastToGroup(msg.getGroupId(), notification);
+            ChatServer.sendToUserId(memberId, notification);
+        } catch (Exception e) {
+            sendError("Retrait de membre impossible : " + e.getMessage());
+        }
+    }
+
+    private void handleGroupList(ChatMessage msg) {
+        try {
+            List<org.example.tpchatjavafx.model.Groupe> groups = ChatServer.getGroupManager().getGroupsForUser(userId);
+            send(new ChatMessage(MessageType.GROUP_LIST_RESPONSE, "SERVER", username, null, ChatServer.getGroupManager().serializeGroups(groups)));
+        } catch (Exception e) {
+            sendError("Chargement des groupes impossible : " + e.getMessage());
+        }
+    }
+
+    private void handleGroupMembers(ChatMessage msg) {
+        try {
+            List<Utilisateur> members = ChatServer.getGroupManager().getMembers(msg.getGroupId(), userId);
+            String content = members.stream()
+                    .map(u -> u.getId() + ":" + u.getUsername())
+                    .reduce((a, b) -> a + "," + b)
+                    .orElse("");
+            ChatMessage response = new ChatMessage(MessageType.GROUP_MEMBERS, "SERVER", username, null, content);
+            response.setGroupId(msg.getGroupId());
+            send(response);
+        } catch (Exception e) {
+            sendError("Chargement des membres impossible : " + e.getMessage());
+        }
+    }
+
+    private void handleGroupMessage(ChatMessage msg) {
+        try {
+            ChatServer.getGroupManager().saveAndBroadcastGroupMessage(msg.getGroupId(), userId, username, msg.getContent());
+        } catch (Exception e) {
+            sendError("Message de groupe refuse : " + e.getMessage());
+        }
+    }
+
+    private void handleGroupHistoryRequest(ChatMessage msg) {
+        try {
+            List<Message> history = ChatServer.getGroupManager().getGroupHistory(msg.getGroupId(), userId);
+            ChatMessage response = new ChatMessage(MessageType.GROUP_HISTORY_RESPONSE, "SERVER", username, null,
+                    ChatServer.getGroupManager().serializeMessages(history));
+            response.setGroupId(msg.getGroupId());
+            send(response);
+        } catch (Exception e) {
+            sendError("Historique de groupe indisponible : " + e.getMessage());
+        }
+    }
+
+    private void handleGroupDelete(ChatMessage msg) {
+        try {
+            ChatServer.getGroupManager().deleteGroup(msg.getGroupId(), userId);
+        } catch (Exception e) {
+            sendError("Suppression du groupe impossible : " + e.getMessage());
+        }
+    }
+
+    private void handleMeetingStart(ChatMessage msg) {
+        try {
+            MeetingManager.MeetingSession session = ChatServer.getMeetingManager()
+                    .startMeeting(msg.getGroupId(), userId, username, msg.getMeetingType(), this);
+
+            ChatMessage started = new ChatMessage(MessageType.MEETING_STARTED, "SERVER", username, null, "Reunion demarree");
+            started.setGroupId(msg.getGroupId());
+            started.setMeetingId(session.getMeetingId());
+            started.setMeetingType(session.getType());
+            send(started);
+
+            ChatMessage invite = new ChatMessage(MessageType.MEETING_INVITE, username, null, null, "Invitation reunion");
+            invite.setGroupId(msg.getGroupId());
+            invite.setMeetingId(session.getMeetingId());
+            invite.setMeetingType(session.getType());
+            ChatServer.broadcastToGroup(msg.getGroupId(), invite);
+        } catch (Exception e) {
+            sendError("Demarrage de reunion impossible : " + e.getMessage());
+        }
+    }
+
+    private void handleMeetingJoin(ChatMessage msg) {
+        try {
+            MeetingManager.MeetingSession session = ChatServer.getMeetingManager().getActiveMeeting(msg.getMeetingId());
+            if (session == null) throw new IllegalArgumentException("Reunion inactive ou introuvable.");
+            ChatServer.getMeetingManager().joinMeeting(msg.getMeetingId(), userId, username, this, msg.getUdpAudioPort(), msg.getUdpVideoPort());
+            send(ChatServer.getMeetingManager().buildMeetingInfo(session, username));
+            ChatMessage participants = new ChatMessage(MessageType.MEETING_PARTICIPANTS, "SERVER", username, null,
+                    ChatServer.getMeetingManager().serializeParticipants(msg.getMeetingId()));
+            participants.setMeetingId(msg.getMeetingId());
+            participants.setGroupId(session.getGroupeId());
+            send(participants);
+        } catch (Exception e) {
+            sendError("Impossible de rejoindre la reunion : " + e.getMessage());
+        }
+    }
+
+    private void handleMeetingLeave(ChatMessage msg) {
+        try {
+            ChatServer.getMeetingManager().leaveMeeting(msg.getMeetingId(), userId);
+        } catch (Exception e) {
+            sendError("Impossible de quitter la reunion : " + e.getMessage());
+        }
+    }
+
+    private void handleMeetingEnd(ChatMessage msg) {
+        try {
+            ChatServer.getMeetingManager().endMeeting(msg.getMeetingId(), userId);
+        } catch (Exception e) {
+            sendError("Impossible de terminer la reunion : " + e.getMessage());
+        }
+    }
+
+    private String[] splitContent(String content, int expected) {
+        String[] parts = (content == null ? "" : content).split(";", expected);
+        String[] normalized = new String[expected];
+        for (int i = 0; i < expected; i++) normalized[i] = i < parts.length ? parts[i].trim() : "";
+        return normalized;
+    }
+
+    private List<Integer> parseIds(String raw) {
+        List<Integer> ids = new java.util.ArrayList<>();
+        if (raw == null || raw.isBlank()) return ids;
+        for (String token : raw.split(",")) {
+            try {
+                if (!token.isBlank()) ids.add(Integer.parseInt(token.trim()));
+            } catch (NumberFormatException ignored) {}
+        }
+        return ids;
+    }
+
+    private int parseTargetUserId(ChatMessage msg) {
+        if (msg.getContent() == null || msg.getContent().isBlank()) {
+            throw new IllegalArgumentException("ID utilisateur manquant.");
+        }
+        return Integer.parseInt(msg.getContent().trim());
+    }
+
+    private void sendError(String message) {
+        send(new ChatMessage(MessageType.ERROR, "SERVER", username, null, message));
     }
 
     // ── Nettoyage ─────────────────────────────────────────────
@@ -332,10 +547,10 @@ public class ClientHandler implements Runnable {
     private void handleCallRequest(ChatMessage msg) {
         String targetUser = msg.getTo();
         String callType = msg.getCallType();
-        
-        System.out.println("[Server] " + username + " appelle " + targetUser + 
-                           " (" + callType + ")");
-        
+
+        System.out.println("[Server] " + username + " appelle " + targetUser +
+                " (" + callType + ")");
+
         Set<ClientHandler> targetHandlers = ChatServer.clients.get(targetUser);
         if (targetHandlers != null && !targetHandlers.isEmpty()) {
             // Utilisateur en ligne - envoyer notification
@@ -346,7 +561,7 @@ public class ClientHandler implements Runnable {
             notification.setCallType(callType);
             notification.setRemoteHost(socket.getInetAddress().getHostAddress());
             notification.setRemotePort(9999); // Port local pour réception
-            
+
             for (ClientHandler handler : targetHandlers) {
                 handler.send(notification);
             }
@@ -362,9 +577,9 @@ public class ClientHandler implements Runnable {
     private void handleCallAnswer(ChatMessage msg) {
         String callerId = msg.getFrom();
         String targetUser = msg.getTo();
-        
+
         System.out.println("[Server] " + username + " accepte appel de " + callerId);
-        
+
         Set<ClientHandler> callerHandlers = ChatServer.clients.get(callerId);
         if (callerHandlers != null && !callerHandlers.isEmpty()) {
             ChatMessage answer = new ChatMessage();
@@ -373,7 +588,7 @@ public class ClientHandler implements Runnable {
             answer.setTo(callerId);
             answer.setRemoteHost(socket.getInetAddress().getHostAddress());
             answer.setRemotePort(10000); // Port local pour réception
-            
+
             for (ClientHandler handler : callerHandlers) {
                 handler.send(answer);
             }
@@ -382,15 +597,15 @@ public class ClientHandler implements Runnable {
 
     private void handleCallReject(ChatMessage msg) {
         String callerId = msg.getFrom();
-        
+
         System.out.println("[Server] " + username + " refuse appel de " + callerId);
-        
+
         Set<ClientHandler> callerHandlers = ChatServer.clients.get(callerId);
         if (callerHandlers != null) {
             ChatMessage rejection = new ChatMessage();
             rejection.setType("CALL_REJECT");
             rejection.setFrom(username);
-            
+
             for (ClientHandler handler : callerHandlers) {
                 handler.send(rejection);
             }
@@ -416,17 +631,17 @@ public class ClientHandler implements Runnable {
                     String recipientName = senderName.equals(username) ? otherUsername : username;
 
                     ChatMessage syncMsg = new ChatMessage(
-                        MessageType.SYNC_HISTORY,
-                        senderName,
-                        recipientName,
-                        m.getType(), // Pass original type (PRIVATE_AUDIO, etc.)
-                        m.getContenu()
+                            MessageType.SYNC_HISTORY,
+                            senderName,
+                            recipientName,
+                            m.getType(), // Pass original type (PRIVATE_AUDIO, etc.)
+                            m.getContenu()
                     );
                     syncMsg.setMessageId(m.getId());
                     if (m.getDateEnvoi() != null) {
                         syncMsg.setTimestamp(m.getDateEnvoi().format(timeFormatter));
                     }
-                    
+
                     // Charger les données binaires si c'est un média
                     if (m.getType().contains("AUDIO") || m.getType().contains("IMAGE") || m.getType().contains("FILE")) {
                         try {
