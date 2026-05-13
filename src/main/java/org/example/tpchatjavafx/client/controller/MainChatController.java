@@ -117,6 +117,7 @@ public class MainChatController {
     private Consumer<ChatMessage> onCallRejected;
     private AudioTransmissionService audioService;
     private String incomingCallFrom = null;
+    private GroupController groupController;
 
     @FXML
     private void initialize() {
@@ -124,10 +125,13 @@ public class MainChatController {
         updateRecordButtonState();
         setupMessageBubbles();
         setupContactCellFactory();
-
-        // Remove groups tab if it exists
-        if (tabPane != null && tabPane.getTabs().size() > 1) {
-            tabPane.getTabs().remove(1);
+// Ajouter l'onglet Groupes
+        groupController = new GroupController();
+        Tab groupTab = new Tab("👥 Groupes");
+        groupTab.setClosable(false);
+        groupTab.setContent(groupController);
+        if (tabPane != null) {
+            tabPane.getTabs().add(groupTab);
         }
     }
 
@@ -194,6 +198,7 @@ public class MainChatController {
         // Request current online users and contact list
         networkClient.requestUserList();
         networkClient.requestContacts();
+        groupController.init(networkClient, username);
     }
 
     private void updateContactList(List<String> contacts) {

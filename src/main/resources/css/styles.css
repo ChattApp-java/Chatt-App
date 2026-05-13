@@ -188,3 +188,37 @@
     -fx-padding: 12;
     -fx-background-radius: 8;
 }
+/* ================== Onglets Principaux ================== */
+.main-tabs {
+    -fx-background-color: transparent;
+}
+.main-tabs .tab-header-area {
+    -fx-background-color: #1e293b;
+    -fx-padding: 0;
+}
+.main-tabs .tab {
+    -fx-background-color: transparent;
+    -fx-padding: 12 25;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+}
+.main-tabs .tab:selected {
+    -fx-background-color: #0f172a;
+    -fx-border-color: transparent transparent #38bdf8 transparent;
+    -fx-border-width: 0 0 3 0;
+}
+.main-tabs .tab-label { -fx-text-fill: #94a3b8; }
+.main-tabs .tab:selected .tab-label { -fx-text-fill: #f8fafc; }
+
+/* ================== Groupes ================== */
+.group-list-cell {
+    -fx-text-fill: #cbd5e1;
+    -fx-font-size: 14px;
+    -fx-padding: 8 12;
+}
+.group-list-cell:selected {
+    -fx-background-color: #1e3a5f;
+    -fx-border-color: transparent transparent transparent #38bdf8;
+    -fx-border-width: 0 0 0 3;
+    -fx-text-fill: #f8fafc;
+}
