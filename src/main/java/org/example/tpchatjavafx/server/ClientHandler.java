@@ -359,7 +359,7 @@ public class ClientHandler implements Runnable {
     private void handleGroupCreate(ChatMessage msg) {
         try {
             String[] parts = splitContent(msg.getContent(), 3);
-            List<Integer> members = parseIds(parts.length > 2 ? parts[2] : "");
+            List<Integer> members = parseUserIds(parts.length > 2 ? parts[2] : "");
             org.example.tpchatjavafx.model.Groupe groupe = ChatServer.getGroupManager()
                     .createGroup(parts[0], parts.length > 1 ? parts[1] : "", userId, members);
 
@@ -512,13 +512,21 @@ public class ClientHandler implements Runnable {
         return normalized;
     }
 
-    private List<Integer> parseIds(String raw) {
+    private List<Integer> parseUserIds(String raw) {
         List<Integer> ids = new java.util.ArrayList<>();
         if (raw == null || raw.isBlank()) return ids;
         for (String token : raw.split(",")) {
+            String t = token.trim();
+            if (t.isBlank()) continue;
             try {
-                if (!token.isBlank()) ids.add(Integer.parseInt(token.trim()));
-            } catch (NumberFormatException ignored) {}
+                ids.add(Integer.parseInt(t));
+            } catch (NumberFormatException e) {
+                // Résolution par pseudo
+                try {
+                    org.example.tpchatjavafx.model.Utilisateur u = userDAO.findByUsername(t);
+                    if (u != null) ids.add(u.getId());
+                } catch (Exception ignored) {}
+            }
         }
         return ids;
     }

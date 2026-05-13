@@ -246,21 +246,21 @@ public class GroupController extends SplitPane {
     private void ouvrirCreationGroupe() {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/create-group-dialog.fxml"));
-            DialogPane pane = loader.load();
+            javafx.scene.layout.VBox content = loader.load();
             CreateGroupDialogController controller = loader.getController();
             controller.init(networkClient, allContacts);
 
             Dialog<ButtonType> dialog = new Dialog<>();
-            dialog.setDialogPane(pane);
             dialog.setTitle("Créer un groupe");
+            dialog.getDialogPane().setContent(content);
+            dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
             
             dialog.showAndWait().ifPresent(bt -> {
                 if (bt == ButtonType.OK) {
                     String name = controller.getGroupName();
                     String desc = controller.getGroupDescription();
-                    // Pour simplifier, on ne gère pas les membres initiaux ici 
-                    // car le protocole attend des IDs et on a des pseudos
-                    if (!name.isEmpty()) networkClient.createGroup(name, desc);
+                    java.util.List<String> members = controller.getSelectedMembers();
+                    if (!name.isEmpty()) networkClient.createGroup(name, desc, members);
                 }
             });
         } catch (IOException e) {
@@ -275,15 +275,16 @@ public class GroupController extends SplitPane {
         }
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/add-member-dialog.fxml"));
-            DialogPane pane = loader.load();
+            javafx.scene.layout.VBox content = loader.load();
             AddMemberDialogController controller = loader.getController();
             
             // On passe tous les contacts pour l'instant (filtrage optionnel)
             controller.init(allContacts);
 
             Dialog<ButtonType> dialog = new Dialog<>();
-            dialog.setDialogPane(pane);
             dialog.setTitle("Ajouter des membres");
+            dialog.getDialogPane().setContent(content);
+            dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
             dialog.showAndWait().ifPresent(bt -> {
                 if (bt == ButtonType.OK) {

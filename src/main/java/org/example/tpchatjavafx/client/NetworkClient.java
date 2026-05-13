@@ -217,14 +217,10 @@ public class NetworkClient {
      * Crée un groupe avec une liste initiale de membres (IDs séparés par virgule).
      * Format serveur : "nom;description;id1,id2,id3"
      */
-    public void createGroup(String nom, String description, java.util.List<Integer> memberIds) {
-        String members = memberIds.stream()
-                .map(String::valueOf)
-                .reduce((a, b) -> a + "," + b)
-                .orElse("");
-        String content = nom + ";" + (description == null ? "" : description) + ";" + members;
-        ChatMessage msg = new ChatMessage(MessageType.GROUP_CREATE, username, "SERVER", null, content);
-        send(msg);
+    public void createGroup(String name, String description, java.util.List<String> members) {
+        String membersCsv = (members == null) ? "" : String.join(",", members);
+        String content = name + ";" + (description == null ? "" : description) + ";" + membersCsv;
+        send(new ChatMessage(MessageType.GROUP_CREATE, username, "SERVER", null, content));
     }
 
     public void sendGroupMessage(int groupId, String content) {
@@ -233,8 +229,8 @@ public class NetworkClient {
         send(msg);
     }
 
-    public void addGroupMember(int groupId, String targetUsername) {
-        ChatMessage msg = new ChatMessage(MessageType.GROUP_ADD_MEMBER, username, "SERVER", null, targetUsername);
+    public void addGroupMember(int groupId, String pseudo) {
+        ChatMessage msg = new ChatMessage(MessageType.GROUP_ADD_MEMBER, username, "SERVER", null, pseudo);
         msg.setGroupId(groupId);
         send(msg);
     }
@@ -400,7 +396,7 @@ public class NetworkClient {
                 case GROUP_MESSAGE -> {
                     if (onGroupMessage != null) onGroupMessage.accept(msg);
                 }
-                case GROUP_MEMBER_ADD -> {
+                case GROUP_ADD_MEMBER, GROUP_MEMBER_ADD -> {
                     if (onGroupMemberAdded != null) onGroupMemberAdded.accept(msg);
                 }
                 case GROUP_HISTORY_RESPONSE -> {
