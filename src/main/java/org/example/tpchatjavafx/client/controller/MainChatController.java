@@ -160,6 +160,16 @@ public class MainChatController {
             handleCallRejected(msg);
         });
 
+        networkClient.setOnMeetingStarted(msg -> {
+            Platform.runLater(() -> {
+                try {
+                    MeetingController.openMeetingWindow(networkClient, msg.getMeetingId(), "Ma Réunion (" + msg.getMeetingType() + ")");
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
+        });
+
         networkClient.setOnMeetingInvite(msg -> {
             Platform.runLater(() -> {
                 try {
@@ -198,7 +208,7 @@ public class MainChatController {
         // Request current online users and contact list
         networkClient.requestUserList();
         networkClient.requestContacts();
-        groupController.init(networkClient, username);
+        groupController.init(networkClient, username, allContacts);
     }
 
     private void updateContactList(List<String> contacts) {
@@ -266,6 +276,21 @@ public class MainChatController {
         // Request server to add contact
         networkClient.addContact(contactName);
         searchContactField.clear();
+    }
+
+    @FXML
+    private void onSend() {
+        if (currentPrivateTarget == null) {
+            showInfo("Sélectionnez un contact pour envoyer un message.");
+            return;
+        }
+        String text = messageField.getText().trim();
+        if (text.isEmpty()) return;
+
+        ChatMessage msg = new ChatMessage(MessageType.PRIVATE, username, currentPrivateTarget, currentConversationId, text);
+        networkClient.send(msg);
+        addPrivateMessage(msg);
+        messageField.clear();
     }
 
     @FXML

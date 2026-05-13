@@ -65,13 +65,40 @@ public class UtilisateurDAO {
         }
         return list;
     }
-    
+
     public List<Utilisateur> searchByUsername(String query) throws SQLException {
         List<Utilisateur> list = new ArrayList<>();
         String sql = "SELECT * FROM utilisateur WHERE username LIKE ?";
         try (Connection conn = DatabaseConnection.getInstance().getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, "%" + query + "%");
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    list.add(mapResultSetToUtilisateur(rs));
+                }
+            }
+        }
+        return list;
+    }
+
+    /**
+     * P2 : Retourne les utilisateurs correspondant à une liste d'IDs.
+     */
+    public List<Utilisateur> getUsersByIds(List<Integer> ids) throws SQLException {
+        List<Utilisateur> list = new ArrayList<>();
+        if (ids == null || ids.isEmpty()) return list;
+
+        StringBuilder sb = new StringBuilder("SELECT * FROM utilisateur WHERE id IN (");
+        for (int i = 0; i < ids.size(); i++) {
+            sb.append(i == 0 ? "?" : ",?");
+        }
+        sb.append(")");
+
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sb.toString())) {
+            for (int i = 0; i < ids.size(); i++) {
+                stmt.setInt(i + 1, ids.get(i));
+            }
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     list.add(mapResultSetToUtilisateur(rs));
@@ -88,9 +115,14 @@ public class UtilisateurDAO {
         u.setEmail(rs.getString("email"));
         u.setPassword(rs.getString("password"));
         u.setStatut(rs.getString("statut"));
-        Timestamp ts = rs.getTimestamp("derniereConnexion");
-        if (ts != null) {
-            u.setDerniereConnexion(ts.toLocalDateTime());
+        try {
+            Timestamp ts = rs.getTimestamp("derniereConnexion");
+            if (ts != null) u.setDerniereConnexion(ts.toLocalDateTime());
+        } catch (SQLException ignored) {
+            try {
+                Timestamp ts = rs.getTimestamp("derniere_connexion");
+                if (ts != null) u.setDerniereConnexion(ts.toLocalDateTime());
+            } catch (SQLException ignored2) { /* colonne absente */ }
         }
         return u;
     }

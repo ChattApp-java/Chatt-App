@@ -2,33 +2,25 @@ package org.example.tpchatjavafx.model;
 
 import java.util.Date;
 
-public class
+/**
+ * Modèle d'un appel (vocal ou vidéo), individuel ou lié à une réunion.
+ */
+public class Appel {
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-Appel {
     private int id;
-    private String statut; // EN_COURS, TERMINE, MANQUE, REJETE
+    private String statut;     // EN_COURS, TERMINE, MANQUE, REJETE
     private Date dateHeure;
-    private int duree; // en secondes
-    private String typeAppel; // VOCAL, VIDEO
-    private int expediteurId; 
+    private int duree;         // en secondes
+    private String typeAppel;  // VOCAL, VIDEO
+    private int expediteurId;
     private int destinataireId;
+    private Integer reunionId;        // P2 : nullable, lié à Reunion si c'est une réunion
+    private boolean estReunion = false; // P2 : true si l'appel est une réunion multi-utilisateurs
 
     public Appel() {}
 
-    public Appel(int id, String statut, Date dateHeure, int duree, String typeAppel, int expediteurId, int destinataireId) {
+    public Appel(int id, String statut, Date dateHeure, int duree,
+                 String typeAppel, int expediteurId, int destinataireId) {
         this.id = id;
         this.statut = statut;
         this.dateHeure = dateHeure;
@@ -55,7 +47,13 @@ Appel {
 
     public int getExpediteurId() { return expediteurId; }
     public void setExpediteurId(int expediteurId) { this.expediteurId = expediteurId; }
-    
+
     public int getDestinataireId() { return destinataireId; }
     public void setDestinataireId(int destinataireId) { this.destinataireId = destinataireId; }
+
+    public Integer getReunionId() { return reunionId; }
+    public void setReunionId(Integer reunionId) { this.reunionId = reunionId; }
+
+    public boolean isEstReunion() { return estReunion; }
+    public void setEstReunion(boolean estReunion) { this.estReunion = estReunion; }
 }

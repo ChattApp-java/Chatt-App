@@ -25,12 +25,13 @@
                 <Button text="⏻" onAction="#onLogout" styleClass="logout-btn"/>
             </HBox>
 
-            <!-- Onglets Privé -->
+            <!-- Onglets Privé & Groupes -->
             <TabPane fx:id="tabPane" styleClass="sidebar-tabs"
                      tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
-                <Tab fx:id="privateTab" text="Contacts">
+                <Tab fx:id="privateTab" text="💬 Contacts">
                     <ListView fx:id="privateListView" styleClass="contact-list"/>
                 </Tab>
+                <!-- L'onglet Groupes est ajouté programmatiquement par MainChatController -->
             </TabPane>
             
             <!-- Barre de recherche et ajout en bas -->

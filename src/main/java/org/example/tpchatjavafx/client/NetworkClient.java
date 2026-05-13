@@ -210,7 +210,20 @@ public class NetworkClient {
 
     // ── Envoi ────────────────────────────────────────────────
     public void createGroup(String nom, String description) {
-        ChatMessage msg = new ChatMessage(MessageType.GROUP_CREATE, username, "SERVER", null, nom + "|" + description);
+        createGroup(nom, description, java.util.List.of());
+    }
+
+    /**
+     * Crée un groupe avec une liste initiale de membres (IDs séparés par virgule).
+     * Format serveur : "nom;description;id1,id2,id3"
+     */
+    public void createGroup(String nom, String description, java.util.List<Integer> memberIds) {
+        String members = memberIds.stream()
+                .map(String::valueOf)
+                .reduce((a, b) -> a + "," + b)
+                .orElse("");
+        String content = nom + ";" + (description == null ? "" : description) + ";" + members;
+        ChatMessage msg = new ChatMessage(MessageType.GROUP_CREATE, username, "SERVER", null, content);
         send(msg);
     }
 

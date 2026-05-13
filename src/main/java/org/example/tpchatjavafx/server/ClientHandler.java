@@ -524,10 +524,22 @@ public class ClientHandler implements Runnable {
     }
 
     private int parseTargetUserId(ChatMessage msg) {
-        if (msg.getContent() == null || msg.getContent().isBlank()) {
-            throw new IllegalArgumentException("ID utilisateur manquant.");
+        String content = msg.getContent();
+        if (content == null || content.isBlank()) {
+            throw new IllegalArgumentException("ID ou pseudo utilisateur manquant.");
         }
-        return Integer.parseInt(msg.getContent().trim());
+        try {
+            return Integer.parseInt(content.trim());
+        } catch (NumberFormatException e) {
+            // Tentative de résolution par pseudo
+            try {
+                org.example.tpchatjavafx.model.Utilisateur u = userDAO.findByUsername(content.trim());
+                if (u != null) return u.getId();
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+            throw new IllegalArgumentException("Utilisateur '" + content + "' introuvable.");
+        }
     }
 
     private void sendError(String message) {

@@ -7,10 +7,12 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.fxml.FXMLLoader;
 import org.example.tpchatjavafx.client.NetworkClient;
 import org.example.tpchatjavafx.client.model.ChatMessage;
 import org.example.tpchatjavafx.client.util.UiMessage;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -31,6 +33,7 @@ public class GroupController extends SplitPane {
     private String selectedGroupName = "";
 
     private final DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("HH:mm");
+    private List<String> allContacts = new ArrayList<>();
 
     // UI
     private ListView<String> groupListView;
@@ -44,9 +47,10 @@ public class GroupController extends SplitPane {
     }
 
     // ── Appelé par MainChatController après init ──────────────────
-    public void init(NetworkClient networkClient, String username) {
+    public void init(NetworkClient networkClient, String username, List<String> allContacts) {
         this.networkClient = networkClient;
         this.username = username;
+        this.allContacts = allContacts;
         registerCallbacks();
         networkClient.requestGroupList();
     }
@@ -240,29 +244,28 @@ public class GroupController extends SplitPane {
     }
 
     private void ouvrirCreationGroupe() {
-        Dialog<String[]> dialog = new Dialog<>();
-        dialog.setTitle("Créer un groupe");
-        dialog.setHeaderText("Nouveau groupe de discussion");
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/create-group-dialog.fxml"));
+            DialogPane pane = loader.load();
+            CreateGroupDialogController controller = loader.getController();
+            controller.init(networkClient, allContacts);
 
-        TextField tfNom  = new TextField();
-        tfNom.setPromptText("Nom du groupe");
-        TextArea  taDesc = new TextArea();
-        taDesc.setPromptText("Description (optionnel)");
-        taDesc.setPrefRowCount(2);
-
-        VBox content = new VBox(8,
-                new Label("Nom :"), tfNom,
-                new Label("Description :"), taDesc);
-        content.setPadding(new Insets(10));
-        dialog.getDialogPane().setContent(content);
-        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-
-        dialog.setResultConverter(bt ->
-                bt == ButtonType.OK ? new String[]{tfNom.getText().trim(), taDesc.getText().trim()} : null);
-
-        dialog.showAndWait().ifPresent(res -> {
-            if (!res[0].isEmpty()) networkClient.createGroup(res[0], res[1]);
-        });
+            Dialog<ButtonType> dialog = new Dialog<>();
+            dialog.setDialogPane(pane);
+            dialog.setTitle("Créer un groupe");
+            
+            dialog.showAndWait().ifPresent(bt -> {
+                if (bt == ButtonType.OK) {
+                    String name = controller.getGroupName();
+                    String desc = controller.getGroupDescription();
+                    // Pour simplifier, on ne gère pas les membres initiaux ici 
+                    // car le protocole attend des IDs et on a des pseudos
+                    if (!name.isEmpty()) networkClient.createGroup(name, desc);
+                }
+            });
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private void ouvrirAjoutMembre() {
@@ -270,26 +273,35 @@ public class GroupController extends SplitPane {
             new Alert(Alert.AlertType.WARNING, "Sélectionnez d'abord un groupe.").showAndWait();
             return;
         }
-        TextInputDialog d = new TextInputDialog();
-        d.setTitle("Ajouter un membre");
-        d.setHeaderText("Groupe : " + selectedGroupName);
-        d.setContentText("Nom d'utilisateur :");
-        d.showAndWait().ifPresent(uname -> {
-            if (!uname.trim().isEmpty())
-                networkClient.addGroupMember(selectedGroupId, uname.trim());
-        });
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/add-member-dialog.fxml"));
+            DialogPane pane = loader.load();
+            AddMemberDialogController controller = loader.getController();
+            
+            // On passe tous les contacts pour l'instant (filtrage optionnel)
+            controller.init(allContacts);
+
+            Dialog<ButtonType> dialog = new Dialog<>();
+            dialog.setDialogPane(pane);
+            dialog.setTitle("Ajouter des membres");
+
+            dialog.showAndWait().ifPresent(bt -> {
+                if (bt == ButtonType.OK) {
+                    List<String> selected = controller.getSelectedMembers();
+                    for (String uname : selected) {
+                        networkClient.addGroupMember(selectedGroupId, uname);
+                    }
+                }
+            });
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private void demarrerReunion() {
         if (selectedGroupId == -1) return;
         networkClient.startGroupMeeting(selectedGroupId, "AUDIO_VIDEO");
-        afficherSysteme("Réunion démarrée pour le groupe " + selectedGroupName + "...");
-        try {
-            MeetingController.openMeetingWindow(networkClient, selectedGroupId,
-                    "Réunion — " + selectedGroupName);
-        } catch (Exception e) {
-            afficherSysteme("Erreur ouverture réunion : " + e.getMessage());
-        }
+        afficherSysteme("Demande de réunion envoyée...");
     }
 
     // ── Helpers UI ────────────────────────────────────────────────
