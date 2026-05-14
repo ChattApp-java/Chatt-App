@@ -8,20 +8,27 @@ import org.example.tpchatjavafx.client.NetworkClient;
 public class VideoCallWindow {
 
     private static Stage window;
+    private static VideoCallController controller;
+    private static boolean closingFromCode;
 
     public static void open(NetworkClient client, String me, String other, boolean caller) {
         try {
             FXMLLoader loader = new FXMLLoader(VideoCallWindow.class.getResource("/fxml/video-call.fxml"));
             Scene scene = new Scene(loader.load());
 
-            VideoCallController controller = loader.getController();
+            controller = loader.getController();
             controller.init(client, me, other);
 
             window = new Stage();
             window.setTitle("Video Call with " + other);
             window.setScene(scene);
             
-            window.setOnCloseRequest(e -> controller.onEndCall());
+            window.setOnCloseRequest(e -> {
+                if (!closingFromCode && controller != null) {
+                    e.consume();
+                    controller.onEndCall();
+                }
+            });
             
             window.show();
 
@@ -31,6 +38,12 @@ public class VideoCallWindow {
     }
 
     public static void closeCurrent() {
-        if (window != null) window.close();
+        if (window != null) {
+            closingFromCode = true;
+            window.close();
+            closingFromCode = false;
+            window = null;
+            controller = null;
+        }
     }
 }

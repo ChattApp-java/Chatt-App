@@ -79,17 +79,19 @@ public class ChatServer {
             if (userHandlers.isEmpty()) clients.remove(username);
         }
         Set<ClientHandler> idHandlers = clientsById.get(userId);
+        boolean userStillOnline = false;
         if (idHandlers != null) {
             idHandlers.remove(handler);
-            if (idHandlers.isEmpty()) clientsById.remove(userId);
+            userStillOnline = !idHandlers.isEmpty();
+            if (!userStillOnline) clientsById.remove(userId);
         }
         System.out.println("[Server] Deconnecte : " + username);
         try {
-            connexionDAO.setEnLigne(userId, handler.getSocketId(), false);
+            connexionDAO.setSessionClosed(userId, handler.getSocketId(), !userStillOnline);
         } catch (Exception e) {
             System.err.println("Erreur statut hors ligne: " + e.getMessage());
         }
-        if (!clients.containsKey(username)) {
+        if (!userStillOnline) {
             broadcastUserStatus(username, "NON_CONNECTE");
             broadcastUserList();
         }
@@ -105,8 +107,13 @@ public class ChatServer {
     }
 
     public static void broadcastToGroup(int groupeId, ChatMessage msg) {
+        broadcastToGroupExcept(groupeId, msg, -1);
+    }
+
+    public static void broadcastToGroupExcept(int groupeId, ChatMessage msg, int exceptUserId) {
         try {
             for (Integer memberId : groupeMembreDAO.getMemberIds(groupeId)) {
+                if (memberId == exceptUserId) continue;
                 sendToUserId(memberId, msg);
             }
         } catch (Exception e) {

@@ -3,6 +3,7 @@ package org.example.tpchatjavafx.client.controller;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -35,6 +36,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -50,6 +52,7 @@ public class GroupController extends javafx.scene.control.SplitPane {
     private final List<int[]> groupIds = new ArrayList<>();
     private final ObservableList<String> groupNames = FXCollections.observableArrayList();
     private final Map<Integer, ObservableList<UiMessage>> groupMessages = new HashMap<>();
+    private final java.util.Set<Integer> activeMeetingGroupIds = new java.util.HashSet<>();
 
     private int selectedGroupId = -1;
     private String selectedGroupName = "";
@@ -130,8 +133,14 @@ public class GroupController extends javafx.scene.control.SplitPane {
 
                 Label name = new Label(item);
                 name.getStyleClass().add("group-cell-name");
-                Label detail = new Label("Groupe de discussion");
+                
+                int gid = -1;
+                int idx = getIndex();
+                if (idx >= 0 && idx < groupIds.size()) gid = groupIds.get(idx)[0];
+                
+                Label detail = new Label(activeMeetingGroupIds.contains(gid) ? "● Reunion en cours" : "Groupe de discussion");
                 detail.getStyleClass().add("group-cell-detail");
+                if (activeMeetingGroupIds.contains(gid)) detail.setStyle("-fx-text-fill: #25D366; -fx-font-weight: bold;");
 
                 VBox copy = new VBox(2, name, detail);
                 HBox.setHgrow(copy, Priority.ALWAYS);
@@ -270,17 +279,22 @@ public class GroupController extends javafx.scene.control.SplitPane {
             int previouslySelected = selectedGroupId;
             groupIds.clear();
             groupNames.clear();
+            activeMeetingGroupIds.clear();
             String raw = msg.getContent();
             if (raw != null && !raw.isBlank()) {
                 for (String entry : raw.split(",")) {
                     GroupEntry parsed = parseGroupEntry(entry);
-                    if (parsed != null) ajouterGroupe(parsed.id(), parsed.name());
+                    if (parsed != null) {
+                        ajouterGroupe(parsed.id(), parsed.name());
+                        if (parsed.hasMeeting()) activeMeetingGroupIds.add(parsed.id());
+                    }
                 }
             }
             if (previouslySelected != -1) {
                 if (containsGroup(previouslySelected)) selectGroupById(previouslySelected);
                 else clearSelectedGroup();
             }
+            groupListView.refresh();
         }));
 
         networkClient.setOnGroupMessage(msg -> Platform.runLater(() -> {
@@ -323,15 +337,36 @@ public class GroupController extends javafx.scene.control.SplitPane {
 
         networkClient.setOnGroupHistoryResponse(msg -> Platform.runLater(() -> {
             if (msg.getGroupId() != selectedGroupId) return;
-            chatArea.getChildren().clear();
-            groupMessages.remove(msg.getGroupId());
             String raw = msg.getContent();
-            if (raw == null || raw.isBlank()) {
+            if ("__BEGIN__".equals(raw)) {
+                chatArea.getChildren().clear();
+                groupMessages.remove(msg.getGroupId());
+                return;
+            }
+            if ("__EMPTY__".equals(raw) || raw == null || raw.isBlank()) {
+                chatArea.getChildren().clear();
+                groupMessages.remove(msg.getGroupId());
                 afficherSysteme("Aucun message dans ce groupe.");
                 return;
             }
+            String historyType = msg.getConversationId();
+            if (historyType != null && !historyType.isBlank()) {
+                MessageType type = parseType(historyType);
+                UiMessage.Kind kind = kindFor(type);
+                boolean mine = username != null && username.equals(msg.getFrom());
+                String time = msg.getTimestamp() != null ? msg.getTimestamp() : "";
+                String text = mine || kind != UiMessage.Kind.TEXT ? raw : msg.getFrom() + ": " + raw;
+                String filePath = saveIncomingMedia(kind, raw, msg.getBinaryData());
+                UiMessage uiMessage = new UiMessage(kind, mine, text, filePath, time);
+                groupMessages.computeIfAbsent(msg.getGroupId(), k -> FXCollections.observableArrayList()).add(uiMessage);
+                afficherBulle(uiMessage);
+                Platform.runLater(() -> chatScroll.setVvalue(1.0));
+                return;
+            }
+            chatArea.getChildren().clear();
+            groupMessages.remove(msg.getGroupId());
             for (String entry : raw.split(";;;")) {
-                String[] parts = entry.split(":::", 3);
+                String[] parts = entry.split(":::", 4);
                 if (parts.length >= 2) {
                     boolean mine = parts[0].equals(username);
                     String time = parts.length >= 3 ? parts[2] : "";
@@ -351,7 +386,14 @@ public class GroupController extends javafx.scene.control.SplitPane {
         selectedGroupId = groupId;
         selectedGroupName = nom;
         lblGroupName.setText(nom);
-        lblGroupStatus.setText("Groupe actif");
+        lblGroupStatus.setText(activeMeetingGroupIds.contains(groupId) ? "Reunion en cours" : "Groupe actif");
+        if (activeMeetingGroupIds.contains(groupId)) {
+            btnMeeting.setText("Rejoindre");
+            btnMeeting.getStyleClass().add("group-join-btn");
+        } else {
+            btnMeeting.setText("Reunion");
+            btnMeeting.getStyleClass().remove("group-join-btn");
+        }
         currentUserAdmin = false;
         btnAddMember.setDisable(true);
         updateGroupActions(true);
@@ -368,6 +410,11 @@ public class GroupController extends javafx.scene.control.SplitPane {
 
         networkClient.sendGroupMessage(selectedGroupId, texte);
         txtGroupMsg.clear();
+    }
+
+    @FXML
+    private void onSendMessage() {
+        envoyerMessage();
     }
 
     private void ouvrirCreationGroupe() {
@@ -394,6 +441,11 @@ public class GroupController extends javafx.scene.control.SplitPane {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    @FXML
+    private void onNewGroup() {
+        ouvrirCreationGroupe();
     }
 
     private void ouvrirAjoutMembre() {
@@ -425,9 +477,29 @@ public class GroupController extends javafx.scene.control.SplitPane {
         }
     }
 
+    @FXML
+    private void onAddMember() {
+        ouvrirAjoutMembre();
+    }
+
     private void demarrerReunion() {
         if (selectedGroupId == -1) return;
-        networkClient.startGroupMeeting(selectedGroupId, "AUDIO_VIDEO");
+        if (activeMeetingGroupIds.contains(selectedGroupId)) {
+            // Rejoindre au lieu de démarrer
+            networkClient.joinMeetingByGroup(selectedGroupId);
+        } else {
+            javafx.scene.control.ChoiceDialog<String> dialog =
+                    new javafx.scene.control.ChoiceDialog<>("VIDEO", "AUDIO", "VIDEO");
+            dialog.setTitle("Demarrer une reunion");
+            dialog.setHeaderText("Choisir le type de reunion");
+            dialog.setContentText("Type :");
+            dialog.showAndWait().ifPresent(type -> networkClient.startGroupMeeting(selectedGroupId, type));
+        }
+    }
+
+    @FXML
+    private void onStartMeeting() {
+        demarrerReunion();
     }
 
     private void quitterGroupe() {
@@ -492,11 +564,18 @@ public class GroupController extends javafx.scene.control.SplitPane {
             ImageView imageView = new ImageView(new Image(new File(message.getFilePath()).toURI().toString(), 240, 0, true, true));
             imageView.getStyleClass().add(mine ? "bubble-sent" : "bubble-received");
             content = new VBox(2, imageView);
-        } else if (message.getKind() == UiMessage.Kind.AUDIO && message.getFilePath() != null) {
+        } else if (message.getKind() == UiMessage.Kind.AUDIO) {
             Button play = new Button("Lire audio");
             play.getStyleClass().addAll("call-btn", "group-action-btn");
+            play.setDisable(message.getFilePath() == null);
             play.setOnAction(e -> playAudio(message.getFilePath()));
             content = new VBox(2, play);
+        } else if (message.getKind() == UiMessage.Kind.FILE) {
+            Button download = new Button("Telecharger " + message.getText());
+            download.getStyleClass().addAll("call-btn", "group-action-btn");
+            download.setDisable(message.getFilePath() == null);
+            download.setOnAction(e -> downloadFile(message.getFilePath(), message.getText()));
+            content = new VBox(2, download);
         } else {
             content = new VBox(2, bubble);
         }
@@ -552,14 +631,27 @@ public class GroupController extends javafx.scene.control.SplitPane {
         membersBox.getChildren().setAll(membersTitle);
         currentUserAdmin = false;
         if (raw != null && !raw.isBlank()) {
-            for (String entry : raw.split(",")) {
+            String[] entries = raw.split(",");
+            for (String entry : entries) {
+                String[] parts = entry.split(":", 3);
+                if (parts.length >= 3 && parts[1].equals(username) && "ADMIN".equalsIgnoreCase(parts[2])) {
+                    currentUserAdmin = true;
+                }
+            }
+            for (String entry : entries) {
                 String[] parts = entry.split(":", 3);
                 if (parts.length < 2) continue;
                 String name = parts[1];
                 String role = parts.length == 3 ? parts[2] : "MEMBRE";
-                if (name.equals(username) && "ADMIN".equalsIgnoreCase(role)) currentUserAdmin = true;
-                Label member = new Label(name + " - " + role);
+                Label member = new Label(name + ("ADMIN".equalsIgnoreCase(role) ? " (Admin)" : ""));
                 member.getStyleClass().add("group-member-row");
+                if (currentUserAdmin && !name.equals(username)) {
+                    javafx.scene.control.ContextMenu cm = new javafx.scene.control.ContextMenu();
+                    javafx.scene.control.MenuItem mi = new javafx.scene.control.MenuItem("Retirer du groupe");
+                    mi.setOnAction(e -> networkClient.removeGroupMember(selectedGroupId, name));
+                    cm.getItems().add(mi);
+                    member.setContextMenu(cm);
+                }
                 membersBox.getChildren().add(member);
             }
         }
@@ -611,6 +703,7 @@ public class GroupController extends javafx.scene.control.SplitPane {
             targetDataLine.start();
             recordingAudio = true;
             btnAudio.setText("Stop");
+            btnAudio.setStyle("-fx-text-fill: #f87171; -fx-font-weight: bold;");
             Thread thread = new Thread(() -> captureAudio(format), "group-audio-recording");
             thread.setDaemon(true);
             thread.start();
@@ -626,6 +719,7 @@ public class GroupController extends javafx.scene.control.SplitPane {
             targetDataLine.close();
         }
         btnAudio.setText("Audio");
+        btnAudio.setStyle("");
     }
 
     private void captureAudio(AudioFormat format) {
@@ -678,6 +772,7 @@ public class GroupController extends javafx.scene.control.SplitPane {
     }
 
     private void playAudio(String path) {
+        if (path == null) return;
         new Thread(() -> {
             try (AudioInputStream stream = AudioSystem.getAudioInputStream(new File(path))) {
                 Clip clip = AudioSystem.getClip();
@@ -687,6 +782,20 @@ public class GroupController extends javafx.scene.control.SplitPane {
                 Platform.runLater(() -> new Alert(Alert.AlertType.ERROR, "Impossible de lire l'audio.").showAndWait());
             }
         }, "group-audio-playback").start();
+    }
+
+    private void downloadFile(String path, String suggestedName) {
+        if (path == null) return;
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Enregistrer le fichier");
+        chooser.setInitialFileName(suggestedName == null || suggestedName.isBlank() ? "fichier" : suggestedName);
+        File dest = chooser.showSaveDialog(getScene() == null ? null : getScene().getWindow());
+        if (dest == null) return;
+        try {
+            Files.copy(Path.of(path), dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            new Alert(Alert.AlertType.ERROR, "Impossible d'enregistrer le fichier: " + e.getMessage()).showAndWait();
+        }
     }
 
     private void applyDialogStyles(Dialog<ButtonType> dialog) {
@@ -705,11 +814,14 @@ public class GroupController extends javafx.scene.control.SplitPane {
         String[] parts = raw.contains("|") ? raw.split("\\|", 2) : raw.split(":", 3);
         if (parts.length < 2) return null;
         try {
-            return new GroupEntry(Integer.parseInt(parts[0].trim()), parts[1].trim());
+            int id = Integer.parseInt(parts[0].trim());
+            String name = parts[1].trim();
+            boolean hasMeeting = !raw.contains("|") && parts.length >= 3 && "1".equals(parts[2].trim());
+            return new GroupEntry(id, name, hasMeeting);
         } catch (NumberFormatException ignored) {
             return null;
         }
     }
 
-    private record GroupEntry(int id, String name) {}
+    private record GroupEntry(int id, String name, boolean hasMeeting) {}
 }

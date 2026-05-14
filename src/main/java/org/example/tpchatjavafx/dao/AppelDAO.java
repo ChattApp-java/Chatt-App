@@ -21,7 +21,8 @@ public class AppelDAO {
             pstmt.setInt(3, appel.getDuree());
             pstmt.setString(4, appel.getStatut());
             pstmt.setInt(5, appel.getExpediteurId());
-            pstmt.setInt(6, appel.getDestinataireId());
+            if (appel.getDestinataireId() != null) pstmt.setInt(6, appel.getDestinataireId());
+            else pstmt.setNull(6, Types.INTEGER);
             if (appel.getReunionId() != null) pstmt.setInt(7, appel.getReunionId());
             else pstmt.setNull(7, Types.INTEGER);
             pstmt.setBoolean(8, appel.isEstReunion());
@@ -91,7 +92,8 @@ public class AppelDAO {
         a.setDuree(rs.getInt("duree"));
         a.setStatut(rs.getString("statut"));
         a.setExpediteurId(rs.getInt("expediteur_id"));
-        a.setDestinataireId(rs.getInt("destinataire_id"));
+        int destinataireId = rs.getInt("destinataire_id");
+        if (!rs.wasNull()) a.setDestinataireId(destinataireId);
         int rid = rs.getInt("reunion_id");
         if (!rs.wasNull()) a.setReunionId(rid);
         a.setEstReunion(rs.getBoolean("est_reunion"));

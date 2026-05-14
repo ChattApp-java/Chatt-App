@@ -160,9 +160,9 @@ public class GroupManager {
         return GroupeMembre.ROLE_ADMIN.equals(membreDAO.getRole(groupeId, userId));
     }
 
-    public String serializeGroups(List<Groupe> groupes) {
+    public String serializeGroups(List<Groupe> groupes, java.util.function.Predicate<Integer> hasMeeting) {
         return groupes.stream()
-                .map(groupe -> groupe.getId() + ":" + safe(groupe.getNom()))
+                .map(groupe -> groupe.getId() + ":" + safe(groupe.getNom()) + ":" + (hasMeeting.test(groupe.getId()) ? "1" : "0"))
                 .collect(Collectors.joining(","));
     }
 

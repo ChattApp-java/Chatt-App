@@ -45,6 +45,11 @@ public class MeetingVideoDisplay {
         relayout();
     }
 
+    public void clearParticipants() {
+        participants.clear();
+        relayout();
+    }
+
     public void updateFrame(String participantId, byte[] jpegFrame) {
         if (participantId == null || jpegFrame == null || !participants.containsKey(participantId)) {
             return;
@@ -63,6 +68,11 @@ public class MeetingVideoDisplay {
         }
         Platform.runLater(() -> {
             grid.getChildren().clear();
+            int count = participants.size();
+            if (count <= 1) columns = 1;
+            else if (count <= 4) columns = 2;
+            else columns = 3;
+
             int row = 0;
             int col = 0;
             for (VideoGridCell cell : participants.values()) {

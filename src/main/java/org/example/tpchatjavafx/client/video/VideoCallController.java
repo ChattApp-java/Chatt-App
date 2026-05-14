@@ -172,13 +172,15 @@ public class VideoCallController {
         if (speakers != null) { speakers.stop(); speakers.close(); }
 
         // Envoie un message indiquant la fin de l'appel
-        networkClient.send(new ChatMessage(
-                MessageType.VIDEO_CALL_END,
-                username,
-                otherUser,
-                null,
-                ""
-        ));
+        if (networkClient != null) {
+            networkClient.send(new ChatMessage(
+                    MessageType.VIDEO_CALL_END,
+                    username,
+                    otherUser,
+                    null,
+                    ""
+            ));
+        }
 
         // Ferme la fenêtre d'appel vidéo
         VideoCallWindow.closeCurrent();

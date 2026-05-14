@@ -29,17 +29,14 @@ public class VideoGridCell {
         imageView.setImage(null);
 
         nameLabel = new Label(displayName);
-        nameLabel.setStyle("-fx-text-fill: #ffffff; -fx-font-size: 14px; -fx-font-weight: bold;");
+        nameLabel.getStyleClass().add("video-label");
 
         micLabel = new Label("🎤");
-        micLabel.setStyle("-fx-text-fill: #00ff00; -fx-font-size: 16px;");
+        micLabel.getStyleClass().add("mic-indicator");
 
-        VBox infoBox = new VBox(5, nameLabel, micLabel);
-        infoBox.setAlignment(Pos.CENTER);
-
+        root.getStyleClass().add("video-grid-cell");
         root.setAlignment(Pos.CENTER);
-        root.getChildren().addAll(imageView, infoBox);
-        root.setStyle("-fx-background-color: rgba(255,255,255,0.05); -fx-padding: 10; -fx-border-radius: 15; -fx-background-radius: 15; -fx-border-color: rgba(255,255,255,0.1);");
+        root.getChildren().addAll(imageView, nameLabel, micLabel);
     }
 
     public VBox getRoot() {

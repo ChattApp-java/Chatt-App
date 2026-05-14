@@ -420,6 +420,16 @@
     -fx-background-color: #F5F6F6;
 }
 
+.group-join-btn {
+    -fx-background-color: #25D366;
+    -fx-text-fill: #FFFFFF;
+    -fx-border-color: #075E54;
+}
+
+.group-join-btn:hover {
+    -fx-background-color: #128C7E;
+}
+
 .group-danger-btn {
     -fx-background-color: #FFF5F5;
     -fx-border-color: #F3B3B3;

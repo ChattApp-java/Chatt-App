@@ -81,13 +81,20 @@ public class MeetingController {
     }
 
     public void syncParticipants(String serialized) {
-        if (serialized == null || serialized.isBlank()) return;
-        for (String entry : serialized.split(",")) {
-            String[] parts = entry.split(":", 2);
-            if (parts.length == 2) {
-                addParticipant(parts[0], parts[1]);
+        Platform.runLater(() -> {
+            videoDisplay.clearParticipants();
+            participantsList.getItems().clear();
+            if (serialized == null || serialized.isBlank()) return;
+            for (String entry : serialized.split(",")) {
+                String[] parts = entry.split(":", 2);
+                if (parts.length == 2) {
+                    videoDisplay.addParticipant(parts[0], parts[1]);
+                    if (!participantsList.getItems().contains(parts[1])) {
+                        participantsList.getItems().add(parts[1]);
+                    }
+                }
             }
-        }
+        });
     }
 
     public void removeParticipant(String participantId, String displayName) {
@@ -128,10 +135,15 @@ public class MeetingController {
     private void closeWindow() {
         audioMixer.stop();
         if (networkClient != null) {
+            networkClient.stopMeetingMedia();
             networkClient.setActiveMeetingController(null);
         }
         Stage stage = (Stage) leaveButton.getScene().getWindow();
         stage.close();
+    }
+
+    public void handleMeetingEnded() {
+        Platform.runLater(this::closeWindow);
     }
 
     public static void openMeetingWindow(NetworkClient networkClient, int meetingId, String title) throws IOException {

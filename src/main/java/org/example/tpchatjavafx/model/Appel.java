@@ -13,7 +13,7 @@ public class Appel {
     private int duree;         // en secondes
     private String typeAppel;  // VOCAL, VIDEO
     private int expediteurId;
-    private int destinataireId;
+    private Integer destinataireId;
     private Integer reunionId;        // P2 : nullable, lié à Reunion si c'est une réunion
     private boolean estReunion = false; // P2 : true si l'appel est une réunion multi-utilisateurs
 
@@ -48,8 +48,8 @@ public class Appel {
     public int getExpediteurId() { return expediteurId; }
     public void setExpediteurId(int expediteurId) { this.expediteurId = expediteurId; }
 
-    public int getDestinataireId() { return destinataireId; }
-    public void setDestinataireId(int destinataireId) { this.destinataireId = destinataireId; }
+    public Integer getDestinataireId() { return destinataireId; }
+    public void setDestinataireId(Integer destinataireId) { this.destinataireId = destinataireId; }
 
     public Integer getReunionId() { return reunionId; }
     public void setReunionId(Integer reunionId) { this.reunionId = reunionId; }

@@ -149,6 +149,9 @@ public class ClientHandler implements Runnable {
             case MEETING_END, MEETING_ENDED -> {
                 if (username != null) handleMeetingEnd(msg);
             }
+            case MEETING_INFO -> {
+                if (username != null) handleMeetingInfo(msg);
+            }
 
             default       -> {
                 // N'autoriser que les utilisateurs authentifiés
@@ -383,7 +386,7 @@ public class ClientHandler implements Runnable {
         try {
             int memberId = parseTargetUserId(msg);
             ChatServer.getGroupManager().addMember(msg.getGroupId(), userId, memberId);
-            ChatMessage notification = new ChatMessage(MessageType.GROUP_ADD_MEMBER, username, null, null, String.valueOf(memberId));
+            ChatMessage notification = new ChatMessage(MessageType.GROUP_ADD_MEMBER, username, null, null, usernameForUserId(memberId));
             notification.setGroupId(msg.getGroupId());
             ChatServer.broadcastToGroup(msg.getGroupId(), notification);
         } catch (Exception e) {
@@ -394,8 +397,9 @@ public class ClientHandler implements Runnable {
     private void handleGroupRemoveMember(ChatMessage msg) {
         try {
             int memberId = parseTargetUserId(msg);
+            String memberUsername = usernameForUserId(memberId);
             ChatServer.getGroupManager().removeMember(msg.getGroupId(), userId, memberId);
-            ChatMessage notification = new ChatMessage(MessageType.GROUP_REMOVE_MEMBER, username, null, null, String.valueOf(memberId));
+            ChatMessage notification = new ChatMessage(MessageType.GROUP_REMOVE_MEMBER, username, null, null, memberUsername);
             notification.setGroupId(msg.getGroupId());
             ChatServer.broadcastToGroup(msg.getGroupId(), notification);
             ChatServer.sendToUserId(memberId, notification);
@@ -420,7 +424,7 @@ public class ClientHandler implements Runnable {
     private void handleGroupList(ChatMessage msg) {
         try {
             List<org.example.tpchatjavafx.model.Groupe> groups = ChatServer.getGroupManager().getGroupsForUser(userId);
-            send(new ChatMessage(MessageType.GROUP_LIST_RESPONSE, "SERVER", username, null, ChatServer.getGroupManager().serializeGroups(groups)));
+            send(new ChatMessage(MessageType.GROUP_LIST_RESPONSE, "SERVER", username, null, ChatServer.getGroupManager().serializeGroups(groups, gid -> ChatServer.getMeetingManager().getActiveMeetingForGroup(gid) != null)));
         } catch (Exception e) {
             sendError("Chargement des groupes impossible : " + e.getMessage());
         }
@@ -452,10 +456,30 @@ public class ClientHandler implements Runnable {
     private void handleGroupHistoryRequest(ChatMessage msg) {
         try {
             List<Message> history = ChatServer.getGroupManager().getGroupHistory(msg.getGroupId(), userId);
-            ChatMessage response = new ChatMessage(MessageType.GROUP_HISTORY_RESPONSE, "SERVER", username, null,
-                    ChatServer.getGroupManager().serializeMessages(history));
-            response.setGroupId(msg.getGroupId());
-            send(response);
+            ChatMessage begin = new ChatMessage(MessageType.GROUP_HISTORY_RESPONSE, "SERVER", username, null,
+                    history.isEmpty() ? "__EMPTY__" : "__BEGIN__");
+            begin.setGroupId(msg.getGroupId());
+            send(begin);
+
+            for (Message message : history) {
+                String sender = message.getExpediteur() == null
+                        ? String.valueOf(message.getExpediteurId())
+                        : message.getExpediteur().getUsername();
+                ChatMessage item = new ChatMessage(
+                        MessageType.GROUP_HISTORY_RESPONSE,
+                        sender,
+                        username,
+                        message.getType(),
+                        message.getContenu()
+                );
+                item.setGroupId(msg.getGroupId());
+                item.setMessageId(message.getId());
+                if (message.getDateEnvoi() != null) {
+                    item.setTimestamp(message.getDateEnvoi().format(timeFormatter));
+                }
+                attachMediaIfPresent(item, message);
+                send(item);
+            }
         } catch (Exception e) {
             sendError("Historique de groupe indisponible : " + e.getMessage());
         }
@@ -479,12 +503,13 @@ public class ClientHandler implements Runnable {
             started.setMeetingId(session.getMeetingId());
             started.setMeetingType(session.getType());
             send(started);
+            send(ChatServer.getMeetingManager().buildMeetingInfo(session, username));
 
             ChatMessage invite = new ChatMessage(MessageType.MEETING_INVITE, username, null, null, "Invitation reunion");
             invite.setGroupId(msg.getGroupId());
             invite.setMeetingId(session.getMeetingId());
             invite.setMeetingType(session.getType());
-            ChatServer.broadcastToGroup(msg.getGroupId(), invite);
+            ChatServer.broadcastToGroupExcept(msg.getGroupId(), invite, userId);
         } catch (Exception e) {
             sendError("Demarrage de reunion impossible : " + e.getMessage());
         }
@@ -492,13 +517,18 @@ public class ClientHandler implements Runnable {
 
     private void handleMeetingJoin(ChatMessage msg) {
         try {
-            MeetingManager.MeetingSession session = ChatServer.getMeetingManager().getActiveMeeting(msg.getMeetingId());
+            int mid = msg.getMeetingId();
+            if (mid <= 0 && msg.getGroupId() > 0) {
+                MeetingManager.MeetingSession s = ChatServer.getMeetingManager().getActiveMeetingForGroup(msg.getGroupId());
+                if (s != null) mid = s.getMeetingId();
+            }
+            MeetingManager.MeetingSession session = ChatServer.getMeetingManager().getActiveMeeting(mid);
             if (session == null) throw new IllegalArgumentException("Reunion inactive ou introuvable.");
-            ChatServer.getMeetingManager().joinMeeting(msg.getMeetingId(), userId, username, this, msg.getUdpAudioPort(), msg.getUdpVideoPort());
+            ChatServer.getMeetingManager().joinMeeting(mid, userId, username, this, msg.getUdpAudioPort(), msg.getUdpVideoPort());
             send(ChatServer.getMeetingManager().buildMeetingInfo(session, username));
             ChatMessage participants = new ChatMessage(MessageType.MEETING_PARTICIPANTS, "SERVER", username, null,
-                    ChatServer.getMeetingManager().serializeParticipants(msg.getMeetingId()));
-            participants.setMeetingId(msg.getMeetingId());
+                    ChatServer.getMeetingManager().serializeParticipants(mid));
+            participants.setMeetingId(mid);
             participants.setGroupId(session.getGroupeId());
             send(participants);
         } catch (Exception e) {
@@ -519,6 +549,36 @@ public class ClientHandler implements Runnable {
             ChatServer.getMeetingManager().endMeeting(msg.getMeetingId(), userId);
         } catch (Exception e) {
             sendError("Impossible de terminer la reunion : " + e.getMessage());
+        }
+    }
+
+    private void attachMediaIfPresent(ChatMessage chatMessage, Message message) {
+        String type = message.getType();
+        if (type == null || !(type.contains("AUDIO") || type.contains("IMAGE") || type.contains("FILE"))) return;
+        try {
+            org.example.tpchatjavafx.model.FichierMedia media = fichierMediaDAO.findByMessageId(message.getId());
+            if (media == null || media.getCheminAcces() == null) return;
+            java.io.File file = new java.io.File(media.getCheminAcces());
+            if (file.exists()) {
+                chatMessage.setBinaryData(java.nio.file.Files.readAllBytes(file.toPath()));
+            }
+        } catch (Exception e) {
+            System.err.println("Erreur chargement media historique: " + e.getMessage());
+        }
+    }
+
+    private void handleMeetingInfo(ChatMessage msg) {
+        try {
+            int mid = msg.getMeetingId();
+            if (mid <= 0 && msg.getGroupId() > 0) {
+                MeetingManager.MeetingSession s = ChatServer.getMeetingManager().getActiveMeetingForGroup(msg.getGroupId());
+                if (s != null) mid = s.getMeetingId();
+            }
+            MeetingManager.MeetingSession session = ChatServer.getMeetingManager().getActiveMeeting(mid);
+            if (session == null) throw new IllegalArgumentException("Reunion inactive ou introuvable.");
+            send(ChatServer.getMeetingManager().buildMeetingInfo(session, username));
+        } catch (Exception e) {
+            sendError("Informations reunion indisponibles : " + e.getMessage());
         }
     }
 
@@ -567,6 +627,11 @@ public class ClientHandler implements Runnable {
         }
     }
 
+    private String usernameForUserId(int id) throws SQLException {
+        Utilisateur user = userDAO.findById(id);
+        return user == null ? String.valueOf(id) : user.getUsername();
+    }
+
     private void sendError(String message) {
         send(new ChatMessage(MessageType.ERROR, "SERVER", username, null, message));
     }
@@ -605,7 +670,7 @@ public class ClientHandler implements Runnable {
         if (targetHandlers != null && !targetHandlers.isEmpty()) {
             // Utilisateur en ligne - envoyer notification
             ChatMessage notification = new ChatMessage();
-            notification.setType("CALL_INCOMING");
+            notification.setType(MessageType.CALL_INCOMING);
             notification.setFrom(username);
             notification.setTo(targetUser);
             notification.setCallType(callType);
@@ -618,7 +683,7 @@ public class ClientHandler implements Runnable {
         } else {
             // Utilisateur non connecté
             ChatMessage response = new ChatMessage();
-            response.setType("ERROR");
+            response.setType(MessageType.ERROR);
             response.setContent("Utilisateur hors ligne");
             send(response);
         }
@@ -633,7 +698,7 @@ public class ClientHandler implements Runnable {
         Set<ClientHandler> callerHandlers = ChatServer.clients.get(callerId);
         if (callerHandlers != null && !callerHandlers.isEmpty()) {
             ChatMessage answer = new ChatMessage();
-            answer.setType("CALL_ANSWER");
+            answer.setType(MessageType.CALL_ANSWER);
             answer.setFrom(username);
             answer.setTo(callerId);
             answer.setRemoteHost(socket.getInetAddress().getHostAddress());
@@ -653,7 +718,7 @@ public class ClientHandler implements Runnable {
         Set<ClientHandler> callerHandlers = ChatServer.clients.get(callerId);
         if (callerHandlers != null) {
             ChatMessage rejection = new ChatMessage();
-            rejection.setType("CALL_REJECT");
+            rejection.setType(MessageType.CALL_REJECT);
             rejection.setFrom(username);
 
             for (ClientHandler handler : callerHandlers) {

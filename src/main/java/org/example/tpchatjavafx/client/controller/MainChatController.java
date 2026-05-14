@@ -205,7 +205,9 @@ public class MainChatController {
             try {
                 // Le serveur envoie les infos UDP pour se connecter au relais
                 networkClient.startMeetingAudio(msg.getMeetingId(), 0, msg.getServerUdpAudioPort(), msg.getServerHost());
-                networkClient.startMeetingVideo(msg.getMeetingId(), 0, msg.getServerUdpVideoPort(), msg.getServerHost());
+                if ("VIDEO".equalsIgnoreCase(msg.getMeetingType())) {
+                    networkClient.startMeetingVideo(msg.getMeetingId(), 0, msg.getServerUdpVideoPort(), msg.getServerHost());
+                }
             } catch (Exception e) {
                 System.err.println("Erreur dÃ©marrage services UDP rÃ©union : " + e.getMessage());
             }
@@ -346,7 +348,7 @@ public class MainChatController {
 
         // Envoyer demande d'appel
         ChatMessage callRequest = new ChatMessage();
-        callRequest.setType("CALL_REQUEST");
+        callRequest.setType(MessageType.CALL_REQUEST);
         callRequest.setFrom(username);
         callRequest.setTo(currentPrivateTarget);
         callRequest.setCallType("AUDIO");
@@ -366,7 +368,7 @@ public class MainChatController {
         }
 
         ChatMessage callRequest = new ChatMessage();
-        callRequest.setType("CALL_REQUEST");
+        callRequest.setType(MessageType.CALL_REQUEST);
         callRequest.setFrom(username);
         callRequest.setTo(currentPrivateTarget);
         callRequest.setCallType("VIDEO");
@@ -511,13 +513,15 @@ public class MainChatController {
                         typeStr.contains("AUDIO") ? UiMessage.Kind.AUDIO : UiMessage.Kind.FILE;
 
                 String localPath = null;
-                if (msg.getBinaryData() != null) {
+                if (msg.getBinaryData() != null && msg.getBinaryData().length > 0) {
                     try {
-                        java.io.File temp = java.io.File.createTempFile("chat_", "_" + msg.getContent());
-                        try (java.io.FileOutputStream fos = new java.io.FileOutputStream(temp)) {
-                            fos.write(msg.getBinaryData());
+                        String name = msg.getContent();
+                        String ext = "bin";
+                        if (name != null && name.contains(".")) {
+                            ext = name.substring(name.lastIndexOf('.') + 1).replaceAll("[^a-zA-Z0-9]", "");
                         }
-                        localPath = temp.getAbsolutePath();
+                        if (ext.isBlank()) ext = "bin";
+                        localPath = saveTempFile("history-media-", ext, msg.getBinaryData());
                     } catch (java.io.IOException e) {
                         System.err.println("Erreur sauvegarde mÃ©dia historique: " + e.getMessage());
                     }
@@ -1013,9 +1017,11 @@ public class MainChatController {
         if (recordAudioButton == null) return;
         if (recordingAudio) {
             recordAudioButton.setText("â– ");
-            recordAudioButton.setStyle("-fx-text-fill: #f87171;");
+            recordAudioButton.setText("Stop");
+            recordAudioButton.setStyle("-fx-text-fill: #f87171; -fx-font-weight: bold;");
         } else {
             recordAudioButton.setText("ðŸŽ™");
+            recordAudioButton.setText("Audio");
             recordAudioButton.setStyle("");
         }
     }
@@ -1064,7 +1070,9 @@ public class MainChatController {
                     }
                     case AUDIO -> {
                         Button play = new Button("â–¶");
+                        play.setText("Lire audio");
                         play.getStyleClass().add("btn-icon");
+                        play.setDisable(item.getFilePath() == null);
                         play.setOnAction(e -> playAudio(item.getFilePath()));
                         Label label = new Label(" Message vocal");
                         label.getStyleClass().add(isOwn ? "bubble-sent" : "bubble-received");
@@ -1081,7 +1089,9 @@ public class MainChatController {
                         Label nameLabel = new Label("ðŸ“Ž " + item.getText());
                         nameLabel.getStyleClass().add(isOwn ? "bubble-sent" : "bubble-received");
                         Button downloadBtn = new Button("ðŸ’¾");
+                        downloadBtn.setText("Telecharger");
                         downloadBtn.getStyleClass().add("btn-icon");
+                        downloadBtn.setDisable(item.getFilePath() == null);
                         downloadBtn.setOnAction(e -> downloadFile(item.getFilePath(), item.getText()));
 
                         Label time = new Label(item.getTimestamp());
