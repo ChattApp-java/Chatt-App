@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.wechat.client.controller.ChatController">
+
+    <left>
+        <ListView fx:id="contactList" prefWidth="200"/>
+    </left>
+
+    <center>
+        <VBox>
+            <TextArea fx:id="chatArea" VBox.vgrow="ALWAYS" editable="false"/>
+            <HBox spacing="10" padding="10">
+                <TextField fx:id="messageField" HBox.hgrow="ALWAYS"/>
+                <Button text="Envoyer" onAction="#sendMessage"/>
+                <Button text="📞" onAction="#startAudioCall"/>
+                <Button text="📹" onAction="#startVideoCall"/>
+            </HBox>
+        </VBox>
+    </center>
+
+</BorderPane>

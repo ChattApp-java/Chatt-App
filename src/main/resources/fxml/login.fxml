@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.geometry.*?>
+
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.wechat.client.controller.LoginController"
+      alignment="CENTER" spacing="15" padding="20">
+
+    <Label text="WeChat" style="-fx-font-size: 24px; -fx-font-weight: bold;"/>
+
+    <TextField fx:id="usernameField" promptText="Nom d'utilisateur" maxWidth="250"/>
+    <PasswordField fx:id="passwordField" promptText="Mot de passe" maxWidth="250"/>
+
+    <Button text="Connexion" onAction="#handleLogin" maxWidth="250"/>
+    <Button text="Inscription" onAction="#handleRegister" maxWidth="250"/>
+
+</VBox>
