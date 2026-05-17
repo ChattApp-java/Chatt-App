@@ -213,9 +213,15 @@ public class ChatServer {
         ChatMessage infoMsg = new ChatMessage(MessageType.CALL_INFO, msg.getFrom(), msg.getTo(), msg.getConversationId(), "Connexion P2P etablie");
         infoMsg.setCallType(msg.getCallType());
         infoMsg.setRemoteHost(from.getSocket().getInetAddress().getHostAddress());
-        infoMsg.setRemotePort(0);
+
+        // Le code actuel ne permet pas de récupérer un port UDP P2P fiable côté appelant.
+        // Pour éviter un échec (port -1), on conserve un port non nul.
+        infoMsg.setRemotePort(10000);
+
+
         forwardToTarget(infoMsg);
         from.send(new ChatMessage(MessageType.CALL_ANSWER, msg.getTo(), msg.getFrom(), msg.getConversationId(), "Appel accepte"));
+
     }
 
     private static void shutdown() {

@@ -91,7 +91,16 @@ public class LoginController {
         String email    = regEmailField.getText().trim();
 
         if (username.isEmpty() || password.isEmpty()) {
+
             showError(regErrorLabel, "Nom d'utilisateur et mot de passe requis.");
+            return;
+        }
+        if (email.isEmpty()) {
+            showError(regErrorLabel, "Adresse email requise.");
+            return;
+        }
+        if (!isValidEmail(email)) {
+            showError(regErrorLabel, "Adresse email invalide.");
             return;
         }
         if (password.length() < 4) {
@@ -155,6 +164,11 @@ public class LoginController {
         if (label == null) return;
         label.setText(msg);
         label.setVisible(true);
+        label.setManaged(true);
+    }
+
+    private boolean isValidEmail(String email) {
+        return email != null && email.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
     }
 
     private void setButtonsDisabled(boolean disabled) {

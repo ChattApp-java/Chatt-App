@@ -51,12 +51,20 @@ public class AuthService {
                 return new RegisterResult(false, "Nom d'utilisateur déjà pris");
 
             String hash = BCrypt.hashpw(password, BCrypt.gensalt(12));
-            String finalEmail = (email == null || email.isBlank()) ? username + "@chat.local" : email.trim();
-            
+
+            if (email == null || email.isBlank()) {
+                return new RegisterResult(false, "Adresse email requise");
+            }
+            String finalEmail = email.trim();
+            if (!finalEmail.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")) {
+                return new RegisterResult(false, "Adresse email invalide");
+            }
+
             Utilisateur u = new Utilisateur();
             u.setUsername(username);
             u.setPassword(hash);
             u.setEmail(finalEmail);
+
             
             Utilisateur created = utilisateurDAO.create(u);
             if (created != null && created.getId() > 0) {

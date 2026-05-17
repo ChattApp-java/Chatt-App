@@ -389,6 +389,7 @@ public class ClientHandler implements Runnable {
             ChatMessage notification = new ChatMessage(MessageType.GROUP_ADD_MEMBER, username, null, null, usernameForUserId(memberId));
             notification.setGroupId(msg.getGroupId());
             ChatServer.broadcastToGroup(msg.getGroupId(), notification);
+            sendGroupListToUser(memberId);
         } catch (Exception e) {
             sendError("Ajout de membre impossible : " + e.getMessage());
         }
@@ -637,6 +638,23 @@ public class ClientHandler implements Runnable {
     }
 
     // ── Nettoyage ─────────────────────────────────────────────
+
+    private void sendGroupListToUser(int targetUserId) {
+        try {
+            List<org.example.tpchatjavafx.model.Groupe> groups = ChatServer.getGroupManager().getGroupsForUser(targetUserId);
+            Utilisateur target = userDAO.findById(targetUserId);
+            ChatMessage response = new ChatMessage(
+                    MessageType.GROUP_LIST_RESPONSE,
+                    "SERVER",
+                    target == null ? null : target.getUsername(),
+                    null,
+                    ChatServer.getGroupManager().serializeGroups(groups, gid -> ChatServer.getMeetingManager().getActiveMeetingForGroup(gid) != null)
+            );
+            ChatServer.sendToUserId(targetUserId, response);
+        } catch (Exception e) {
+            System.err.println("Erreur rafraichissement groupes utilisateur " + targetUserId + ": " + e.getMessage());
+        }
+    }
 
     private String serializeGroupCreated(org.example.tpchatjavafx.model.Groupe groupe) {
         String name = groupe.getNom() == null ? "" : groupe.getNom().replace("|", " ").replace(",", " ");

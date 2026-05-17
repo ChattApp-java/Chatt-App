@@ -318,7 +318,10 @@ public class GroupController extends javafx.scene.control.SplitPane {
             if (msg.getGroupId() == selectedGroupId) {
                 afficherSysteme(msg.getContent() + " a rejoint le groupe.");
             }
+            // Après ajout, forcer l'actualisation de la liste des groupes côté client.
+            networkClient.requestGroupList();
         }));
+
 
         networkClient.setOnGroupMemberRemoved(msg -> Platform.runLater(() -> {
             if (msg.getGroupId() != selectedGroupId) return;

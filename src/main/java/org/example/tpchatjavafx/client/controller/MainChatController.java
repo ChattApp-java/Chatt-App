@@ -346,14 +346,7 @@ public class MainChatController {
             return;
         }
 
-        // Envoyer demande d'appel
-        ChatMessage callRequest = new ChatMessage();
-        callRequest.setType(MessageType.CALL_REQUEST);
-        callRequest.setFrom(username);
-        callRequest.setTo(currentPrivateTarget);
-        callRequest.setCallType("AUDIO");
-
-        networkClient.send(callRequest);
+        networkClient.send(new ChatMessage(MessageType.VOICE_CALL_REQUEST, username, currentPrivateTarget, null, "Demande d'appel audio"));
 
         // UI: afficher Ã©tat "Appel en cours..."
         showCallPending(currentPrivateTarget, "Appel vocal en cours...");
@@ -661,6 +654,11 @@ public class MainChatController {
     }
 
     private void handleVoiceCallRequest(ChatMessage msg) {
+        if (currentVoiceCall != null) {
+            networkClient.send(new ChatMessage(MessageType.VOICE_CALL_REJECT, username, msg.getFrom(), null, "Occupe"));
+            return;
+        }
+
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("WeChat - Appel Vocal");
         alert.setHeaderText("Appel vocal entrant de " + msg.getFrom());
@@ -672,14 +670,10 @@ public class MainChatController {
 
         alert.showAndWait().ifPresent(result -> {
             if (result == accept) {
-                // Utiliser les nouveaux types de messages
-                ChatMessage answerMsg = new ChatMessage(MessageType.CALL_ANSWER, username, msg.getFrom(), null, "Appel acceptÃ©");
-                answerMsg.setCallType("AUDIO");
-                networkClient.send(answerMsg);
-                // Attendre CALL_INFO avant de dÃ©marrer la session
+                networkClient.send(new ChatMessage(MessageType.VOICE_CALL_ACCEPT, username, msg.getFrom(), null, "Appel accepte"));
+                startVoiceSession(msg.getFrom());
             } else {
-                ChatMessage rejectMsg = new ChatMessage(MessageType.CALL_REJECT, username, msg.getFrom(), null, "Appel refusÃ©");
-                networkClient.send(rejectMsg);
+                networkClient.send(new ChatMessage(MessageType.VOICE_CALL_REJECT, username, msg.getFrom(), null, "Appel refuse"));
             }
         });
     }
@@ -742,7 +736,7 @@ public class MainChatController {
     }
 
     private void startAudioCall(String otherUser, String callType) {
-        if (currentCallType != null) {
+        if (currentVoiceCall != null || currentCallType != null) {
             showInfo("Un appel est dÃ©jÃ  en cours.");
             return;
         }
@@ -751,9 +745,8 @@ public class MainChatController {
             currentCallType = callType;
             voiceCallPeer = otherUser;
 
-            // Initialiser les services audio
-            audioCapture = new AudioCaptureService();
-            audioPlayback = new AudioPlaybackService();
+            currentVoiceCall = new VoiceCallSession(networkClient, username, otherUser);
+            currentVoiceCall.start();
 
             // Ouvrir la fenÃªtre d'appel
             VoiceCallWindow.open(username, otherUser, () -> {
@@ -787,12 +780,19 @@ public class MainChatController {
     }
 
     private void endVoiceCall() {
-        // Ancienne mÃ©thode - dÃ©lÃ©guer Ã  endAudioCall
-        endAudioCall();
+        endAudioCall(false);
     }
 
 
     private void endAudioCall() {
+        endAudioCall(true);
+    }
+
+    private void endAudioCall(boolean notifyPeer) {
+        if (currentVoiceCall != null) {
+            currentVoiceCall.stop();
+            currentVoiceCall = null;
+        }
         if (audioTransmission != null) {
             audioTransmission.stop();
             audioTransmission = null;
@@ -809,10 +809,11 @@ public class MainChatController {
             audioPlayback.stop();
             audioPlayback = null;
         }
-        if (voiceCallPeer != null && networkClient != null) {
-            ChatMessage endMsg = new ChatMessage(MessageType.CALL_END, username, voiceCallPeer, null, "Appel termine");
+        if (notifyPeer && voiceCallPeer != null && networkClient != null) {
+            ChatMessage endMsg = new ChatMessage(MessageType.VOICE_CALL_END, username, voiceCallPeer, null, "Appel termine");
             networkClient.send(endMsg);
         }
+        VoiceCallWindow.close();
         currentCallType = null;
         voiceCallPeer = null;
         incomingCallFrom = null;
@@ -901,15 +902,12 @@ public class MainChatController {
             showInfo("SÃ©lectionnez un contact privÃ© d'abord.");
             return;
         }
-        if (currentCallType != null) {
+        if (currentVoiceCall != null || currentCallType != null) {
             showInfo("Un appel est dÃ©jÃ  en cours.");
             return;
         }
 
-        // Envoyer une demande d'appel audio
-        ChatMessage callRequest = new ChatMessage(MessageType.CALL_REQUEST, username, currentPrivateTarget, null, "Demande d'appel audio");
-        callRequest.setCallType("AUDIO");
-        networkClient.send(callRequest);
+        networkClient.send(new ChatMessage(MessageType.VOICE_CALL_REQUEST, username, currentPrivateTarget, null, "Demande d'appel audio"));
 
         showInfo("Appel audio demandÃ© Ã  " + currentPrivateTarget);
     }
