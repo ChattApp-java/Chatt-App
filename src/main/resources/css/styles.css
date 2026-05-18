@@ -729,12 +729,18 @@
 
 .login-logo {
     -fx-background-color: #38bdf8;
-    -fx-background-radius: 16;
-    -fx-text-fill: #ffffff;
-    -fx-font-size: 28px;
+    -fx-background-radius: 999;
     -fx-alignment: center;
     -fx-min-width: 60;
     -fx-min-height: 60;
+    -fx-max-width: 60;
+    -fx-max-height: 60;
+}
+
+.whatsapp-logo-svg {
+    -fx-fill: #ffffff;
+    -fx-scale-x: 1.5;
+    -fx-scale-y: 1.5;
 }
 
 .login-title {

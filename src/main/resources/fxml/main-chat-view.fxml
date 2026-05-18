@@ -28,7 +28,7 @@
                         </HBox>
                     </VBox>
                     <Button text="+" onAction="#onAddContact" styleClass="header-icon-btn"/>
-                    <Button text="&#x23FB;" onAction="#onLogout" styleClass="header-icon-btn"/>
+                    <Button text="🚪" onAction="#onLogout" styleClass="header-icon-btn" style="-fx-font-size: 16px;"/>
                 </HBox>
 
                 <HBox styleClass="search-pill" alignment="CENTER_LEFT" spacing="8">

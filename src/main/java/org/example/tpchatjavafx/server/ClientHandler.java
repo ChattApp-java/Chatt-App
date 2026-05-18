@@ -281,6 +281,11 @@ public class ClientHandler implements Runnable {
                 sendError("Ce contact n'existe pas dans votre liste.");
                 return;
             }
+            
+            org.example.tpchatjavafx.model.Conversation conv = convDAO.findConversationBetween(userId, contact.getId());
+            if (conv != null) {
+                messageDAO.deleteConversationMessages(conv.getId());
+            }
 
             handleContactLoad();
         } catch (Exception e) {
@@ -295,6 +300,11 @@ public class ClientHandler implements Runnable {
             if (!deleted) {
                 sendError("Ce contact n'existe pas dans votre liste.");
                 return;
+            }
+            
+            org.example.tpchatjavafx.model.Conversation conv = convDAO.findConversationBetween(userId, contactId);
+            if (conv != null) {
+                messageDAO.deleteConversationMessages(conv.getId());
             }
 
             ChatMessage notification = new ChatMessage(MessageType.DELETE_CONTACT, "SERVER", username, null, String.valueOf(contactId));

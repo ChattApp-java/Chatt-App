@@ -485,7 +485,7 @@ public class MainChatController {
         networkClient.setOnGroupMemberAdded(msg -> Platform.runLater(() -> {
             if (msg.getGroupId() == currentGroupId) {
                 groupConversations.computeIfAbsent(currentGroupId, k -> FXCollections.observableArrayList())
-                        .add(new UiMessage(UiMessage.Kind.TEXT, false, msg.getContent() + " a rejoint le groupe.", null,
+                        .add(new UiMessage(UiMessage.Kind.SYSTEM, false, msg.getContent() + " a rejoint le groupe.", null,
                                 java.time.LocalDateTime.now().format(timeFormatter)));
             }
             networkClient.requestGroupList();
@@ -860,7 +860,17 @@ public class MainChatController {
 
         if (confirm.showAndWait().orElse(btnNon) == btnOui) {
             if (networkClient != null) networkClient.close();
-            Platform.exit();
+            try {
+                javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/fxml/login.fxml"));
+                javafx.scene.Parent root = loader.load();
+                javafx.scene.Scene scene = new javafx.scene.Scene(root);
+                scene.getStylesheets().add(getClass().getResource("/css/styles.css").toExternalForm());
+                javafx.stage.Stage stage = (javafx.stage.Stage) rootPane.getScene().getWindow();
+                stage.setScene(scene);
+            } catch (java.io.IOException e) {
+                e.printStackTrace();
+                Platform.exit();
+            }
         }
     }
 
@@ -1449,7 +1459,7 @@ public class MainChatController {
             if (currentGroupId != -1) {
                 networkClient.sendGroupMedia(currentGroupId, MessageType.GROUP_AUDIO, "Audio", Files.readAllBytes(tempFile));
             } else if (currentPrivateTarget != null) {
-                ChatMessage msg = new ChatMessage(MessageType.PRIVATE_AUDIO, username, currentPrivateTarget, null, "Audio");
+                ChatMessage msg = new ChatMessage(MessageType.PRIVATE_AUDIO, username, currentPrivateTarget, currentConversationId, "Audio");
                 msg.setBinaryData(Files.readAllBytes(tempFile));
                 networkClient.send(msg);
             }
@@ -1583,10 +1593,20 @@ public class MainChatController {
                         } else {
                             String sharedContact = extractSharedContactName(text);
                             if (sharedContact != null) {
-                                Button contactButton = new Button("Ouvrir " + sharedContact);
-                                contactButton.getStyleClass().add(isOwn ? "bubble-sent" : "bubble-received");
-                                contactButton.setMaxWidth(420);
-                                contactButton.setOnAction(e -> {
+                                SVGPath userIcon = new SVGPath();
+                                userIcon.setContent("M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z");
+                                userIcon.setStyle("-fx-fill: " + (isOwn ? "white" : "#00a884") + ";");
+                                
+                                Label nameLabel = new Label(sharedContact);
+                                nameLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: " + (isOwn ? "white" : "black") + "; -fx-font-size: 14px;");
+                                
+                                HBox topBox = new HBox(10, userIcon, nameLabel);
+                                topBox.setAlignment(Pos.CENTER_LEFT);
+                                
+                                Button openBtn = new Button("Ouvrir");
+                                openBtn.setStyle("-fx-background-color: transparent; -fx-border-color: " + (isOwn ? "white" : "#00a884") + "; -fx-border-radius: 4; -fx-text-fill: " + (isOwn ? "white" : "#00a884") + "; -fx-cursor: hand; -fx-font-weight: bold;");
+                                openBtn.setMaxWidth(Double.MAX_VALUE);
+                                openBtn.setOnAction(e -> {
                                     if (!allContacts.contains(sharedContact)) {
                                         allContacts.add(sharedContact);
                                     }
@@ -1595,11 +1615,15 @@ public class MainChatController {
                                         tabPane.getSelectionModel().select(privateTab);
                                     }
                                 });
+                                
+                                VBox contactBox = new VBox(8, topBox, openBtn);
+                                contactBox.getStyleClass().add(isOwn ? "bubble-sent" : "bubble-received");
+                                contactBox.setPadding(new javafx.geometry.Insets(10));
 
                                 Label time = new Label(messageFooter(item, isOwn));
                                 time.getStyleClass().add(isOwn ? "timestamp-sent" : "timestamp-received");
 
-                                VBox content = new VBox(2, contactButton, time);
+                                VBox content = new VBox(2, contactBox, time);
                                 content.setAlignment(isOwn ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
                                 row.getChildren().add(content);
                                 break;
@@ -2561,11 +2585,48 @@ public class MainChatController {
         dialog.showAndWait().ifPresent(target -> {
             for (UiMessage message : selectedMessages) {
                 String text = buildSearchPreview(message);
+                byte[] binaryData = null;
+                MessageType pType = MessageType.PRIVATE;
+                MessageType gType = MessageType.GROUP_MESSAGE;
+                
+                if (message.getKind() == UiMessage.Kind.AUDIO || message.getKind() == UiMessage.Kind.IMAGE || message.getKind() == UiMessage.Kind.FILE) {
+                    if (message.getFilePath() != null) {
+                        try {
+                            java.io.File f = new java.io.File(message.getFilePath());
+                            if (f.exists()) {
+                                binaryData = java.nio.file.Files.readAllBytes(f.toPath());
+                                text = f.getName();
+                                if (message.getKind() == UiMessage.Kind.AUDIO) {
+                                    pType = MessageType.PRIVATE_AUDIO;
+                                    gType = MessageType.GROUP_AUDIO;
+                                } else if (message.getKind() == UiMessage.Kind.IMAGE) {
+                                    pType = MessageType.PRIVATE_IMAGE;
+                                    gType = MessageType.GROUP_IMAGE;
+                                } else {
+                                    pType = MessageType.PRIVATE_FILE;
+                                    gType = MessageType.GROUP_FILE;
+                                }
+                            }
+                        } catch (java.io.IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+
                 if (target.startsWith("[Groupe] ")) {
                     int index = groupNames.indexOf(target.substring("[Groupe] ".length()));
-                    if (index >= 0 && index < groupIds.size()) networkClient.sendGroupMessage(groupIds.get(index)[0], text);
+                    if (index >= 0 && index < groupIds.size()) {
+                        int gId = groupIds.get(index)[0];
+                        if (binaryData != null) {
+                            networkClient.sendGroupMedia(gId, gType, text, binaryData);
+                        } else {
+                            networkClient.sendGroupMessage(gId, text);
+                        }
+                    }
                 } else {
-                    networkClient.send(new ChatMessage(MessageType.PRIVATE, username, target, null, text));
+                    ChatMessage msg = new ChatMessage(pType, username, target, currentConversationId, text);
+                    if (binaryData != null) msg.setBinaryData(binaryData);
+                    networkClient.send(msg);
                 }
             }
             showInfo(selectedMessages.size() + " message(s) transfere(s).");
@@ -2779,7 +2840,6 @@ public class MainChatController {
         }
         ChatMessage msg = new ChatMessage(MessageType.PRIVATE, username, currentPrivateTarget, currentConversationId, text);
         networkClient.send(msg);
-        addPrivateMessage(msg);
         resetSendingContactGuard();
     }
 
