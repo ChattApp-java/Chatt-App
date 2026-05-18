@@ -72,7 +72,7 @@
                             onAction="#onStartVoiceCall" managed="false" visible="false"/>
                     <Button fx:id="videoCallButton" text="VIDEO" styleClass="call-action-btn"
                             onAction="#onStartVideoCall" managed="false" visible="false"/>
-                    <Button text="INFO" styleClass="call-action-btn" onAction="#onShowContactInfo"/>
+                    <Button fx:id="infoButton" text="INFO" styleClass="call-action-btn" onAction="#onShowContactInfo"/>
                     <Button text="..." styleClass="call-action-btn" onAction="#onMoreOptions"/>
                 </HBox>
             </HBox>
@@ -105,8 +105,8 @@
                 </HBox>
 
                 <HBox fx:id="emojiBar" styleClass="emoji-bar" managed="false" visible="false">
-                    <ScrollPane styleClass="emoji-scroll" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED">
-                        <FlowPane fx:id="emojiGrid" styleClass="emoji-grid" prefWrapLength="300"/>
+                    <ScrollPane styleClass="emoji-scroll" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED" HBox.hgrow="ALWAYS">
+                        <FlowPane fx:id="emojiGrid" styleClass="emoji-grid" prefWrapLength="440"/>
                     </ScrollPane>
                 </HBox>
             </VBox>

@@ -71,6 +71,7 @@ public class MainChatController {
     @FXML private Button    recordAudioButton;
     @FXML private Button    voiceCallButton;
     @FXML private Button    videoCallButton;
+    @FXML private Button    infoButton;
     @FXML private TabPane   tabPane;
     @FXML private HBox emojiBar;
     @FXML private FlowPane emojiGrid;
@@ -98,8 +99,10 @@ public class MainChatController {
     private final ConversationDAO conversationDAO = new ConversationDAO();
     private final FichierMediaDAO fichierMediaDAO = new FichierMediaDAO();
     private static final List<String> EMOJIS = Arrays.asList(
-            ":)", ":D", ";)", ":P", "<3", "OK", "Merci", "Top", "Haha", "Cool",
-            "Oui", "Non", "BRB", "GG", "Salut", "Done", "Call", "File", "Map", "TP"
+            "😂", "🤣", "😊", "😅", "🥺", "😎", "🤔", "🙄", "😭", "❤️",
+            "🔥", "💯", "👍", "✅", "🙏", "💪", "👏", "👌", "❌", "👀",
+            "🤝", "🫶", "🧡", "💙", "💔", "💕", "🤍", "👎", "😍", "😘",
+            "😔", "😢", "😡"
     );
 
     private volatile boolean recordingAudio = false;
@@ -129,8 +132,10 @@ public class MainChatController {
     private final List<int[]> groupIds = new ArrayList<>();
     private final ObservableList<String> groupNames = FXCollections.observableArrayList();
     private final Map<Integer, ObservableList<UiMessage>> groupConversations = new HashMap<>();
+    private final Map<Integer, String> groupMembersById = new HashMap<>();
     private int currentGroupId = -1;
     private String currentGroupName = null;
+    private Alert groupInfoAlert;
 
     @FXML
     private void initialize() {
@@ -437,6 +442,13 @@ public class MainChatController {
             }
             networkClient.requestGroupList();
         }));
+
+        networkClient.setOnGroupMembersResponse(msg -> Platform.runLater(() -> {
+            groupMembersById.put(msg.getGroupId(), msg.getContent());
+            if (groupInfoAlert != null && msg.getGroupId() == currentGroupId) {
+                groupInfoAlert.setContentText(buildGroupInfoText(msg.getContent()));
+            }
+        }));
     }
 
     private void addGroup(int id, String name) {
@@ -458,9 +470,14 @@ public class MainChatController {
         voiceCallButton.setManaged(false);
         videoCallButton.setVisible(false);
         videoCallButton.setManaged(false);
+        if (infoButton != null) {
+            infoButton.setVisible(false);
+            infoButton.setManaged(false);
+        }
         groupConversations.putIfAbsent(groupId, FXCollections.observableArrayList());
         messagesListView.setItems(groupConversations.get(groupId));
         networkClient.requestGroupHistory(groupId);
+        networkClient.requestGroupMembers(groupId);
         showPrivateCenter();
     }
 
@@ -680,6 +697,7 @@ public class MainChatController {
                 String statut = userStatuses.getOrDefault(user, "NON_CONNECTE");
                 Label sub = new Label(statut.equals("EN_LIGNE") ? "Ã¢â€”Â En ligne" : "Ã¢â€”Â Non connectÃƒÂ©");
                 sub.getStyleClass().add("chat-contact-status");
+                sub.setText(statut.equals("EN_LIGNE") ? "En ligne" : "Non connecte");
                 if (statut.equals("EN_LIGNE")) sub.setStyle("-fx-text-fill: #25D366;");
 
                 VBox info = new VBox(3, name, sub);
@@ -749,6 +767,10 @@ public class MainChatController {
         currentGroupName = null;
         if (chatTitleLabel  != null) chatTitleLabel.setText(other);
         if (chatAvatarLabel != null) chatAvatarLabel.setText(other.substring(0,1).toUpperCase());
+        if (infoButton != null) {
+            infoButton.setVisible(true);
+            infoButton.setManaged(true);
+        }
 
         String status = userStatuses.getOrDefault(other, "NON_CONNECTE");
         updateChatHeaderStatus(status);
@@ -829,6 +851,7 @@ public class MainChatController {
     private void updateChatHeaderStatus(String status) {
         if (chatStatusLabel != null) {
             chatStatusLabel.setText(status.equals("EN_LIGNE") ? "Ã¢â€”Â En ligne" : "Ã¢â€”Â Non connectÃƒÂ©");
+            chatStatusLabel.setText(status.equals("EN_LIGNE") ? "En ligne" : "Non connecte");
             chatStatusLabel.setStyle(status.equals("EN_LIGNE") ? "-fx-text-fill: #25D366;" : "-fx-text-fill: #8e8e8e;");
         }
     }
@@ -1111,8 +1134,33 @@ public class MainChatController {
     }
 
     private void showInfo(String msg) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION, msg);
+        Alert alert = new Alert(Alert.AlertType.INFORMATION, cleanDisplayText(msg));
         alert.show();
+    }
+
+    private String cleanDisplayText(String text) {
+        if (text == null) return "";
+        return text
+                .replace("Ã¢â€“Â¶", ">")
+                .replace("Ã¢â€“Â ", "Stop")
+                .replace("Ã¢â€”Â", "")
+                .replace("ÃƒÂ©", "e")
+                .replace("ÃƒÂ¨", "e")
+                .replace("ÃƒÂª", "e")
+                .replace("ÃƒÂ ", "a")
+                .replace("ÃƒÂ§", "c")
+                .replace("ÃƒÂ´", "o")
+                .replace("ÃƒÂ®", "i")
+                .replace("ÃƒÂ¢", "a")
+                .replace("ÃƒÂ»", "u")
+                .replace("Ãƒ", "")
+                .replace("Â", "")
+                .replace("â€“", "-")
+                .replace("â€™", "'")
+                .replace("â€œ", "\"")
+                .replace("â€", "\"")
+                .replace("â€¦", "...")
+                .trim();
     }
 
     private void showAlert(String msg) {
@@ -1120,6 +1168,7 @@ public class MainChatController {
     }
 
     private void showCallPending(String user, String message) {
+        message = cleanDisplayText(message);
         if (chatStatusLabel != null) {
             chatStatusLabel.setText(message);
         }
@@ -1362,6 +1411,30 @@ public class MainChatController {
                             content.setAlignment(isOwn ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
                             row.getChildren().add(content);
                         } else {
+                            String sharedContact = extractSharedContactName(text);
+                            if (sharedContact != null) {
+                                Button contactButton = new Button("Ouvrir " + sharedContact);
+                                contactButton.getStyleClass().add(isOwn ? "bubble-sent" : "bubble-received");
+                                contactButton.setMaxWidth(420);
+                                contactButton.setOnAction(e -> {
+                                    if (!allContacts.contains(sharedContact)) {
+                                        allContacts.add(sharedContact);
+                                    }
+                                    openPrivateChat(sharedContact);
+                                    if (tabPane != null && privateTab != null) {
+                                        tabPane.getSelectionModel().select(privateTab);
+                                    }
+                                });
+
+                                Label time = new Label(item.getTimestamp());
+                                time.getStyleClass().add(isOwn ? "timestamp-sent" : "timestamp-received");
+
+                                VBox content = new VBox(2, contactButton, time);
+                                content.setAlignment(isOwn ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
+                                row.getChildren().add(content);
+                                break;
+                            }
+
                             Label bubble = new Label(text);
                             bubble.setWrapText(true);
                             bubble.setMaxWidth(420);
@@ -1408,6 +1481,7 @@ public class MainChatController {
                     case FILE -> {
                         Label nameLabel = new Label("Ã°Å¸â€œÅ½ " + item.getText());
                         nameLabel.getStyleClass().add(isOwn ? "bubble-sent" : "bubble-received");
+                        nameLabel.setText(item.getText());
                         Button downloadBtn = new Button("Ã°Å¸â€™Â¾");
                         downloadBtn.setText("Telecharger");
                         downloadBtn.getStyleClass().add("btn-icon");
@@ -1589,12 +1663,165 @@ public class MainChatController {
     @FXML
     private void onMoreOptions() {
         ContextMenu menu = new ContextMenu();
+
+        if (currentGroupId != -1) {
+            MenuItem addMemberItem = new MenuItem("Ajouter un membre");
+            addMemberItem.setOnAction(e -> openAddGroupMemberDialog());
+
+            MenuItem groupInfoItem = new MenuItem("Infos du groupe");
+            groupInfoItem.setOnAction(e -> showGroupInfo());
+
+            MenuItem audioCallItem = new MenuItem("Appel audio du groupe");
+            audioCallItem.setOnAction(e -> startCurrentGroupCall("AUDIO"));
+
+            MenuItem videoCallItem = new MenuItem("Appel video du groupe");
+            videoCallItem.setOnAction(e -> startCurrentGroupCall("VIDEO"));
+
+            MenuItem searchItem = new MenuItem("Rechercher");
+            searchItem.setOnAction(e -> searchInCurrentConversation());
+
+            MenuItem selectMessagesItem = new MenuItem("Selectionner des messages");
+            selectMessagesItem.setOnAction(e -> showInfo("Selection des messages activee: cliquez sur un message pour le consulter."));
+
+            MenuItem clearItem = new MenuItem("Effacer la discussion");
+            clearItem.setOnAction(e -> clearCurrentChat());
+
+            MenuItem leaveItem = new MenuItem("Quitter le groupe");
+            leaveItem.setOnAction(e -> leaveCurrentGroup());
+
+            menu.getItems().addAll(
+                    addMemberItem,
+                    groupInfoItem,
+                    audioCallItem,
+                    videoCallItem,
+                    searchItem,
+                    selectMessagesItem,
+                    new SeparatorMenuItem(),
+                    clearItem,
+                    leaveItem
+            );
+            menu.show(rootPane, Side.TOP, 0, 60);
+            return;
+        }
+
         MenuItem searchItem = new MenuItem("Rechercher dans la conversation");
         searchItem.setOnAction(e -> searchInCurrentConversation());
         MenuItem clearItem = new MenuItem("Effacer le chat");
         clearItem.setOnAction(e -> clearCurrentChat());
         menu.getItems().addAll(searchItem, clearItem);
         menu.show(rootPane, Side.TOP, 0, 60);
+    }
+
+    private void openAddGroupMemberDialog() {
+        if (currentGroupId == -1) {
+            showInfo("Selectionnez un groupe d'abord.");
+            return;
+        }
+        if (allContacts.isEmpty()) {
+            showInfo("Aucun contact disponible a ajouter.");
+            return;
+        }
+
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/add-member-dialog.fxml"));
+            VBox content = loader.load();
+            AddMemberDialogController controller = loader.getController();
+            controller.init(allContacts);
+
+            Dialog<ButtonType> dialog = new Dialog<>();
+            dialog.setTitle("Ajouter un membre");
+            dialog.setHeaderText(currentGroupName);
+            dialog.getDialogPane().setContent(content);
+            dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+            dialog.showAndWait().ifPresent(button -> {
+                if (button == ButtonType.OK) {
+                    for (String contact : controller.getSelectedMembers()) {
+                        networkClient.addGroupMember(currentGroupId, contact);
+                    }
+                }
+            });
+        } catch (IOException e) {
+            showInfo("Impossible d'ajouter un membre: " + e.getMessage());
+        }
+    }
+
+    private void showGroupInfo() {
+        if (currentGroupId == -1) {
+            showInfo("Selectionnez un groupe d'abord.");
+            return;
+        }
+
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Infos du groupe");
+        alert.setHeaderText(currentGroupName);
+        alert.setContentText(buildGroupInfoText(groupMembersById.get(currentGroupId)));
+        groupInfoAlert = alert;
+        networkClient.requestGroupMembers(currentGroupId);
+        alert.showAndWait();
+        groupInfoAlert = null;
+    }
+
+    private String buildGroupInfoText(String rawMembers) {
+        if (rawMembers == null || rawMembers.isBlank()) {
+            return "Chargement des membres...";
+        }
+
+        StringBuilder text = new StringBuilder("Membres du groupe:\n");
+        for (String entry : rawMembers.split(",")) {
+            String[] parts = entry.split(":");
+            if (parts.length >= 2) {
+                String name = parts[1].trim();
+                String role = parts.length >= 3 ? parts[2].trim() : "";
+                text.append("- ").append(name);
+                if ("ADMIN".equalsIgnoreCase(role)) {
+                    text.append(" (Admin)");
+                }
+                text.append("\n");
+            }
+        }
+
+        String content = text.toString().trim();
+        return content.equals("Membres du groupe:") ? "Aucun membre trouve." : content;
+    }
+
+    private void startCurrentGroupCall(String meetingType) {
+        if (currentGroupId == -1) {
+            showInfo("Selectionnez un groupe d'abord.");
+            return;
+        }
+        networkClient.startGroupMeeting(currentGroupId, meetingType);
+        showInfo(("VIDEO".equalsIgnoreCase(meetingType) ? "Appel video" : "Appel audio")
+                + " lance pour " + currentGroupName + ".");
+    }
+
+    private void leaveCurrentGroup() {
+        if (currentGroupId == -1) {
+            showInfo("Selectionnez un groupe d'abord.");
+            return;
+        }
+
+        Alert confirm = new Alert(
+                Alert.AlertType.CONFIRMATION,
+                "Voulez-vous quitter le groupe \"" + currentGroupName + "\" ?",
+                ButtonType.YES,
+                ButtonType.NO
+        );
+        confirm.setHeaderText("Quitter le groupe");
+        confirm.showAndWait().ifPresent(button -> {
+            if (button == ButtonType.YES) {
+                networkClient.leaveGroup(currentGroupId);
+                int leavingGroupId = currentGroupId;
+                currentGroupId = -1;
+                currentGroupName = null;
+                groupConversations.remove(leavingGroupId);
+                messagesListView.setItems(FXCollections.observableArrayList());
+                chatTitleLabel.setText("Selectionnez une conversation");
+                chatStatusLabel.setText("");
+                chatAvatarLabel.setText("?");
+                networkClient.requestGroupList();
+            }
+        });
     }
 
     private void searchInCurrentConversation() {
@@ -1613,7 +1840,8 @@ public class MainChatController {
 
         TextInputDialog dialog = new TextInputDialog();
         dialog.setTitle("Recherche");
-        dialog.setHeaderText("Rechercher dans " + currentPrivateTarget);
+        String conversationName = currentGroupId != -1 ? currentGroupName : currentPrivateTarget;
+        dialog.setHeaderText("Rechercher dans " + conversationName);
         dialog.setContentText("Mot ou phrase :");
 
         Optional<String> result = dialog.showAndWait();
@@ -1622,22 +1850,118 @@ public class MainChatController {
         String query = result.get().trim().toLowerCase();
         if (query.isEmpty()) return;
 
+        List<Integer> resultIndexes = new ArrayList<>();
         for (int i = 0; i < messages.size(); i++) {
             if (messageContains(messages.get(i), query)) {
-                messagesListView.getSelectionModel().select(i);
-                messagesListView.scrollTo(i);
-                showInfo("Resultat trouve a " + messages.get(i).getTimestamp());
-                return;
+                resultIndexes.add(i);
             }
         }
 
-        showInfo("Aucun resultat pour: " + result.get().trim());
+        if (resultIndexes.isEmpty()) {
+            showInfo("Aucun resultat pour: " + result.get().trim());
+            return;
+        }
+
+        if (resultIndexes.size() == 1) {
+            selectSearchResult(resultIndexes.get(0), messages);
+            return;
+        }
+
+        showSearchResultsDialog(result.get().trim(), resultIndexes, messages);
     }
 
     private boolean messageContains(UiMessage message, String query) {
         String text = String.valueOf(message.getText()).toLowerCase();
         String path = String.valueOf(message.getFilePath()).toLowerCase();
         return text.contains(query) || path.contains(query) || message.getKind().name().toLowerCase().contains(query);
+    }
+
+    private void showSearchResultsDialog(String query, List<Integer> resultIndexes, ObservableList<UiMessage> messages) {
+        Dialog<Integer> dialog = new Dialog<>();
+        dialog.setTitle("Resultats de recherche");
+        dialog.setHeaderText(resultIndexes.size() + " messages trouves pour: " + query);
+
+        ListView<Integer> resultsList = new ListView<>();
+        resultsList.setPrefSize(420, 320);
+        resultsList.setItems(FXCollections.observableArrayList(resultIndexes));
+        resultsList.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(Integer index, boolean empty) {
+                super.updateItem(index, empty);
+                if (empty || index == null) {
+                    setText(null);
+                    setGraphic(null);
+                    return;
+                }
+
+                UiMessage message = messages.get(index);
+                Label date = new Label(message.getTimestamp());
+                date.getStyleClass().add("search-result-date");
+
+                Label preview = new Label(buildSearchPreview(message));
+                preview.getStyleClass().add("search-result-preview");
+                preview.setWrapText(true);
+
+                VBox content = new VBox(6, date, preview);
+                content.getStyleClass().add("search-result-row");
+                setText(null);
+                setGraphic(content);
+            }
+        });
+
+        resultsList.setOnMouseClicked(event -> {
+            if (event.getClickCount() == 2 && resultsList.getSelectionModel().getSelectedItem() != null) {
+                dialog.setResult(resultsList.getSelectionModel().getSelectedItem());
+                dialog.close();
+            }
+        });
+
+        dialog.getDialogPane().setContent(resultsList);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        dialog.setResultConverter(button -> {
+            if (button == ButtonType.OK) {
+                return resultsList.getSelectionModel().getSelectedItem();
+            }
+            return null;
+        });
+
+        dialog.showAndWait().ifPresent(index -> selectSearchResult(index, messages));
+    }
+
+    private void selectSearchResult(int index, ObservableList<UiMessage> messages) {
+        messagesListView.setItems(messages);
+        messagesListView.getSelectionModel().clearAndSelect(index);
+        messagesListView.getFocusModel().focus(index);
+        messagesListView.scrollTo(Math.max(0, index - 2));
+        messagesListView.requestFocus();
+
+        UiMessage found = messages.get(index);
+        String preview = buildSearchPreview(found);
+        showInfo("Message selectionne:\n" + preview + "\n\nHeure: " + found.getTimestamp());
+    }
+
+    private String buildSearchPreview(UiMessage message) {
+        String text = message.getText();
+        if (text == null || text.isBlank()) {
+            text = switch (message.getKind()) {
+                case IMAGE -> "Image";
+                case AUDIO -> "Audio";
+                case FILE -> "Fichier";
+                default -> "Message";
+            };
+        }
+        text = text.replaceAll("\\s+", " ").trim();
+        return text.length() > 180 ? text.substring(0, 177) + "..." : text;
+    }
+
+    private String extractSharedContactName(String text) {
+        if (text == null) return null;
+        String marker = "Contact partage:";
+        int markerIndex = text.indexOf(marker);
+        if (markerIndex < 0) return null;
+
+        String contact = text.substring(markerIndex + marker.length()).trim();
+        return contact.isEmpty() ? null : contact;
     }
 
     private void clearCurrentChat() {
@@ -1756,14 +2080,15 @@ public class MainChatController {
         if (emojiGrid != null) {
             emojiGrid.getChildren().clear();
             for (String emoji : EMOJIS) {
-                Label label = new Label(emoji);
-                label.setStyle("-fx-font-size: 24px; -fx-cursor: hand;");
-                label.setOnMouseClicked(e -> {
+                Button button = new Button(emoji);
+                button.getStyleClass().add("emoji-item");
+                button.setOnAction(e -> {
                     messageField.appendText(emoji);
                     emojiBar.setVisible(false);
                     emojiBar.setManaged(false);
+                    messageField.requestFocus();
                 });
-                emojiGrid.getChildren().add(label);
+                emojiGrid.getChildren().add(button);
             }
         }
     }
