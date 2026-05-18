@@ -2157,6 +2157,28 @@ public class MainChatController {
         }
     }
 
+    public void showGroupMembers(int groupId, String groupName) {
+        if (networkClient != null) {
+            networkClient.requestGroupMembers(groupId);
+        }
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/group-info-dialog.fxml"));
+            VBox content = loader.load();
+            GroupInfoDialogController controller = loader.getController();
+            controller.init(groupName, "Membres du groupe", groupMembersById.get(groupId));
+
+            javafx.scene.Scene scene = new javafx.scene.Scene(content);
+            scene.setFill(javafx.scene.paint.Color.TRANSPARENT);
+
+            javafx.stage.Stage stage = new javafx.stage.Stage();
+            stage.initStyle(javafx.stage.StageStyle.TRANSPARENT);
+            stage.setScene(scene);
+            stage.show();
+        } catch (IOException e) {
+            showInfo("Impossible d'ouvrir les membres du groupe.");
+        }
+    }
+
     private void showGroupInfo() {
         if (currentGroupId == -1) {
             showInfo("Selectionnez un groupe d'abord.");
