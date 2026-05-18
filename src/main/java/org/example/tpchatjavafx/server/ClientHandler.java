@@ -89,6 +89,9 @@ public class ClientHandler implements Runnable {
             case CONTACT_ADD -> {
                 if (username != null) handleContactAdd(msg);
             }
+            case CONTACT_DELETE -> {
+                if (username != null) handleContactDelete(msg);
+            }
             case CONTACT_LOAD -> {
                 if (username != null) handleContactLoad();
             }
@@ -253,6 +256,29 @@ public class ClientHandler implements Runnable {
             send(new ChatMessage(MessageType.CONTACT_LIST, "SERVER", username, null, csv));
         } catch (Exception e) {
             send(new ChatMessage(MessageType.ERROR, "SERVER", username, null, "Erreur chargement contacts : " + e.getMessage()));
+        }
+    }
+
+    private void handleContactDelete(ChatMessage msg) {
+        String contactName = msg.getContent();
+        if (contactName == null || contactName.isBlank()) return;
+
+        try {
+            Utilisateur contact = userDAO.findByUsername(contactName);
+            if (contact == null) {
+                sendError("Le contact " + contactName + " est introuvable.");
+                return;
+            }
+
+            boolean deleted = contactDAO.deleteContact(userId, contact.getId());
+            if (!deleted) {
+                sendError("Ce contact n'existe pas dans votre liste.");
+                return;
+            }
+
+            handleContactLoad();
+        } catch (Exception e) {
+            sendError("Erreur lors de la suppression du contact : " + e.getMessage());
         }
     }
 

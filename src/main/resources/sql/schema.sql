@@ -134,6 +134,43 @@ CREATE TABLE IF NOT EXISTS message_clear_state (
     FOREIGN KEY (message_id) REFERENCES message (id) ON DELETE CASCADE
 ) ENGINE = InnoDB;
 
+CREATE TABLE IF NOT EXISTS message_delete_for_me (
+    utilisateur_id INT NOT NULL,
+    message_id INT NOT NULL,
+    deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (utilisateur_id, message_id),
+    FOREIGN KEY (utilisateur_id) REFERENCES utilisateur (id) ON DELETE CASCADE,
+    FOREIGN KEY (message_id) REFERENCES message (id) ON DELETE CASCADE
+) ENGINE = InnoDB;
+
+CREATE TABLE IF NOT EXISTS message_delete_for_everyone (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    message_id INT NULL,
+    deleted_by_id INT NOT NULL,
+    conversation_id INT NULL,
+    groupe_id INT NULL,
+    original_type VARCHAR(50),
+    deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (deleted_by_id) REFERENCES utilisateur (id) ON DELETE CASCADE,
+    FOREIGN KEY (conversation_id) REFERENCES conversation (id) ON DELETE SET NULL,
+    FOREIGN KEY (groupe_id) REFERENCES groupe (id) ON DELETE SET NULL,
+    INDEX idx_delete_everyone_message (message_id),
+    INDEX idx_delete_everyone_conversation (conversation_id),
+    INDEX idx_delete_everyone_groupe (groupe_id)
+) ENGINE = InnoDB;
+
+CREATE TABLE IF NOT EXISTS message_selection (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    utilisateur_id INT NOT NULL,
+    message_id INT NOT NULL,
+    selection_group VARCHAR(64) NOT NULL,
+    selected_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (utilisateur_id) REFERENCES utilisateur (id) ON DELETE CASCADE,
+    FOREIGN KEY (message_id) REFERENCES message (id) ON DELETE CASCADE,
+    INDEX idx_message_selection_user_group (utilisateur_id, selection_group),
+    INDEX idx_message_selection_message (message_id)
+) ENGINE = InnoDB;
+
 CREATE TABLE IF NOT EXISTS fichier_media (
     id INT AUTO_INCREMENT PRIMARY KEY,
     message_id INT NOT NULL,

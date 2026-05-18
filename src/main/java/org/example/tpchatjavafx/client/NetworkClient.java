@@ -152,6 +152,10 @@ public class NetworkClient {
         send(new ChatMessage(MessageType.CONTACT_ADD, username, "SERVER", null, contactUsername));
     }
 
+    public void deleteContact(String contactUsername) {
+        send(new ChatMessage(MessageType.CONTACT_DELETE, username, "SERVER", null, contactUsername));
+    }
+
     public void requestContacts() {
         send(new ChatMessage(MessageType.CONTACT_LOAD, username, "SERVER", null, ""));
     }

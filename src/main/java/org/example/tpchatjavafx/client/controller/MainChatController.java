@@ -71,7 +71,9 @@ public class MainChatController {
     @FXML private Button    recordAudioButton;
     @FXML private Button    voiceCallButton;
     @FXML private Button    videoCallButton;
+    @FXML private Button    searchConversationButton;
     @FXML private Button    infoButton;
+    @FXML private Button    moreOptionsButton;
     @FXML private TabPane   tabPane;
     @FXML private HBox emojiBar;
     @FXML private FlowPane emojiGrid;
@@ -99,10 +101,12 @@ public class MainChatController {
     private final ConversationDAO conversationDAO = new ConversationDAO();
     private final FichierMediaDAO fichierMediaDAO = new FichierMediaDAO();
     private static final List<String> EMOJIS = Arrays.asList(
-            "😂", "🤣", "😊", "😅", "🥺", "😎", "🤔", "🙄", "😭", "❤️",
-            "🔥", "💯", "👍", "✅", "🙏", "💪", "👏", "👌", "❌", "👀",
-            "🤝", "🫶", "🧡", "💙", "💔", "💕", "🤍", "👎", "😍", "😘",
-            "😔", "😢", "😡"
+            "\uD83D\uDE02", "\uD83E\uDD23", "\uD83D\uDE0A", "\uD83D\uDE05", "\uD83E\uDD7A", "\uD83D\uDE0E",
+            "\uD83E\uDD14", "\uD83D\uDE44", "\uD83D\uDE2D", "\u2764\uFE0F", "\uD83D\uDD25", "\uD83D\uDCAF",
+            "\uD83D\uDC4D", "\u2705", "\uD83D\uDE4F", "\uD83D\uDCAA", "\uD83D\uDC4F", "\uD83D\uDC4C",
+            "\u274C", "\uD83D\uDC40", "\uD83E\uDD1D", "\uD83E\uDEF6", "\uD83E\uDDE1", "\uD83D\uDC99",
+            "\uD83D\uDC94", "\uD83D\uDC95", "\uD83E\uDD0D", "\uD83D\uDC4E", "\uD83D\uDE0D", "\uD83D\uDE18",
+            "\uD83D\uDE14", "\uD83D\uDE22", "\uD83D\uDE21", "\uD83C\uDF89", "\u2B50", "\uD83C\uDF08"
     );
 
     private volatile boolean recordingAudio = false;
@@ -125,6 +129,7 @@ public class MainChatController {
     private Consumer<ChatMessage> onCallRejected;
     private AudioTransmissionService audioService;
     private String incomingCallFrom = null;
+    private boolean multiMessageSelectionMode = false;
     private Tab groupTab;
     private ListView<String> groupTabListView;
     private Tab contactsTab;
@@ -142,6 +147,9 @@ public class MainChatController {
         updateRecordButtonState();
         setupMessageBubbles();
         setupContactCellFactory();
+        if (messagesListView != null) {
+            messagesListView.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
+        }
         groupTab = new Tab("Groupes");
         groupTab.setClosable(false);
         groupTab.setContent(buildGroupTabContent());
@@ -324,6 +332,7 @@ public class MainChatController {
                 if (empty || contact == null) {
                     setText(null);
                     setGraphic(null);
+                    setContextMenu(null);
                     return;
                 }
 
@@ -346,6 +355,7 @@ public class MainChatController {
                 row.setAlignment(Pos.CENTER_LEFT);
                 setGraphic(row);
                 setText(null);
+                setContextMenu(createContactContextMenu(contact));
             }
         });
         contactsTabListView.getSelectionModel().selectedItemProperty().addListener((obs, oldContact, contact) -> {
@@ -680,7 +690,7 @@ public class MainChatController {
             @Override
             protected void updateItem(String user, boolean empty) {
                 super.updateItem(user, empty);
-                if (empty || user == null) { setGraphic(null); setText(null); return; }
+                if (empty || user == null) { setGraphic(null); setText(null); setContextMenu(null); return; }
                 String initial = user.substring(0, 1).toUpperCase();
 
                 Label av = new Label(initial);
@@ -716,6 +726,7 @@ public class MainChatController {
 
                 setGraphic(row);
                 setText(null);
+                setContextMenu(createContactContextMenu(user));
             }
         });
     }
@@ -727,6 +738,7 @@ public class MainChatController {
 
         Platform.runLater(() -> {
             privateListView.refresh();
+            if (contactsTabListView != null) contactsTabListView.refresh();
             if (targetUser.equals(currentPrivateTarget)) {
                 updateChatHeaderStatus(status);
             }
@@ -1706,61 +1718,138 @@ public class MainChatController {
     @FXML
     private void onMoreOptions() {
         ContextMenu menu = new ContextMenu();
+        menu.getStyleClass().add("options-popup-menu");
+
         UiMessage selectedMessage = messagesListView == null ? null : messagesListView.getSelectionModel().getSelectedItem();
-        if (selectedMessage != null && selectedMessage.getMessageId() > 0) {
-            MenuItem deleteMessageForMe = new MenuItem("Supprimer pour moi");
-            deleteMessageForMe.setOnAction(e -> deleteSelectedMessageForMe());
-            MenuItem deleteMessageForEveryone = new MenuItem("Supprimer pour tout le monde");
-            deleteMessageForEveryone.setOnAction(e -> deleteSelectedMessageForEveryone());
-            menu.getItems().addAll(deleteMessageForMe, deleteMessageForEveryone, new SeparatorMenuItem());
+        int selectedCount = messagesListView == null ? 0 : messagesListView.getSelectionModel().getSelectedItems().size();
+        if (selectedCount > 1) {
+            menu.getItems().add(menuOption("\u232B", "Supprimer la selection pour moi", this::deleteSelectedMessagesForMe));
+            menu.getItems().add(menuOption("\uD83D\uDDD1", "Supprimer la selection pour tous", this::deleteSelectedMessagesForEveryone));
+            menu.getItems().add(new SeparatorMenuItem());
+        }
+        if (selectedCount <= 1 && selectedMessage != null && selectedMessage.getMessageId() > 0) {
+            menu.getItems().add(menuOption("\u232B", "Supprimer pour moi", this::deleteSelectedMessageForMe));
+            menu.getItems().add(menuOption("\uD83D\uDDD1", "Supprimer pour tous", this::deleteSelectedMessageForEveryone));
+            menu.getItems().add(new SeparatorMenuItem());
         }
 
         if (currentGroupId != -1) {
-            MenuItem addMemberItem = new MenuItem("Ajouter un membre");
-            addMemberItem.setOnAction(e -> openAddGroupMemberDialog());
+            menu.getItems().add(menuOption("+", "Ajouter un membre", this::openAddGroupMemberDialog));
+            menu.getItems().add(menuOption("-", "Supprimer un membre", this::showRemoveGroupMemberDialog));
+            menu.getItems().add(menuOption("i", "Infos du groupe", this::showGroupInfo));
+            menu.getItems().add(menuOption("\uD83C\uDFA4", "Appel audio du groupe", () -> startCurrentGroupCall("AUDIO")));
+            menu.getItems().add(menuOption("\u25A3", "Appel video du groupe", () -> startCurrentGroupCall("VIDEO")));
+            menu.getItems().add(menuOption("\u2611", "Selectionner des messages", this::enableMultiMessageSelection));
+            menu.getItems().add(new SeparatorMenuItem());
+            menu.getItems().add(menuOption("\u232B", "Effacer la conversation", this::clearCurrentChatForMe));
+            menu.getItems().add(menuOption("\u21B5", "Quitter le groupe", this::leaveCurrentGroup));
+        } else {
+            menu.getItems().add(menuOption("i", "Infos du contact", this::onShowContactInfo));
+            menu.getItems().add(menuOption("\u2611", "Selectionner des messages", this::enableMultiMessageSelection));
+            menu.getItems().add(menuOption("\u232B", "Effacer la conversation", this::clearCurrentChatForMe));
+            if (currentPrivateTarget != null) {
+                menu.getItems().add(menuOption("\u2715", "Supprimer ce contact",
+                        () -> deleteContactWithConfirm(currentPrivateTarget)));
+            }
+        }
 
-            MenuItem groupInfoItem = new MenuItem("Infos du groupe");
-            groupInfoItem.setOnAction(e -> showGroupInfo());
+        Node anchor = moreOptionsButton != null ? moreOptionsButton : rootPane;
+        menu.show(anchor, Side.BOTTOM, -260, 4);
+    }
 
-            MenuItem audioCallItem = new MenuItem("Appel audio du groupe");
-            audioCallItem.setOnAction(e -> startCurrentGroupCall("AUDIO"));
+    private MenuItem menuOption(String icon, String text, Runnable action) {
+        Label iconLabel = new Label(icon);
+        iconLabel.getStyleClass().add("options-menu-icon");
+        MenuItem item = new MenuItem(text, iconLabel);
+        item.getStyleClass().add("options-menu-item");
+        item.setOnAction(e -> action.run());
+        return item;
+    }
 
-            MenuItem videoCallItem = new MenuItem("Appel video du groupe");
-            videoCallItem.setOnAction(e -> startCurrentGroupCall("VIDEO"));
+    private ContextMenu createContactContextMenu(String contact) {
+        ContextMenu menu = new ContextMenu();
+        MenuItem openItem = new MenuItem("Ouvrir la conversation");
+        openItem.setOnAction(e -> {
+            openPrivateChat(contact);
+            if (tabPane != null && privateTab != null) tabPane.getSelectionModel().select(privateTab);
+        });
+        MenuItem deleteItem = new MenuItem("Supprimer le contact");
+        deleteItem.setOnAction(e -> deleteContactWithConfirm(contact));
+        menu.getItems().addAll(openItem, deleteItem);
+        return menu;
+    }
 
-            MenuItem searchItem = new MenuItem("Rechercher");
-            searchItem.setOnAction(e -> searchInCurrentConversation());
+    private void deleteContactWithConfirm(String contact) {
+        if (contact == null || contact.isBlank()) return;
+        Alert confirm = new Alert(
+                Alert.AlertType.CONFIRMATION,
+                "Supprimer " + contact + " de vos contacts ?",
+                ButtonType.YES,
+                ButtonType.NO
+        );
+        confirm.setHeaderText("Supprimer le contact");
+        if (confirm.showAndWait().orElse(ButtonType.NO) != ButtonType.YES) return;
 
-            MenuItem selectMessagesItem = new MenuItem("Selectionner des messages");
-            selectMessagesItem.setOnAction(e -> showInfo("Selection des messages activee: cliquez sur un message pour le consulter."));
+        networkClient.deleteContact(contact);
+        allContacts.remove(contact);
+        privateConversations.remove(contact);
+        if (contact.equals(currentPrivateTarget)) {
+            currentPrivateTarget = null;
+            messagesListView.setItems(FXCollections.observableArrayList());
+            chatTitleLabel.setText("Selectionnez une conversation");
+            chatStatusLabel.setText("");
+            chatAvatarLabel.setText("?");
+        }
+        privateListView.refresh();
+        if (contactsTabListView != null) contactsTabListView.refresh();
+    }
 
-            MenuItem clearConversationItem = new MenuItem("Effacer la conversation");
-            clearConversationItem.setOnAction(e -> clearCurrentChatForMe());
-
-            MenuItem leaveItem = new MenuItem("Quitter le groupe");
-            leaveItem.setOnAction(e -> leaveCurrentGroup());
-
-            menu.getItems().addAll(
-                    addMemberItem,
-                    groupInfoItem,
-                    audioCallItem,
-                    videoCallItem,
-                    searchItem,
-                    selectMessagesItem,
-                    new SeparatorMenuItem(),
-                    clearConversationItem,
-                    leaveItem
-            );
-            menu.show(rootPane, Side.TOP, 0, 60);
+    private void showRemoveGroupMemberDialog() {
+        if (currentGroupId == -1) {
+            showInfo("Selectionnez un groupe d'abord.");
             return;
         }
 
-        MenuItem searchItem = new MenuItem("Rechercher dans la conversation");
-        searchItem.setOnAction(e -> searchInCurrentConversation());
-        MenuItem clearConversationItem = new MenuItem("Effacer la conversation");
-        clearConversationItem.setOnAction(e -> clearCurrentChatForMe());
-        menu.getItems().addAll(searchItem, clearConversationItem);
-        menu.show(rootPane, Side.TOP, 0, 60);
+        networkClient.requestGroupMembers(currentGroupId);
+        List<String> members = parseGroupMemberNames(groupMembersById.get(currentGroupId));
+        if (members.isEmpty()) {
+            members = new ArrayList<>(allContacts);
+        }
+        members.remove(username);
+
+        if (members.isEmpty()) {
+            showInfo("Aucun membre disponible a supprimer.");
+            return;
+        }
+
+        ChoiceDialog<String> dialog = new ChoiceDialog<>(members.get(0), members);
+        dialog.setTitle("Supprimer un membre");
+        dialog.setHeaderText("Action administrateur");
+        dialog.setContentText("Membre :");
+        dialog.showAndWait().ifPresent(member -> {
+            Alert confirm = new Alert(
+                    Alert.AlertType.CONFIRMATION,
+                    "Retirer " + member + " du groupe " + currentGroupName + " ?",
+                    ButtonType.YES,
+                    ButtonType.NO
+            );
+            confirm.setHeaderText("Supprimer un membre");
+            if (confirm.showAndWait().orElse(ButtonType.NO) == ButtonType.YES) {
+                networkClient.removeGroupMember(currentGroupId, member);
+            }
+        });
+    }
+
+    private List<String> parseGroupMemberNames(String rawMembers) {
+        List<String> members = new ArrayList<>();
+        if (rawMembers == null || rawMembers.isBlank()) return members;
+        for (String entry : rawMembers.split(",")) {
+            String[] parts = entry.split(":");
+            if (parts.length >= 2 && !parts[1].trim().isBlank()) {
+                members.add(parts[1].trim());
+            }
+        }
+        return members;
     }
 
     private void openAddGroupMemberDialog() {
@@ -1902,6 +1991,7 @@ public class MainChatController {
         if (messagesListView != null) messagesListView.refresh();
     }
 
+    @FXML
     private void searchInCurrentConversation() {
         ObservableList<UiMessage> messages;
         if (currentGroupId != -1) {
@@ -2085,6 +2175,77 @@ public class MainChatController {
         networkClient.deleteMessageForEveryone(selected.getMessageId());
         removeMessageLocally(selected.getMessageId());
         showInfo("Message supprime pour tout le monde.");
+    }
+
+    private void enableMultiMessageSelection() {
+        if (messagesListView == null) return;
+        multiMessageSelectionMode = true;
+        messagesListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+        showInfo("Selection multiple activee. Selectionnez les messages puis ouvrez ... pour les supprimer.");
+    }
+
+    private List<Integer> selectedMessageIds() {
+        if (messagesListView == null) return List.of();
+        return messagesListView.getSelectionModel().getSelectedItems().stream()
+                .map(UiMessage::getMessageId)
+                .filter(id -> id > 0)
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
+    private void deleteSelectedMessagesForMe() {
+        List<Integer> ids = selectedMessageIds();
+        if (ids.isEmpty()) {
+            showInfo("Selectionnez au moins un message.");
+            return;
+        }
+        saveCurrentMessageSelection(ids);
+        ids.forEach(id -> {
+            networkClient.clearMessageForMe(id);
+            removeMessageLocally(id);
+        });
+        disableMultiMessageSelection();
+        showInfo(ids.size() + " message(s) supprime(s) pour moi.");
+    }
+
+    private void deleteSelectedMessagesForEveryone() {
+        List<Integer> ids = selectedMessageIds();
+        if (ids.isEmpty()) {
+            showInfo("Selectionnez au moins un message.");
+            return;
+        }
+        Alert confirm = new Alert(
+                Alert.AlertType.CONFIRMATION,
+                "Supprimer " + ids.size() + " message(s) pour tous les participants ?",
+                ButtonType.YES,
+                ButtonType.NO
+        );
+        confirm.setHeaderText("Supprimer la selection");
+        if (confirm.showAndWait().orElse(ButtonType.NO) != ButtonType.YES) return;
+
+        saveCurrentMessageSelection(ids);
+        ids.forEach(id -> {
+            networkClient.deleteMessageForEveryone(id);
+            removeMessageLocally(id);
+        });
+        disableMultiMessageSelection();
+        showInfo(ids.size() + " message(s) supprime(s) pour tout le monde.");
+    }
+
+    private void saveCurrentMessageSelection(List<Integer> ids) {
+        if (currentUser == null || ids == null || ids.isEmpty()) return;
+        try {
+            messageDAO.saveMessageSelection(currentUser.getId(), ids, UUID.randomUUID().toString());
+        } catch (SQLException e) {
+            showInfo("Selection sauvegardee localement, mais pas en BD : " + e.getMessage());
+        }
+    }
+
+    private void disableMultiMessageSelection() {
+        if (messagesListView == null) return;
+        multiMessageSelectionMode = false;
+        messagesListView.getSelectionModel().clearSelection();
+        messagesListView.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
     }
 
     private void removeMessageLocally(int messageId) {

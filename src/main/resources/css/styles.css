@@ -170,9 +170,14 @@
 }
 
 .contact-list .list-cell {
-    -fx-background-color: transparent;
+    -fx-background-color: #ffffff;
     -fx-padding: 10 14;
     -fx-border-color: transparent;
+}
+
+.contact-list .list-cell:odd,
+.contact-list .list-cell:even {
+    -fx-background-color: #ffffff;
 }
 
 .contact-list .list-cell:filled:hover {
@@ -380,11 +385,11 @@
 .emoji-item {
     -fx-font-family: "Segoe UI Emoji", "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Symbol";
     -fx-font-size: 24px;
-    -fx-background-color: #f8fafc;
+    -fx-background-color: linear-gradient(to bottom right, #ffffff, #e0f2fe);
     -fx-background-radius: 10;
-    -fx-border-color: #dbeafe;
+    -fx-border-color: #7dd3fc;
     -fx-border-radius: 10;
-    -fx-text-fill: #0f172a;
+    -fx-text-fill: #0284c7;
     -fx-min-width: 42;
     -fx-min-height: 38;
     -fx-max-width: 42;
@@ -394,8 +399,8 @@
 }
 
 .emoji-item:hover {
-    -fx-background-color: #e0f2fe;
-    -fx-border-color: #38bdf8;
+    -fx-background-color: linear-gradient(to bottom right, #bae6fd, #dbeafe);
+    -fx-border-color: #0ea5e9;
 }
 
 /* Login screen */
@@ -521,6 +526,45 @@
     -fx-background-radius: 10;
     -fx-border-color: #bae6fd;
     -fx-border-radius: 10;
+    -fx-effect: dropshadow(gaussian, rgba(14, 165, 233, 0.22), 18, 0, 0, 8);
+}
+
+.options-popup-menu {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 16;
+    -fx-border-color: #7dd3fc;
+    -fx-border-radius: 16;
+    -fx-padding: 10 6;
+    -fx-min-width: 300;
+    -fx-effect: dropshadow(gaussian, rgba(2, 132, 199, 0.32), 22, 0, 0, 8);
+}
+
+.options-popup-menu .menu-item {
+    -fx-background-color: transparent;
+    -fx-padding: 12 18;
+}
+
+.options-popup-menu .menu-item:focused {
+    -fx-background-color: #dbeafe;
+    -fx-background-radius: 10;
+}
+
+.options-popup-menu .menu-item .label {
+    -fx-text-fill: #0369a1;
+    -fx-font-size: 16px;
+    -fx-font-weight: 700;
+}
+
+.options-popup-menu .separator .line {
+    -fx-border-color: #bae6fd;
+}
+
+.options-menu-icon {
+    -fx-text-fill: #0284c7;
+    -fx-font-family: "Segoe UI Symbol", "Segoe UI Emoji", Arial, sans-serif;
+    -fx-font-size: 20px;
+    -fx-font-weight: 700;
+    -fx-min-width: 28;
 }
 
 .menu-item .label {
@@ -529,6 +573,47 @@
 
 .menu-item:focused {
     -fx-background-color: #e0f2fe;
+}
+
+.options-dialog {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #7dd3fc;
+    -fx-border-radius: 14;
+    -fx-background-radius: 14;
+}
+
+.options-dialog > .header-panel {
+    -fx-background-color: linear-gradient(to right, #0ea5e9, #38bdf8);
+}
+
+.options-dialog > .header-panel .label {
+    -fx-text-fill: #ffffff;
+    -fx-font-weight: 700;
+}
+
+.options-panel {
+    -fx-background-color: #f0f9ff;
+    -fx-background-radius: 12;
+    -fx-border-color: #bae6fd;
+    -fx-border-radius: 12;
+}
+
+.options-action-btn {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #bae6fd;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-text-fill: #0369a1;
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+    -fx-padding: 10 14;
+    -fx-cursor: hand;
+}
+
+.options-action-btn:hover {
+    -fx-background-color: #dbeafe;
+    -fx-border-color: #38bdf8;
+    -fx-text-fill: #075985;
 }
 
 .scroll-bar:vertical,

@@ -22,6 +22,7 @@ public enum MessageType {
     PRIVATE_IMAGE,
     PRIVATE_FILE,
     CONTACT_ADD,
+    CONTACT_DELETE,
     CONTACT_LOAD,
     CONTACT_LIST,
     HISTORY_REQUEST,

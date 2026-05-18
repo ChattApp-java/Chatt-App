@@ -180,6 +180,10 @@ public class MessageDAO {
                 "SELECT ?, m.id FROM message m " +
                 "LEFT JOIN groupe_membre gm ON gm.groupe_id = m.groupe_id AND gm.utilisateur_id = ? " +
                 "WHERE m.id = ? AND (m.expediteur_id = ? OR m.destinataire_id = ? OR gm.utilisateur_id IS NOT NULL)";
+        String auditSql = "INSERT IGNORE INTO message_delete_for_me (utilisateur_id, message_id) " +
+                "SELECT ?, m.id FROM message m " +
+                "LEFT JOIN groupe_membre gm ON gm.groupe_id = m.groupe_id AND gm.utilisateur_id = ? " +
+                "WHERE m.id = ? AND (m.expediteur_id = ? OR m.destinataire_id = ? OR gm.utilisateur_id IS NOT NULL)";
         try (Connection conn = DatabaseConnection.getInstance().getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, utilisateurId);
@@ -188,21 +192,86 @@ public class MessageDAO {
             stmt.setInt(4, utilisateurId);
             stmt.setInt(5, utilisateurId);
             stmt.executeUpdate();
+            try (PreparedStatement auditStmt = conn.prepareStatement(auditSql)) {
+                auditStmt.setInt(1, utilisateurId);
+                auditStmt.setInt(2, utilisateurId);
+                auditStmt.setInt(3, messageId);
+                auditStmt.setInt(4, utilisateurId);
+                auditStmt.setInt(5, utilisateurId);
+                auditStmt.executeUpdate();
+            } catch (SQLException e) {
+                if (!isMissingTable(e)) throw e;
+            }
         }
     }
 
     public boolean deleteMessageForEveryone(int messageId, int utilisateurId) throws SQLException {
+        String auditSql = "INSERT INTO message_delete_for_everyone " +
+                "(message_id, deleted_by_id, conversation_id, groupe_id, original_type) " +
+                "SELECT m.id, ?, m.conversation_id, m.groupe_id, m.type FROM message m " +
+                "LEFT JOIN groupe_membre gm ON gm.groupe_id = m.groupe_id AND gm.utilisateur_id = ? " +
+                "WHERE m.id = ? AND (m.expediteur_id = ? OR m.destinataire_id = ? OR gm.utilisateur_id IS NOT NULL)";
         String sql = "DELETE m FROM message m " +
                 "LEFT JOIN groupe_membre gm ON gm.groupe_id = m.groupe_id AND gm.utilisateur_id = ? " +
                 "WHERE m.id = ? AND (m.expediteur_id = ? OR m.destinataire_id = ? OR gm.utilisateur_id IS NOT NULL)";
         try (Connection conn = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement auditStmt = conn.prepareStatement(auditSql);
              PreparedStatement stmt = conn.prepareStatement(sql)) {
+            auditStmt.setInt(1, utilisateurId);
+            auditStmt.setInt(2, utilisateurId);
+            auditStmt.setInt(3, messageId);
+            auditStmt.setInt(4, utilisateurId);
+            auditStmt.setInt(5, utilisateurId);
+            try {
+                boolean allowed = auditStmt.executeUpdate() > 0;
+                if (!allowed) return false;
+            } catch (SQLException e) {
+                if (!isMissingTable(e)) throw e;
+            }
+
             stmt.setInt(1, utilisateurId);
             stmt.setInt(2, messageId);
             stmt.setInt(3, utilisateurId);
             stmt.setInt(4, utilisateurId);
             return stmt.executeUpdate() > 0;
         }
+    }
+
+    public void saveMessageSelection(int utilisateurId, List<Integer> messageIds, String selectionGroup) throws SQLException {
+        if (messageIds == null || messageIds.isEmpty()) return;
+        String group = (selectionGroup == null || selectionGroup.isBlank())
+                ? String.valueOf(System.currentTimeMillis())
+                : selectionGroup;
+        String sql = "INSERT INTO message_selection (utilisateur_id, message_id, selection_group) " +
+                "SELECT ?, m.id, ? FROM message m " +
+                "LEFT JOIN groupe_membre gm ON gm.groupe_id = m.groupe_id AND gm.utilisateur_id = ? " +
+                "WHERE m.id = ? AND (m.expediteur_id = ? OR m.destinataire_id = ? OR gm.utilisateur_id IS NOT NULL)";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            for (Integer messageId : messageIds) {
+                if (messageId == null || messageId <= 0) continue;
+                stmt.setInt(1, utilisateurId);
+                stmt.setString(2, group);
+                stmt.setInt(3, utilisateurId);
+                stmt.setInt(4, messageId);
+                stmt.setInt(5, utilisateurId);
+                stmt.setInt(6, utilisateurId);
+                try {
+                    stmt.addBatch();
+                } catch (SQLException e) {
+                    if (!isMissingTable(e)) throw e;
+                }
+            }
+            try {
+                stmt.executeBatch();
+            } catch (SQLException e) {
+                if (!isMissingTable(e)) throw e;
+            }
+        }
+    }
+
+    private boolean isMissingTable(SQLException e) {
+        return e.getErrorCode() == 1146 || "42S02".equals(e.getSQLState());
     }
 
     public List<Message> getUnreadMessages(int userId) throws SQLException {

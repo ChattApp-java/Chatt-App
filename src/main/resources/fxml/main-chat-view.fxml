@@ -72,8 +72,10 @@
                             onAction="#onStartVoiceCall" managed="false" visible="false"/>
                     <Button fx:id="videoCallButton" text="VIDEO" styleClass="call-action-btn"
                             onAction="#onStartVideoCall" managed="false" visible="false"/>
+                    <Button fx:id="searchConversationButton" text="Rechercher" styleClass="call-action-btn"
+                            onAction="#searchInCurrentConversation"/>
                     <Button fx:id="infoButton" text="INFO" styleClass="call-action-btn" onAction="#onShowContactInfo"/>
-                    <Button text="..." styleClass="call-action-btn" onAction="#onMoreOptions"/>
+                    <Button fx:id="moreOptionsButton" text="..." styleClass="call-action-btn" onAction="#onMoreOptions"/>
                 </HBox>
             </HBox>
 

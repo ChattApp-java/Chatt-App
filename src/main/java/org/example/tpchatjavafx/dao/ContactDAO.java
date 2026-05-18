@@ -27,6 +27,16 @@ public class ContactDAO {
         }
     }
 
+    public boolean deleteContact(int utilisateurId, int contactId) throws SQLException {
+        String sql = "DELETE FROM contact WHERE utilisateur_id = ? AND contact_id = ?";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, utilisateurId);
+            stmt.setInt(2, contactId);
+            return stmt.executeUpdate() > 0;
+        }
+    }
+
     public List<Utilisateur> getContacts(int utilisateurId) throws SQLException {
         List<Utilisateur> contacts = new ArrayList<>();
         String sql = "SELECT u.* FROM utilisateur u " +
