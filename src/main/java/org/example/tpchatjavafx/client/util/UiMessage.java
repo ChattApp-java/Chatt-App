@@ -6,7 +6,7 @@ public class UiMessage {
         TEXT,
         AUDIO,
         IMAGE,
-        FILE        // 👈 new for generic files
+        LOCATION, FILE ,       // ðŸ‘ˆ new for generic LOCATION, FILEs
     }
 
     private final Kind kind;
@@ -43,3 +43,5 @@ public class UiMessage {
         return timestamp;
     }
 }
+
+
