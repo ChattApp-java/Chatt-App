@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<HBox xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="org.example.tpchatjavafx.client.controller.MessageSelectionBarController"
+      fx:id="selectionBarRoot"
+      styleClass="selection-bar"
+      alignment="CENTER_LEFT"
+      spacing="12"
+      managed="false"
+      visible="false">
+    <padding>
+        <Insets top="10" right="16" bottom="10" left="16"/>
+    </padding>
+
+    <Button text="&#xf00d;" styleClass="selection-icon-btn" onAction="#onClose">
+        <tooltip><Tooltip text="Fermer"/></tooltip>
+    </Button>
+    <Label fx:id="selectedCountLabel" text="0" styleClass="selection-count"/>
+    <Region HBox.hgrow="ALWAYS"/>
+    <Button fx:id="copyButton" text="&#xf0c5;" styleClass="selection-icon-btn" onAction="#onCopy">
+        <tooltip><Tooltip text="Copier"/></tooltip>
+    </Button>
+    <Button fx:id="forwardButton" text="&#xf064;" styleClass="selection-icon-btn" onAction="#onForward">
+        <tooltip><Tooltip text="Transferer"/></tooltip>
+    </Button>
+    <Button fx:id="deleteButton" text="&#xf1f8;" styleClass="selection-icon-btn danger" onAction="#onDelete">
+        <tooltip><Tooltip text="Supprimer"/></tooltip>
+    </Button>
+    <Button fx:id="selectAllButton" text="&#xf046;" styleClass="selection-icon-btn" onAction="#onSelectAll">
+        <tooltip><Tooltip text="Tout selectionner"/></tooltip>
+    </Button>
+</HBox>

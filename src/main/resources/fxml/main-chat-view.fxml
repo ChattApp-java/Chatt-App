@@ -9,10 +9,10 @@
             fx:controller="org.example.tpchatjavafx.client.controller.MainChatController"
             fx:id="rootPane"
             styleClass="root-pane"
-            prefWidth="1180" prefHeight="760">
+            minWidth="800" minHeight="600">
 
     <left>
-        <VBox styleClass="sidebar" prefWidth="330" minWidth="300" maxWidth="380">
+        <VBox styleClass="sidebar" minWidth="280" maxWidth="400">
             <VBox styleClass="sidebar-header" spacing="14">
                 <HBox alignment="CENTER_LEFT" spacing="12">
                     <StackPane styleClass="profile-avatar" fx:id="userAvatar">
@@ -55,7 +55,7 @@
     </left>
 
     <center>
-        <VBox fx:id="privateChatPane" styleClass="chat-area">
+        <VBox fx:id="privateChatPane" styleClass="chat-area" minWidth="400">
             <HBox fx:id="chatTopBar" styleClass="chat-top-bar" alignment="CENTER_LEFT" spacing="14">
                 <StackPane styleClass="chat-avatar" fx:id="chatAvatar">
                     <Label fx:id="chatAvatarLabel" text="?" styleClass="avatar-letter"/>
@@ -74,14 +74,16 @@
                             onAction="#onStartVideoCall" managed="false" visible="false"/>
                     <Button fx:id="searchConversationButton" text="Rechercher" styleClass="call-action-btn"
                             onAction="#searchInCurrentConversation"/>
-                    <Button fx:id="infoButton" text="INFO" styleClass="call-action-btn" onAction="#onShowContactInfo"/>
                     <Button fx:id="moreOptionsButton" text="..." styleClass="call-action-btn" onAction="#onMoreOptions"/>
                 </HBox>
             </HBox>
 
             <ListView fx:id="messagesListView" styleClass="messages-list" VBox.vgrow="ALWAYS"/>
 
+            <fx:include fx:id="selectionBar" source="message-selection-bar.fxml"/>
+
             <VBox styleClass="input-bar">
+                <HBox fx:id="recordingWaveformBar" styleClass="recording-waveform-bar" managed="false" visible="false"/>
                 <HBox alignment="CENTER" spacing="8">
                     <MenuButton fx:id="attachMenu" styleClass="input-icon-btn" mnemonicParsing="false">
                         <graphic><Label text="+" styleClass="input-menu-label"/></graphic>

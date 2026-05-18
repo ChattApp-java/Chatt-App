@@ -14,6 +14,7 @@ public class ChatMessage {
     private byte[] binaryData;
     private String timestamp;
     private boolean read;
+    private boolean selected;
 
     // Appels / réunions
     private String callType;
@@ -68,6 +69,9 @@ public class ChatMessage {
 
     public boolean isRead() { return read; }
     public void setRead(boolean read) { this.read = read; }
+
+    public boolean isSelected() { return selected; }
+    public void setSelected(boolean selected) { this.selected = selected; }
 
     public String getCallType() { return callType; }
     public void setCallType(String callType) { this.callType = callType; }
@@ -124,7 +128,8 @@ public class ChatMessage {
                 safe(serverHost),
                 String.valueOf(serverUdpAudioPort),
                 String.valueOf(serverUdpVideoPort),
-                String.valueOf(read)
+                String.valueOf(read),
+                String.valueOf(selected)
         );
     }
 
@@ -170,6 +175,9 @@ public class ChatMessage {
         msg.serverUdpVideoPort = parseIntSafe(parts[18], 0);
         if (parts.length > 19) {
             msg.read = Boolean.parseBoolean(parts[19]);
+        }
+        if (parts.length > 20) {
+            msg.selected = Boolean.parseBoolean(parts[20]);
         }
 
         return msg;

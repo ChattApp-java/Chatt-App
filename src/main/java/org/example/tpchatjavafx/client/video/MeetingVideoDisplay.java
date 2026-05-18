@@ -22,6 +22,8 @@ public class MeetingVideoDisplay {
             grid.setHgap(8);
             grid.setVgap(8);
             grid.setPadding(new Insets(10));
+            grid.widthProperty().addListener((obs, oldValue, newValue) -> resizeCells());
+            grid.heightProperty().addListener((obs, oldValue, newValue) -> resizeCells());
         }
     }
 
@@ -83,7 +85,23 @@ public class MeetingVideoDisplay {
                     row++;
                 }
             }
+            resizeCells();
         });
+    }
+
+    private void resizeCells() {
+        if (grid == null || participants.isEmpty()) {
+            return;
+        }
+        int count = participants.size();
+        int rows = (int) Math.ceil(count / (double) Math.max(columns, 1));
+        double availableWidth = Math.max(240, grid.getWidth() - grid.getPadding().getLeft() - grid.getPadding().getRight());
+        double availableHeight = Math.max(180, grid.getHeight() - grid.getPadding().getTop() - grid.getPadding().getBottom());
+        double cellWidth = (availableWidth - (Math.max(columns, 1) - 1) * grid.getHgap()) / Math.max(columns, 1);
+        double cellHeight = (availableHeight - (Math.max(rows, 1) - 1) * grid.getVgap()) / Math.max(rows, 1);
+        for (VideoGridCell cell : participants.values()) {
+            cell.resize(cellWidth, cellHeight);
+        }
     }
 }
 

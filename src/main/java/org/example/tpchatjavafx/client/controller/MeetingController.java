@@ -165,6 +165,8 @@ public class MeetingController {
         stage.setScene(scene);
         stage.setTitle("Réunion — " + title);
         stage.initModality(Modality.NONE);
+        stage.setMinWidth(800);
+        stage.setMinHeight(600);
         stage.show();
     }
 }

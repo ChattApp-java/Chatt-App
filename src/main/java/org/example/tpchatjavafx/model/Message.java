@@ -14,6 +14,9 @@ public class Message {
     private Integer groupeId;
     private Integer reunionId;
     private boolean estLu;
+    private boolean isDeleted;
+    private LocalDateTime deletedAt;
+    private Integer deletedBy;
 
     // Champs transient (non persistés) pour l'affichage
     private transient Utilisateur expediteur;
@@ -60,6 +63,15 @@ public class Message {
 
     public boolean isEstLu() { return estLu; }
     public void setEstLu(boolean estLu) { this.estLu = estLu; }
+
+    public boolean isDeleted() { return isDeleted; }
+    public void setDeleted(boolean deleted) { isDeleted = deleted; }
+
+    public LocalDateTime getDeletedAt() { return deletedAt; }
+    public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
+
+    public Integer getDeletedBy() { return deletedBy; }
+    public void setDeletedBy(Integer deletedBy) { this.deletedBy = deletedBy; }
 
     public Utilisateur getExpediteur() { return expediteur; }
     public void setExpediteur(Utilisateur expediteur) { this.expediteur = expediteur; }

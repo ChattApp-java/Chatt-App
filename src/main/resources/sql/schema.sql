@@ -18,6 +18,8 @@ CREATE TABLE IF NOT EXISTS contact (
     utilisateur_id INT NOT NULL,
     contact_id INT NOT NULL,
     dateAjout DATETIME DEFAULT CURRENT_TIMESTAMP,
+    is_deleted BOOLEAN DEFAULT FALSE,
+    deleted_at TIMESTAMP NULL,
     FOREIGN KEY (utilisateur_id) REFERENCES utilisateur (id) ON DELETE CASCADE,
     FOREIGN KEY (contact_id) REFERENCES utilisateur (id) ON DELETE CASCADE,
     UNIQUE KEY unique_contact (utilisateur_id, contact_id)
@@ -116,11 +118,15 @@ CREATE TABLE IF NOT EXISTS message (
     groupe_id INT NULL,
     reunion_id INT NULL,
     estLu BOOLEAN DEFAULT FALSE,
+    is_deleted BOOLEAN DEFAULT FALSE,
+    deleted_at TIMESTAMP NULL,
+    deleted_by INT NULL,
     FOREIGN KEY (expediteur_id) REFERENCES utilisateur (id) ON DELETE CASCADE,
     FOREIGN KEY (destinataire_id) REFERENCES utilisateur (id) ON DELETE SET NULL,
     FOREIGN KEY (conversation_id) REFERENCES conversation (id) ON DELETE CASCADE,
     FOREIGN KEY (groupe_id) REFERENCES groupe (id) ON DELETE CASCADE,
     FOREIGN KEY (reunion_id) REFERENCES reunion (id) ON DELETE SET NULL,
+    FOREIGN KEY (deleted_by) REFERENCES utilisateur (id) ON DELETE SET NULL,
     INDEX idx_dateEnvoi (dateEnvoi),
     INDEX idx_message_groupe (groupe_id, dateEnvoi)
 ) ENGINE = InnoDB;
@@ -133,6 +139,15 @@ CREATE TABLE IF NOT EXISTS message_clear_state (
     FOREIGN KEY (utilisateur_id) REFERENCES utilisateur (id) ON DELETE CASCADE,
     FOREIGN KEY (message_id) REFERENCES message (id) ON DELETE CASCADE
 ) ENGINE = InnoDB;
+
+ALTER TABLE message
+    ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP NULL,
+    ADD COLUMN IF NOT EXISTS deleted_by INT NULL;
+
+ALTER TABLE contact
+    ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP NULL;
 
 CREATE TABLE IF NOT EXISTS message_delete_for_me (
     utilisateur_id INT NOT NULL,

@@ -4,6 +4,7 @@ public class UiMessage {
 
     public enum Kind {
         TEXT,
+        SYSTEM,
         AUDIO,
         IMAGE,
         LOCATION, FILE ,       // ðŸ‘ˆ new for generic LOCATION, FILEs
@@ -16,6 +17,7 @@ public class UiMessage {
     private final String timestamp;
     private final int messageId;
     private boolean read;
+    private boolean selected;
 
     public UiMessage(Kind kind, boolean own, String text, String filePath, String timestamp) {
         this(kind, own, text, filePath, timestamp, -1);
@@ -60,6 +62,14 @@ public class UiMessage {
 
     public void setRead(boolean read) {
         this.read = read;
+    }
+
+    public boolean isSelected() {
+        return selected;
+    }
+
+    public void setSelected(boolean selected) {
+        this.selected = selected;
     }
 }
 

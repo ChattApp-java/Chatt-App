@@ -31,6 +31,41 @@ public class GroupeMembreDAO {
         }
     }
 
+    public boolean removeMember(int groupeId, int requesterId, int utilisateurId, String systemMessage) throws SQLException {
+        String role = getRole(groupeId, requesterId);
+        if (requesterId != utilisateurId && !GroupeMembre.ROLE_ADMIN.equals(role)) {
+            throw new SecurityException("Seul un admin peut retirer un membre.");
+        }
+
+        String deleteSql = "DELETE FROM groupe_membre WHERE groupe_id = ? AND utilisateur_id = ?";
+        String messageSql = "INSERT INTO message (contenu, type, expediteur_id, groupe_id) VALUES (?, 'SYSTEM', ?, ?)";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection()) {
+            boolean previousAutoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            try (PreparedStatement deleteStmt = conn.prepareStatement(deleteSql);
+                 PreparedStatement messageStmt = conn.prepareStatement(messageSql)) {
+                deleteStmt.setInt(1, groupeId);
+                deleteStmt.setInt(2, utilisateurId);
+                boolean deleted = deleteStmt.executeUpdate() > 0;
+
+                if (deleted && systemMessage != null && !systemMessage.isBlank()) {
+                    messageStmt.setString(1, systemMessage);
+                    messageStmt.setInt(2, requesterId);
+                    messageStmt.setInt(3, groupeId);
+                    messageStmt.executeUpdate();
+                }
+
+                conn.commit();
+                conn.setAutoCommit(previousAutoCommit);
+                return deleted;
+            } catch (SQLException | RuntimeException e) {
+                conn.rollback();
+                conn.setAutoCommit(previousAutoCommit);
+                throw e;
+            }
+        }
+    }
+
     public List<Utilisateur> getMembers(int groupeId) throws SQLException {
         List<Utilisateur> membres = new ArrayList<>();
         String sql = "SELECT u.* FROM utilisateur u JOIN groupe_membre gm ON gm.utilisateur_id = u.id " +

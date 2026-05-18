@@ -20,6 +20,8 @@ public class ChatClientApp extends Application {
         primaryStage = stage;
         primaryStage.setTitle("WeChat");
         primaryStage.setResizable(true);
+        primaryStage.setMinWidth(800);
+        primaryStage.setMinHeight(600);
         showLoginView();
     }
 
@@ -57,6 +59,11 @@ public class ChatClientApp extends Application {
 
         org.example.tpchatjavafx.client.controller.MainChatController ctrl = loader.getController();
         ctrl.init(networkClient, username, userId);
+        primaryStage.widthProperty().addListener((obs, oldValue, newValue) ->
+                ctrl.onWindowResize(newValue.doubleValue(), primaryStage.getHeight()));
+        primaryStage.heightProperty().addListener((obs, oldValue, newValue) ->
+                ctrl.onWindowResize(primaryStage.getWidth(), newValue.doubleValue()));
+        ctrl.onWindowResize(primaryStage.getWidth(), primaryStage.getHeight());
     }
 
     public static Stage getPrimaryStage() { return primaryStage; }

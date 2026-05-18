@@ -68,6 +68,7 @@ public class GroupController extends javafx.scene.control.SplitPane {
     private Label lblGroupStatus;
     private Label emptyStateLabel;
     private Button btnAddMember;
+    private Button btnVoiceMeeting;
     private Button btnMeeting;
     private Button btnLeaveGroup;
     private Button btnSend;
@@ -188,10 +189,15 @@ public class GroupController extends javafx.scene.control.SplitPane {
         btnAddMember.setTooltip(new Tooltip("Ajouter un membre"));
         btnAddMember.setOnAction(e -> ouvrirAjoutMembre());
 
-        btnMeeting = new Button("Reunion");
-        btnMeeting.getStyleClass().addAll("call-btn", "group-action-btn");
-        btnMeeting.setTooltip(new Tooltip("Demarrer une reunion"));
-        btnMeeting.setOnAction(e -> demarrerReunion());
+        btnVoiceMeeting = new Button("\uf095");
+        btnVoiceMeeting.getStyleClass().addAll("call-btn", "group-action-btn", "group-call-icon-btn");
+        btnVoiceMeeting.setTooltip(new Tooltip("Appel vocal"));
+        btnVoiceMeeting.setOnAction(e -> demarrerReunion("AUDIO"));
+
+        btnMeeting = new Button("\uf03d");
+        btnMeeting.getStyleClass().addAll("call-btn", "group-action-btn", "group-call-icon-btn");
+        btnMeeting.setTooltip(new Tooltip("Appel video"));
+        btnMeeting.setOnAction(e -> demarrerReunion("VIDEO"));
 
         btnLeaveGroup = new Button("Quitter groupe");
         btnLeaveGroup.getStyleClass().addAll("call-btn", "group-danger-btn");
@@ -203,7 +209,7 @@ public class GroupController extends javafx.scene.control.SplitPane {
         btnMembers.setTooltip(new Tooltip("Afficher les membres"));
         btnMembers.setOnAction(e -> toggleMembers());
 
-        topBar.getChildren().addAll(groupAvatar, headerCopy, btnMembers, btnAddMember, btnMeeting, btnLeaveGroup);
+        topBar.getChildren().addAll(groupAvatar, headerCopy, btnMembers, btnAddMember, btnVoiceMeeting, btnMeeting, btnLeaveGroup);
 
         chatArea = new VBox(8);
         chatArea.setPadding(new Insets(18));
@@ -391,10 +397,14 @@ public class GroupController extends javafx.scene.control.SplitPane {
         lblGroupName.setText(nom);
         lblGroupStatus.setText(activeMeetingGroupIds.contains(groupId) ? "Reunion en cours" : "Groupe actif");
         if (activeMeetingGroupIds.contains(groupId)) {
-            btnMeeting.setText("Rejoindre");
+            btnVoiceMeeting.setTooltip(new Tooltip("Rejoindre la reunion"));
+            btnMeeting.setTooltip(new Tooltip("Rejoindre la reunion"));
+            btnVoiceMeeting.getStyleClass().add("group-join-btn");
             btnMeeting.getStyleClass().add("group-join-btn");
         } else {
-            btnMeeting.setText("Reunion");
+            btnVoiceMeeting.setTooltip(new Tooltip("Appel vocal"));
+            btnMeeting.setTooltip(new Tooltip("Appel video"));
+            btnVoiceMeeting.getStyleClass().remove("group-join-btn");
             btnMeeting.getStyleClass().remove("group-join-btn");
         }
         currentUserAdmin = false;
@@ -486,17 +496,16 @@ public class GroupController extends javafx.scene.control.SplitPane {
     }
 
     private void demarrerReunion() {
+        demarrerReunion("VIDEO");
+    }
+
+    private void demarrerReunion(String type) {
         if (selectedGroupId == -1) return;
         if (activeMeetingGroupIds.contains(selectedGroupId)) {
             // Rejoindre au lieu de démarrer
             networkClient.joinMeetingByGroup(selectedGroupId);
         } else {
-            javafx.scene.control.ChoiceDialog<String> dialog =
-                    new javafx.scene.control.ChoiceDialog<>("VIDEO", "AUDIO", "VIDEO");
-            dialog.setTitle("Demarrer une reunion");
-            dialog.setHeaderText("Choisir le type de reunion");
-            dialog.setContentText("Type :");
-            dialog.showAndWait().ifPresent(type -> networkClient.startGroupMeeting(selectedGroupId, type));
+            networkClient.startGroupMeeting(selectedGroupId, type);
         }
     }
 
@@ -612,6 +621,7 @@ public class GroupController extends javafx.scene.control.SplitPane {
     private void updateGroupActions(boolean enabled) {
         btnAddMember.setDisable(!enabled);
         if (enabled) btnAddMember.setDisable(!currentUserAdmin);
+        btnVoiceMeeting.setDisable(!enabled);
         btnMeeting.setDisable(!enabled);
         btnLeaveGroup.setDisable(!enabled);
         btnSend.setDisable(!enabled);

@@ -156,6 +156,10 @@ public class NetworkClient {
         send(new ChatMessage(MessageType.CONTACT_DELETE, username, "SERVER", null, contactUsername));
     }
 
+    public void sendDeleteContact(int contactId) {
+        send(new ChatMessage(MessageType.DELETE_CONTACT, username, "SERVER", null, String.valueOf(contactId)));
+    }
+
     public void requestContacts() {
         send(new ChatMessage(MessageType.CONTACT_LOAD, username, "SERVER", null, ""));
     }
@@ -179,7 +183,12 @@ public class NetworkClient {
     }
 
     public void deleteMessageForEveryone(int messageId) {
+        sendDeleteMessage(messageId);
+    }
+
+    public void sendDeleteMessage(int messageId) {
         ChatMessage msg = new ChatMessage(MessageType.MESSAGE_DELETE_EVERYONE, username, "SERVER", null, "");
+        msg.setType(MessageType.DELETE_MESSAGE);
         msg.setMessageId(messageId);
         send(msg);
     }
@@ -317,7 +326,7 @@ public class NetworkClient {
     }
 
     public void removeGroupMember(int groupId, String pseudo) {
-        ChatMessage msg = new ChatMessage(MessageType.GROUP_REMOVE_MEMBER, username, "SERVER", null, pseudo);
+        ChatMessage msg = new ChatMessage(MessageType.REMOVE_GROUP_MEMBER, username, "SERVER", null, pseudo);
         msg.setGroupId(groupId);
         send(msg);
     }
@@ -534,7 +543,7 @@ public class NetworkClient {
                 case GROUP_ADD_MEMBER, GROUP_MEMBER_ADD -> {
                     if (onGroupMemberAdded != null) onGroupMemberAdded.accept(msg);
                 }
-                case GROUP_REMOVE_MEMBER, GROUP_MEMBER_REMOVE -> {
+                case GROUP_REMOVE_MEMBER, REMOVE_GROUP_MEMBER, GROUP_MEMBER_REMOVE -> {
                     if (onGroupMemberRemoved != null) onGroupMemberRemoved.accept(msg);
                 }
                 case GROUP_HISTORY_RESPONSE -> {

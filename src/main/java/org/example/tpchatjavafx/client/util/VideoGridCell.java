@@ -47,6 +47,15 @@ public class VideoGridCell {
         imageView.setImage(image);
     }
 
+    public void resize(double width, double height) {
+        double safeWidth = Math.max(220, width);
+        double safeHeight = Math.max(160, height);
+        imageView.setFitWidth(safeWidth);
+        imageView.setFitHeight(safeHeight - 48);
+        root.setMinWidth(safeWidth);
+        root.setMaxWidth(safeWidth);
+    }
+
     public void setMuted(boolean muted) {
         micLabel.setText(muted ? "🔇" : "🎤");
         micLabel.setStyle(muted ? "-fx-text-fill: #ff4444;" : "-fx-text-fill: #00ff00;");

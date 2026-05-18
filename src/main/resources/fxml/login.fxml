@@ -35,7 +35,7 @@
                             <Label text="Serveur" styleClass="field-label"/>
                             <HBox spacing="10">
                                 <TextField fx:id="loginHostField" promptText="localhost" styleClass="login-field" HBox.hgrow="ALWAYS"/>
-                                <TextField fx:id="loginPortField" promptText="5555" styleClass="login-field" prefWidth="80"/>
+                                <TextField fx:id="loginPortField" promptText="5555" styleClass="login-field" minWidth="72" maxWidth="96"/>
                             </HBox>
                         </VBox>
 
@@ -68,7 +68,7 @@
                             <Label text="Serveur" styleClass="field-label"/>
                             <HBox spacing="10">
                                 <TextField fx:id="regHostField" promptText="localhost" styleClass="login-field" HBox.hgrow="ALWAYS"/>
-                                <TextField fx:id="regPortField" promptText="5555" styleClass="login-field" prefWidth="80"/>
+                                <TextField fx:id="regPortField" promptText="5555" styleClass="login-field" minWidth="72" maxWidth="96"/>
                             </HBox>
                         </VBox>
 

@@ -32,8 +32,8 @@
         </VBox>
         <HBox alignment="CENTER" spacing="20.0">
             <children>
-                <Button fx:id="rejectButton" onAction="#onRejectMeeting" prefWidth="100.0" style="-fx-background-color: #f38ba8; -fx-text-fill: #1e1e2e; -fx-font-weight: bold; -fx-background-radius: 10;" text="Refuser" />
-                <Button fx:id="joinButton" onAction="#onJoinMeeting" prefWidth="100.0" style="-fx-background-color: #a6e3a1; -fx-text-fill: #1e1e2e; -fx-font-weight: bold; -fx-background-radius: 10;" text="Rejoindre" />
+                <Button fx:id="rejectButton" onAction="#onRejectMeeting" minWidth="96.0" maxWidth="140.0" HBox.hgrow="ALWAYS" style="-fx-background-color: #f38ba8; -fx-text-fill: #1e1e2e; -fx-font-weight: bold; -fx-background-radius: 10;" text="Refuser" />
+                <Button fx:id="joinButton" onAction="#onJoinMeeting" minWidth="96.0" maxWidth="140.0" HBox.hgrow="ALWAYS" style="-fx-background-color: #a6e3a1; -fx-text-fill: #1e1e2e; -fx-font-weight: bold; -fx-background-radius: 10;" text="Rejoindre" />
             </children>
         </HBox>
     </children>

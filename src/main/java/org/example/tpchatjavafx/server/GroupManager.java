@@ -79,7 +79,9 @@ public class GroupManager {
         if (groupe.getCreateurId() == memberId && requesterId != memberId) {
             throw new SecurityException("Le createur ne peut pas etre retire par un autre membre.");
         }
-        membreDAO.removeMember(groupeId, memberId);
+        org.example.tpchatjavafx.model.Utilisateur member = utilisateurDAO.findById(memberId);
+        String memberName = member == null ? "Utilisateur " + memberId : member.getUsername();
+        membreDAO.removeMember(groupeId, requesterId, memberId, memberName + " a ete retire du groupe");
     }
 
     public void deleteGroup(int groupeId, int requesterId) throws SQLException {

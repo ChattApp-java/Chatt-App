@@ -92,6 +92,9 @@ public class ClientHandler implements Runnable {
             case CONTACT_DELETE -> {
                 if (username != null) handleContactDelete(msg);
             }
+            case DELETE_CONTACT -> {
+                if (username != null) handleDeleteContact(msg);
+            }
             case CONTACT_LOAD -> {
                 if (username != null) handleContactLoad();
             }
@@ -108,6 +111,9 @@ public class ClientHandler implements Runnable {
                 if (username != null) handleClearMessageForMe(msg);
             }
             case MESSAGE_DELETE_EVERYONE -> {
+                if (username != null) handleDeleteMessageForEveryone(msg);
+            }
+            case DELETE_MESSAGE -> {
                 if (username != null) handleDeleteMessageForEveryone(msg);
             }
             case MESSAGE_READ -> {
@@ -134,7 +140,7 @@ public class ClientHandler implements Runnable {
             case GROUP_ADD_MEMBER, GROUP_MEMBER_ADD -> {
                 if (username != null) handleGroupAddMember(msg);
             }
-            case GROUP_REMOVE_MEMBER, GROUP_MEMBER_REMOVE -> {
+            case GROUP_REMOVE_MEMBER, REMOVE_GROUP_MEMBER, GROUP_MEMBER_REMOVE -> {
                 if (username != null) handleGroupRemoveMember(msg);
             }
             case GROUP_LEAVE -> {
@@ -279,6 +285,23 @@ public class ClientHandler implements Runnable {
             handleContactLoad();
         } catch (Exception e) {
             sendError("Erreur lors de la suppression du contact : " + e.getMessage());
+        }
+    }
+
+    private void handleDeleteContact(ChatMessage msg) {
+        try {
+            int contactId = parseTargetUserId(msg);
+            boolean deleted = contactDAO.hardDelete(contactId, userId);
+            if (!deleted) {
+                sendError("Ce contact n'existe pas dans votre liste.");
+                return;
+            }
+
+            ChatMessage notification = new ChatMessage(MessageType.DELETE_CONTACT, "SERVER", username, null, String.valueOf(contactId));
+            send(notification);
+            handleContactLoad();
+        } catch (Exception e) {
+            sendError("Erreur lors de la suppression definitive du contact : " + e.getMessage());
         }
     }
 
@@ -448,10 +471,12 @@ public class ClientHandler implements Runnable {
             int memberId = parseTargetUserId(msg);
             String memberUsername = usernameForUserId(memberId);
             ChatServer.getGroupManager().removeMember(msg.getGroupId(), userId, memberId);
-            ChatMessage notification = new ChatMessage(MessageType.GROUP_REMOVE_MEMBER, username, null, null, memberUsername);
+            ChatMessage notification = new ChatMessage(MessageType.REMOVE_GROUP_MEMBER, "SERVER", null, null,
+                    memberUsername + " a ete retire du groupe");
             notification.setGroupId(msg.getGroupId());
             ChatServer.broadcastToGroup(msg.getGroupId(), notification);
             ChatServer.sendToUserId(memberId, notification);
+            sendGroupListToUser(memberId);
         } catch (Exception e) {
             sendError("Retrait de membre impossible : " + e.getMessage());
         }
@@ -914,7 +939,7 @@ public class ClientHandler implements Runnable {
             boolean deleted = messageDAO.deleteMessageForEveryone(msg.getMessageId(), userId);
             if (!deleted) return;
 
-            ChatMessage notification = new ChatMessage(MessageType.MESSAGE_DELETE_EVERYONE, username, null, null, "");
+            ChatMessage notification = new ChatMessage(MessageType.DELETE_MESSAGE, username, null, null, "");
             notification.setMessageId(msg.getMessageId());
             if (message.getGroupeId() != null && message.getGroupeId() > 0) {
                 notification.setGroupId(message.getGroupeId());

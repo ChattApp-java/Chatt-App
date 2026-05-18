@@ -1,9 +1,12 @@
 package org.example.tpchatjavafx.client.video;
 
+import javafx.application.Platform;
+import javafx.embed.swing.SwingFXUtils;
+import javafx.scene.image.ImageView;
+import org.bytedeco.javacv.FFmpegFrameGrabber;
 import org.bytedeco.javacv.Frame;
 import org.bytedeco.javacv.FrameGrabber;
 import org.bytedeco.javacv.Java2DFrameConverter;
-import org.bytedeco.javacv.OpenCVFrameGrabber;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -19,7 +22,7 @@ import java.util.function.BiConsumer;
 
 public class MeetingVideoCapture {
 
-    private OpenCVFrameGrabber grabber;
+    private FFmpegFrameGrabber grabber;
     private DatagramSocket socket;
     private InetAddress remoteAddress;
     private int remotePort;
@@ -52,10 +55,7 @@ public class MeetingVideoCapture {
         this.userId = userId;
         this.socket = (localPort > 0) ? new DatagramSocket(localPort) : new DatagramSocket();
         this.socket.setSoTimeout(1000);
-        grabber = new OpenCVFrameGrabber(0);
-        grabber.setImageWidth(640);
-        grabber.setImageHeight(480);
-        grabber.start();
+        grabber = createGrabber();
 
         running.set(true);
         captureThread = new Thread(this::captureLoop, "MeetingVideoCapture");
@@ -64,6 +64,29 @@ public class MeetingVideoCapture {
         receiveThread = new Thread(this::receiveLoop, "MeetingVideoReceive");
         receiveThread.setDaemon(true);
         receiveThread.start();
+    }
+
+    public void startCapture(ImageView target) {
+        stop();
+        try {
+            grabber = createGrabber();
+            running.set(true);
+            captureThread = new Thread(() -> previewLoop(target), "MeetingVideoPreview");
+            captureThread.setDaemon(true);
+            captureThread.start();
+        } catch (Exception e) {
+            System.err.println("Impossible de demarrer la webcam JavaCV : " + e.getMessage());
+            stop();
+        }
+    }
+
+    private FFmpegFrameGrabber createGrabber() throws FrameGrabber.Exception {
+        FFmpegFrameGrabber newGrabber = new FFmpegFrameGrabber("video=Integrated Webcam");
+        newGrabber.setFormat("dshow");
+        newGrabber.setImageWidth(640);
+        newGrabber.setImageHeight(480);
+        newGrabber.start();
+        return newGrabber;
     }
 
     public void sendFrame(byte[] jpegFrame) {
@@ -116,6 +139,27 @@ public class MeetingVideoCapture {
             } catch (IOException | InterruptedException e) {
                 if (running.get()) {
                     System.err.println("Erreur capture vidéo réunion : " + e.getMessage());
+                }
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+    }
+
+    private void previewLoop(ImageView target) {
+        while (running.get()) {
+            try {
+                Frame frame = grabber.grab();
+                if (frame != null && frame.image != null && target != null) {
+                    BufferedImage image = converter.convert(frame);
+                    if (image != null) {
+                        Platform.runLater(() -> target.setImage(SwingFXUtils.toFXImage(image, null)));
+                    }
+                }
+                Thread.sleep(33);
+            } catch (FrameGrabber.Exception | InterruptedException e) {
+                if (running.get()) {
+                    System.err.println("Erreur preview webcam JavaCV : " + e.getMessage());
                 }
                 Thread.currentThread().interrupt();
                 break;

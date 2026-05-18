@@ -1,6 +1,7 @@
 package org.example.tpchatjavafx.client.controller;
 
 import javafx.application.Platform;
+import javafx.animation.PauseTransition;
 import org.example.tpchatjavafx.client.ChatClientApp;
 import org.example.tpchatjavafx.client.voice.VoiceCallWindow;
 import javafx.collections.FXCollections;
@@ -14,6 +15,8 @@ import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.Node;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
@@ -21,9 +24,12 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
+import javafx.util.Duration;
 import org.example.tpchatjavafx.client.NetworkClient;
 import org.example.tpchatjavafx.client.model.ChatMessage;
+import org.example.tpchatjavafx.client.util.FileIconResolver;
 import org.example.tpchatjavafx.client.util.UiMessage;
+import org.example.tpchatjavafx.client.util.WaveformVisualizer;
 import org.example.tpchatjavafx.client.video.VideoCallController;
 import org.example.tpchatjavafx.client.video.VideoCallWindow;
 import org.example.tpchatjavafx.client.voice.VoiceCallSession;
@@ -72,12 +78,14 @@ public class MainChatController {
     @FXML private Button    voiceCallButton;
     @FXML private Button    videoCallButton;
     @FXML private Button    searchConversationButton;
-    @FXML private Button    infoButton;
     @FXML private Button    moreOptionsButton;
     @FXML private TabPane   tabPane;
     @FXML private HBox emojiBar;
     @FXML private FlowPane emojiGrid;
     @FXML private Label usernameLabel;
+    @FXML private HBox selectionBar;
+    @FXML private MessageSelectionBarController selectionBarController;
+    @FXML private HBox recordingWaveformBar;
 
     @FXML private TextField searchContactField;
 
@@ -100,6 +108,7 @@ public class MainChatController {
     private final MessageDAO messageDAO = new MessageDAO();
     private final ConversationDAO conversationDAO = new ConversationDAO();
     private final FichierMediaDAO fichierMediaDAO = new FichierMediaDAO();
+    private boolean isSendingContact = false;
     private static final List<String> EMOJIS = Arrays.asList(
             "\uD83D\uDE02", "\uD83E\uDD23", "\uD83D\uDE0A", "\uD83D\uDE05", "\uD83E\uDD7A", "\uD83D\uDE0E",
             "\uD83E\uDD14", "\uD83D\uDE44", "\uD83D\uDE2D", "\u2764\uFE0F", "\uD83D\uDD25", "\uD83D\uDCAF",
@@ -112,6 +121,8 @@ public class MainChatController {
     private volatile boolean recordingAudio = false;
     private TargetDataLine targetDataLine;
     private Thread recordingThread;
+    private final List<Double> recordingAmplitudeData = Collections.synchronizedList(new ArrayList<>());
+    private WaveformVisualizer recordingWaveform;
 
     private VoiceCallSession currentVoiceCall;
     private String voiceCallPeer = null;
@@ -129,7 +140,9 @@ public class MainChatController {
     private Consumer<ChatMessage> onCallRejected;
     private AudioTransmissionService audioService;
     private String incomingCallFrom = null;
+    private boolean selectionMode = false;
     private boolean multiMessageSelectionMode = false;
+    private final Set<UiMessage> selectedMessages = new LinkedHashSet<>();
     private Tab groupTab;
     private ListView<String> groupTabListView;
     private Tab contactsTab;
@@ -149,6 +162,16 @@ public class MainChatController {
         setupContactCellFactory();
         if (messagesListView != null) {
             messagesListView.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
+        }
+        if (selectionBarController != null) {
+            selectionBarController.setHandlers(
+                    this::copySelectedMessages,
+                    this::forwardSelectedMessages,
+                    this::deleteSelectedMessagesForEveryone,
+                    this::selectAllMessages,
+                    this::exitSelectionMode
+            );
+            selectionBarController.setSelectedCount(0);
         }
         groupTab = new Tab("Groupes");
         groupTab.setClosable(false);
@@ -268,6 +291,21 @@ public class MainChatController {
                 contactsTabListView.refresh();
             }
         });
+    }
+
+    public void onWindowResize(double width, double height) {
+        if (rootPane == null) return;
+        Node sidebar = rootPane.getLeft();
+        if (sidebar instanceof VBox sidebarBox) {
+            double targetWidth = Math.max(280, Math.min(400, width * 0.30));
+            sidebarBox.setPrefWidth(targetWidth);
+        }
+        if (privateChatPane != null) {
+            privateChatPane.setMinWidth(Math.max(400, width - 420));
+        }
+        if (messagesListView != null) {
+            messagesListView.refresh();
+        }
     }
 
     private Node buildGroupTabContent() {
@@ -416,6 +454,9 @@ public class MainChatController {
                 if (gid == currentGroupId) messagesListView.setItems(groupConversations.get(gid));
                 return;
             }
+            if (msg.getType() == MessageType.GROUP_HISTORY_RESPONSE && msg.getConversationId() != null) {
+                msg.setType(safeMessageType(msg.getConversationId()));
+            }
             if (raw.contains(";;;")) {
                 groupConversations.put(gid, FXCollections.observableArrayList());
                 for (String entry : raw.split(";;;")) {
@@ -445,10 +486,18 @@ public class MainChatController {
         }));
 
         networkClient.setOnGroupMemberRemoved(msg -> Platform.runLater(() -> {
+            String systemText = msg.getType() == MessageType.REMOVE_GROUP_MEMBER
+                    ? msg.getContent()
+                    : msg.getContent() + " a quitte le groupe.";
             if (msg.getGroupId() == currentGroupId) {
                 groupConversations.computeIfAbsent(currentGroupId, k -> FXCollections.observableArrayList())
-                        .add(new UiMessage(UiMessage.Kind.TEXT, false, msg.getContent() + " a quitte le groupe.", null,
+                        .add(new UiMessage(UiMessage.Kind.SYSTEM, false, systemText, null,
                                 java.time.LocalDateTime.now().format(timeFormatter)));
+                messagesListView.refresh();
+            }
+            if (msg.getType() == MessageType.REMOVE_GROUP_MEMBER
+                    && msg.getContent() != null && username != null && msg.getContent().startsWith(username + " ")) {
+                removeGroupLocally(msg.getGroupId());
             }
             networkClient.requestGroupList();
         }));
@@ -469,6 +518,26 @@ public class MainChatController {
         groupNames.add(name);
     }
 
+    private void removeGroupLocally(int groupId) {
+        for (int i = groupIds.size() - 1; i >= 0; i--) {
+            if (groupIds.get(i)[0] == groupId) {
+                groupIds.remove(i);
+                if (i < groupNames.size()) groupNames.remove(i);
+            }
+        }
+        groupConversations.remove(groupId);
+        groupMembersById.remove(groupId);
+        if (groupTabListView != null) groupTabListView.refresh();
+        if (currentGroupId == groupId) {
+            currentGroupId = -1;
+            currentGroupName = null;
+            messagesListView.setItems(FXCollections.observableArrayList());
+            chatTitleLabel.setText("Selectionnez une conversation");
+            chatStatusLabel.setText("");
+            chatAvatarLabel.setText("?");
+        }
+    }
+
     private void openGroupChat(int groupId, String groupName) {
         currentPrivateTarget = null;
         currentGroupId = groupId;
@@ -480,10 +549,6 @@ public class MainChatController {
         voiceCallButton.setManaged(false);
         videoCallButton.setVisible(false);
         videoCallButton.setManaged(false);
-        if (infoButton != null) {
-            infoButton.setVisible(false);
-            infoButton.setManaged(false);
-        }
         groupConversations.putIfAbsent(groupId, FXCollections.observableArrayList());
         messagesListView.setItems(groupConversations.get(groupId));
         networkClient.requestGroupHistory(groupId);
@@ -496,6 +561,9 @@ public class MainChatController {
         boolean own = username != null && username.equals(msg.getFrom());
         String text = msg.getContent();
         UiMessage.Kind kind = kindForGroup(msg.getType());
+        if (kind == UiMessage.Kind.SYSTEM) {
+            own = false;
+        }
         if (!own && kind == UiMessage.Kind.TEXT && msg.getFrom() != null && !fromHistory) {
             text = msg.getFrom() + ": " + text;
         }
@@ -514,6 +582,7 @@ public class MainChatController {
     }
 
     private UiMessage.Kind kindForGroup(MessageType type) {
+        if (type == MessageType.SYSTEM || type == MessageType.REMOVE_GROUP_MEMBER) return UiMessage.Kind.SYSTEM;
         if (type == MessageType.GROUP_AUDIO) return UiMessage.Kind.AUDIO;
         if (type == MessageType.GROUP_IMAGE) return UiMessage.Kind.IMAGE;
         if (type == MessageType.GROUP_FILE) return UiMessage.Kind.FILE;
@@ -767,9 +836,29 @@ public class MainChatController {
 
     @FXML
     private void onLogout() {
-        if (networkClient != null) networkClient.close();
-        try { ChatClientApp.showLoginView(); }
-        catch (Exception e) { showInfo("Erreur retour login : " + e.getMessage()); }
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Deconnexion");
+        confirm.setHeaderText("Se deconnecter ?");
+        confirm.setContentText("Vous devrez vous reconnecter pour acceder a vos messages.");
+        confirm.getDialogPane().setStyle("-fx-background-color: #121b22;");
+
+        Node contentLabel = confirm.getDialogPane().lookup(".content.label");
+        if (contentLabel != null) {
+            contentLabel.setStyle("-fx-text-fill: white;");
+        }
+        Node headerLabel = confirm.getDialogPane().lookup(".header-panel .label");
+        if (headerLabel != null) {
+            headerLabel.setStyle("-fx-text-fill: white;");
+        }
+
+        ButtonType btnOui = new ButtonType("Oui");
+        ButtonType btnNon = new ButtonType("Non", ButtonBar.ButtonData.CANCEL_CLOSE);
+        confirm.getButtonTypes().setAll(btnOui, btnNon);
+
+        if (confirm.showAndWait().orElse(btnNon) == btnOui) {
+            if (networkClient != null) networkClient.close();
+            Platform.exit();
+        }
     }
 
     private void openPrivateChat(String other) {
@@ -778,10 +867,6 @@ public class MainChatController {
         currentGroupName = null;
         if (chatTitleLabel  != null) chatTitleLabel.setText(other);
         if (chatAvatarLabel != null) chatAvatarLabel.setText(other.substring(0,1).toUpperCase());
-        if (infoButton != null) {
-            infoButton.setVisible(true);
-            infoButton.setManaged(true);
-        }
 
         String status = userStatuses.getOrDefault(other, "NON_CONNECTE");
         updateChatHeaderStatus(status);
@@ -880,7 +965,7 @@ public class MainChatController {
             Platform.runLater(() -> handleGroupChatDeletedForEveryone(msg));
             return;
         }
-        if (msg.getType() == MessageType.MESSAGE_DELETE_EVERYONE) {
+        if (msg.getType() == MessageType.MESSAGE_DELETE_EVERYONE || msg.getType() == MessageType.DELETE_MESSAGE) {
             Platform.runLater(() -> removeMessageLocally(msg.getMessageId()));
             return;
         }
@@ -1297,6 +1382,8 @@ public class MainChatController {
             targetDataLine.open(format);
             targetDataLine.start();
             recordingAudio = true;
+            recordingAmplitudeData.clear();
+            showRecordingWaveform(true);
             updateRecordButtonState();
             recordingThread = new Thread(() -> captureAudio(format));
             recordingThread.setDaemon(true);
@@ -1313,6 +1400,7 @@ public class MainChatController {
             targetDataLine.close();
         }
         updateRecordButtonState();
+        showRecordingWaveform(false);
     }
 
     private void captureAudio(AudioFormat format) {
@@ -1321,7 +1409,14 @@ public class MainChatController {
         try {
             while (recordingAudio) {
                 int count = targetDataLine.read(buffer, 0, buffer.length);
-                if (count > 0) out.write(buffer, 0, count);
+                if (count > 0) {
+                    out.write(buffer, 0, count);
+                    double amplitude = AudioCaptureService.calculateAmplitude(buffer, count);
+                    recordingAmplitudeData.add(amplitude);
+                    Platform.runLater(() -> {
+                        if (recordingWaveform != null) recordingWaveform.setData(recordingAmplitudeData);
+                    });
+                }
             }
             byte[] data = out.toByteArray();
             Platform.runLater(() -> handleRecordedAudio(format, data));
@@ -1356,12 +1451,27 @@ public class MainChatController {
         if (recordAudioButton == null) return;
         if (recordingAudio) {
             recordAudioButton.setText("Ã¢â€“Â ");
-            recordAudioButton.setText("Stop");
+            recordAudioButton.setText("REC");
             recordAudioButton.setStyle("-fx-text-fill: #f87171; -fx-font-weight: bold;");
         } else {
             recordAudioButton.setText("Ã°Å¸Å½â„¢");
             recordAudioButton.setText("Audio");
             recordAudioButton.setStyle("");
+        }
+    }
+
+    private void showRecordingWaveform(boolean visible) {
+        if (recordingWaveformBar == null) return;
+        recordingWaveformBar.setVisible(visible);
+        recordingWaveformBar.setManaged(visible);
+        if (visible) {
+            if (recordingWaveform == null) {
+                recordingWaveform = new WaveformVisualizer(300, 36);
+            }
+            recordingWaveformBar.getChildren().setAll(recordingWaveform);
+            recordingWaveform.setData(recordingAmplitudeData);
+        } else {
+            recordingWaveformBar.getChildren().clear();
         }
     }
 
@@ -1373,6 +1483,10 @@ public class MainChatController {
                 if (empty || item == null) {
                     setText(null);
                     setGraphic(null);
+                    setOnMousePressed(null);
+                    setOnMouseReleased(null);
+                    setOnMouseExited(null);
+                    setOnMouseClicked(null);
                     return;
                 }
 
@@ -1382,6 +1496,10 @@ public class MainChatController {
                 row.setAlignment(isOwn ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
 
                 switch (item.getKind()) {
+                    case SYSTEM -> {
+                        row.setAlignment(Pos.CENTER);
+                        row.getChildren().add(createSystemMessageBubble(item.getText()));
+                    }
                     case TEXT -> {
                         String text = item.getText() == null ? "" : item.getText();
 
@@ -1494,36 +1612,45 @@ public class MainChatController {
                     }
                     case AUDIO -> {
                         Button play = new Button("Ã¢â€“Â¶");
-                        play.setText("Lire audio");
+                        play.setText(">");
                         play.getStyleClass().add("btn-icon");
                         play.setDisable(item.getFilePath() == null);
-                        play.setOnAction(e -> playAudio(item.getFilePath()));
-                        Label label = new Label(" Message vocal");
-                        label.getStyleClass().add(isOwn ? "bubble-sent" : "bubble-received");
+                        WaveformVisualizer waveform = new WaveformVisualizer(220, 34);
+                        waveform.setData(loadWaveformData(item.getFilePath()));
+                        play.setOnAction(e -> playAudio(item.getFilePath(), waveform, play));
 
                         Label time = new Label(messageFooter(item, isOwn));
                         time.getStyleClass().add(isOwn ? "timestamp-sent" : "timestamp-received");
 
-                        HBox inner = new HBox(6, play, label);
+                        HBox inner = new HBox(10, play, waveform);
+                        inner.getStyleClass().add(isOwn ? "media-card-sent" : "media-card-received");
+                        inner.setAlignment(Pos.CENTER_LEFT);
                         VBox content = new VBox(2, inner, time);
                         content.setAlignment(isOwn ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
                         row.getChildren().add(content);
                     }
                     case FILE -> {
+                        Label icon = FileIconResolver.getIconForFile(item.getText());
                         Label nameLabel = new Label("Ã°Å¸â€œÅ½ " + item.getText());
-                        nameLabel.getStyleClass().add(isOwn ? "bubble-sent" : "bubble-received");
-                        nameLabel.setText(item.getText());
+                        nameLabel.getStyleClass().add("file-name");
+                        nameLabel.setText(item.getText() == null ? "Fichier" : item.getText());
+                        Label sizeLabel = new Label(formatFileSize(item.getFilePath()));
+                        sizeLabel.getStyleClass().add("file-size");
+                        VBox fileInfo = new VBox(3, nameLabel, sizeLabel);
+                        HBox.setHgrow(fileInfo, javafx.scene.layout.Priority.ALWAYS);
                         Button downloadBtn = new Button("Ã°Å¸â€™Â¾");
-                        downloadBtn.setText("Telecharger");
+                        downloadBtn.setText("\uf019");
                         downloadBtn.getStyleClass().add("btn-icon");
+                        downloadBtn.getStyleClass().add("file-download-btn");
                         downloadBtn.setDisable(item.getFilePath() == null);
                         downloadBtn.setOnAction(e -> downloadFile(item.getFilePath(), item.getText()));
 
                         Label time = new Label(messageFooter(item, isOwn));
                         time.getStyleClass().add(isOwn ? "timestamp-sent" : "timestamp-received");
 
-                        HBox inner = new HBox(8, nameLabel, downloadBtn);
-                        inner.setAlignment(isOwn ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
+                        HBox inner = new HBox(12, icon, fileInfo, downloadBtn);
+                        inner.getStyleClass().add(isOwn ? "media-card-sent" : "media-card-received");
+                        inner.setAlignment(Pos.CENTER_LEFT);
                         VBox content = new VBox(2, inner, time);
                         content.setAlignment(isOwn ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
                         row.getChildren().add(content);
@@ -1531,6 +1658,22 @@ public class MainChatController {
                 }
                 setText(null);
                 setGraphic(row);
+                row.getStyleClass().remove("message-selection-row");
+                if (selectedMessages.contains(item) || item.isSelected()) {
+                    row.getStyleClass().add("message-selection-row");
+                }
+
+                PauseTransition longPress = new PauseTransition(Duration.millis(500));
+                longPress.setOnFinished(event -> enterSelectionMode(item));
+                setOnMousePressed(event -> longPress.playFromStart());
+                setOnMouseReleased(event -> longPress.stop());
+                setOnMouseExited(event -> longPress.stop());
+                setOnMouseClicked(event -> {
+                    if (selectionMode) {
+                        toggleMessageSelection(item);
+                        event.consume();
+                    }
+                });
             }
         });
     }
@@ -1539,6 +1682,20 @@ public class MainChatController {
         String time = item.getTimestamp() == null ? "" : item.getTimestamp();
         if (!isOwn) return time;
         return time + "  " + (item.isRead() ? "Lu" : "Envoye");
+    }
+
+    private Node createSystemMessageBubble(String text) {
+        HBox container = new HBox();
+        container.setAlignment(Pos.CENTER);
+        container.setPadding(new Insets(5, 0, 5, 0));
+
+        Label label = new Label(text == null ? "" : text);
+        label.setWrapText(true);
+        label.setMaxWidth(420);
+        label.setStyle("-fx-background-color: #1f2c34; -fx-text-fill: #8696a0; "
+                + "-fx-padding: 5 12; -fx-background-radius: 8; -fx-font-size: 12;");
+        container.getChildren().add(label);
+        return container;
     }
 
     private void updateCallButtonsVisibility() {
@@ -1649,6 +1806,77 @@ public class MainChatController {
         }).start();
     }
 
+    private void playAudio(String path, WaveformVisualizer waveform, Button playButton) {
+        if (path == null) return;
+        new Thread(() -> {
+            try (AudioInputStream ais = AudioSystem.getAudioInputStream(new File(path))) {
+                Clip clip = AudioSystem.getClip();
+                clip.open(ais);
+                Platform.runLater(() -> playButton.setText("||"));
+                clip.start();
+                int bars = Math.max(1, loadWaveformData(path).size());
+                while (clip.isOpen() && clip.isRunning()) {
+                    int pos = (int) ((clip.getMicrosecondPosition() / (double) Math.max(1, clip.getMicrosecondLength())) * bars);
+                    Platform.runLater(() -> waveform.setPlaybackPosition(pos));
+                    Thread.sleep(60);
+                }
+                Platform.runLater(() -> {
+                    waveform.setPlaybackPosition(bars);
+                    playButton.setText(">");
+                });
+                clip.close();
+            } catch (Exception e) {
+                Platform.runLater(() -> showInfo("Impossible de lire l'audio."));
+            }
+        }, "WaveformAudioPlayback").start();
+    }
+
+    private List<Double> loadWaveformData(String path) {
+        if (path == null) return defaultWaveformData();
+        try (AudioInputStream stream = AudioSystem.getAudioInputStream(new File(path))) {
+            byte[] bytes = stream.readAllBytes();
+            List<Double> amplitudes = new ArrayList<>();
+            int chunkSize = Math.max(512, bytes.length / 48);
+            for (int i = 0; i < bytes.length; i += chunkSize) {
+                amplitudes.add(AudioCaptureService.calculateAmplitude(bytes, Math.min(chunkSize, bytes.length - i)));
+            }
+            return amplitudes.isEmpty() ? defaultWaveformData() : amplitudes;
+        } catch (Exception e) {
+            return defaultWaveformData();
+        }
+    }
+
+    private List<Double> defaultWaveformData() {
+        List<Double> values = new ArrayList<>();
+        for (int i = 0; i < 36; i++) {
+            values.add(0.18 + (Math.sin(i * 0.55) + 1) * 0.28);
+        }
+        return values;
+    }
+
+    private String formatFileSize(String path) {
+        if (path == null) {
+            return "Taille inconnue";
+        }
+        try {
+            long bytes = Files.size(Path.of(path));
+            if (bytes < 1024) {
+                return bytes + " B";
+            }
+            double kb = bytes / 1024.0;
+            if (kb < 1024) {
+                return new DecimalFormat("#,##0.#").format(kb) + " KB";
+            }
+            double mb = kb / 1024.0;
+            if (mb < 1024) {
+                return new DecimalFormat("#,##0.#").format(mb) + " MB";
+            }
+            return new DecimalFormat("#,##0.#").format(mb / 1024.0) + " GB";
+        } catch (IOException | RuntimeException e) {
+            return "Taille inconnue";
+        }
+    }
+
     private void addLocalFileMessage(boolean own, String fileName, String path) {
         if (currentPrivateTarget == null) return;
         privateConversations.putIfAbsent(currentPrivateTarget, FXCollections.observableArrayList());
@@ -1708,11 +1936,38 @@ public class MainChatController {
 
     @FXML
     private void onShowContactInfo() {
-        if (currentPrivateTarget != null) {
-            showInfo("Infos contact: " + currentPrivateTarget);
-        } else {
+        showContactInfo(currentPrivateTarget);
+    }
+
+    private void showContactInfo(String contact) {
+        if (contact == null || contact.isBlank()) {
             showInfo("Selectionnez un contact d'abord.");
+            return;
         }
+
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Infos du contact");
+        dialog.setHeaderText(contact);
+
+        String status = userStatuses.getOrDefault(contact, "NON_CONNECTE");
+        String email = "Non disponible";
+        try {
+            Utilisateur utilisateur = utilisateurDAO.findByUsername(contact);
+            if (utilisateur != null && utilisateur.getEmail() != null && !utilisateur.getEmail().isBlank()) {
+                email = utilisateur.getEmail();
+            }
+        } catch (SQLException ignored) {
+        }
+
+        VBox content = new VBox(10,
+                new Label("Nom : " + contact),
+                new Label("Email : " + email),
+                new Label("Statut : " + ("EN_LIGNE".equals(status) ? "En ligne" : "Non connecte"))
+        );
+        content.setPadding(new Insets(12));
+        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+        dialog.showAndWait();
     }
 
     @FXML
@@ -1768,14 +2023,21 @@ public class MainChatController {
 
     private ContextMenu createContactContextMenu(String contact) {
         ContextMenu menu = new ContextMenu();
+        MenuItem infoItem = new MenuItem("Infos du contact", new Label("i"));
+        infoItem.setOnAction(e -> showContactInfo(contact));
         MenuItem openItem = new MenuItem("Ouvrir la conversation");
         openItem.setOnAction(e -> {
             openPrivateChat(contact);
             if (tabPane != null && privateTab != null) tabPane.getSelectionModel().select(privateTab);
         });
+        MenuItem clearItem = new MenuItem("Effacer la discussion");
+        clearItem.setOnAction(e -> {
+            openPrivateChat(contact);
+            clearCurrentChatForMe();
+        });
         MenuItem deleteItem = new MenuItem("Supprimer le contact");
         deleteItem.setOnAction(e -> deleteContactWithConfirm(contact));
-        menu.getItems().addAll(openItem, deleteItem);
+        menu.getItems().addAll(infoItem, openItem, clearItem, new SeparatorMenuItem(), deleteItem);
         return menu;
     }
 
@@ -1790,7 +2052,16 @@ public class MainChatController {
         confirm.setHeaderText("Supprimer le contact");
         if (confirm.showAndWait().orElse(ButtonType.NO) != ButtonType.YES) return;
 
-        networkClient.deleteContact(contact);
+        try {
+            Utilisateur contactUser = utilisateurDAO.findByUsername(contact);
+            if (contactUser != null) {
+                networkClient.sendDeleteContact(contactUser.getId());
+            } else {
+                networkClient.deleteContact(contact);
+            }
+        } catch (SQLException e) {
+            networkClient.deleteContact(contact);
+        }
         allContacts.remove(contact);
         privateConversations.remove(contact);
         if (contact.equals(currentPrivateTarget)) {
@@ -2172,21 +2443,97 @@ public class MainChatController {
         confirm.setHeaderText("Supprimer le message");
         if (confirm.showAndWait().orElse(ButtonType.NO) != ButtonType.YES) return;
 
-        networkClient.deleteMessageForEveryone(selected.getMessageId());
+        networkClient.sendDeleteMessage(selected.getMessageId());
         removeMessageLocally(selected.getMessageId());
         showInfo("Message supprime pour tout le monde.");
     }
 
     private void enableMultiMessageSelection() {
+        enterSelectionMode(messagesListView == null ? null : messagesListView.getSelectionModel().getSelectedItem());
+    }
+
+    private void enterSelectionMode(UiMessage firstMessage) {
         if (messagesListView == null) return;
+        selectionMode = true;
         multiMessageSelectionMode = true;
         messagesListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-        showInfo("Selection multiple activee. Selectionnez les messages puis ouvrez ... pour les supprimer.");
+        setSelectionBarVisible(true);
+        if (firstMessage != null) toggleMessageSelection(firstMessage);
+        updateSelectionBar();
+    }
+
+    private void toggleMessageSelection(UiMessage message) {
+        if (message == null) return;
+        if (!selectionMode) enterSelectionMode(message);
+        boolean selected = selectedMessages.contains(message);
+        message.setSelected(!selected);
+        if (selected) {
+            selectedMessages.remove(message);
+        } else {
+            selectedMessages.add(message);
+        }
+        updateSelectionBar();
+        messagesListView.refresh();
+    }
+
+    private void selectAllMessages() {
+        ObservableList<UiMessage> messages = currentVisibleMessages();
+        if (messages == null || messages.isEmpty()) return;
+        if (!selectionMode) enterSelectionMode(null);
+        for (UiMessage message : messages) {
+            message.setSelected(true);
+            selectedMessages.add(message);
+        }
+        updateSelectionBar();
+        messagesListView.refresh();
+    }
+
+    private void copySelectedMessages() {
+        String text = selectedMessages.stream()
+                .map(this::buildSearchPreview)
+                .filter(value -> value != null && !value.isBlank())
+                .collect(Collectors.joining(System.lineSeparator()));
+        ClipboardContent content = new ClipboardContent();
+        content.putString(text);
+        Clipboard.getSystemClipboard().setContent(content);
+        showInfo(selectedMessages.size() + " message(s) copie(s).");
+    }
+
+    private void forwardSelectedMessages() {
+        if (selectedMessages.isEmpty()) {
+            showInfo("Selectionnez au moins un message.");
+            return;
+        }
+        List<String> targets = new ArrayList<>(allContacts);
+        for (int i = 0; i < groupNames.size(); i++) {
+            targets.add("[Groupe] " + groupNames.get(i));
+        }
+        if (targets.isEmpty()) {
+            showInfo("Aucun contact ou groupe disponible.");
+            return;
+        }
+
+        ChoiceDialog<String> dialog = new ChoiceDialog<>(targets.get(0), targets);
+        dialog.setTitle("Transferer");
+        dialog.setHeaderText("Choisissez une destination");
+        dialog.setContentText("Destination :");
+        dialog.showAndWait().ifPresent(target -> {
+            for (UiMessage message : selectedMessages) {
+                String text = buildSearchPreview(message);
+                if (target.startsWith("[Groupe] ")) {
+                    int index = groupNames.indexOf(target.substring("[Groupe] ".length()));
+                    if (index >= 0 && index < groupIds.size()) networkClient.sendGroupMessage(groupIds.get(index)[0], text);
+                } else {
+                    networkClient.send(new ChatMessage(MessageType.PRIVATE, username, target, null, text));
+                }
+            }
+            showInfo(selectedMessages.size() + " message(s) transfere(s).");
+            exitSelectionMode();
+        });
     }
 
     private List<Integer> selectedMessageIds() {
-        if (messagesListView == null) return List.of();
-        return messagesListView.getSelectionModel().getSelectedItems().stream()
+        return selectedMessages.stream()
                 .map(UiMessage::getMessageId)
                 .filter(id -> id > 0)
                 .distinct()
@@ -2225,7 +2572,7 @@ public class MainChatController {
 
         saveCurrentMessageSelection(ids);
         ids.forEach(id -> {
-            networkClient.deleteMessageForEveryone(id);
+            networkClient.sendDeleteMessage(id);
             removeMessageLocally(id);
         });
         disableMultiMessageSelection();
@@ -2242,10 +2589,42 @@ public class MainChatController {
     }
 
     private void disableMultiMessageSelection() {
+        exitSelectionMode();
+    }
+
+    private void exitSelectionMode() {
         if (messagesListView == null) return;
+        selectedMessages.forEach(message -> message.setSelected(false));
+        selectedMessages.clear();
+        selectionMode = false;
         multiMessageSelectionMode = false;
         messagesListView.getSelectionModel().clearSelection();
         messagesListView.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
+        setSelectionBarVisible(false);
+        updateSelectionBar();
+        messagesListView.refresh();
+    }
+
+    private void setSelectionBarVisible(boolean visible) {
+        if (selectionBar != null) {
+            selectionBar.setVisible(visible);
+            selectionBar.setManaged(visible);
+        }
+    }
+
+    private void updateSelectionBar() {
+        if (selectionBarController != null) {
+            selectionBarController.setSelectedCount(selectedMessages.size());
+        }
+        if (selectionMode && selectedMessages.isEmpty()) {
+            setSelectionBarVisible(true);
+        }
+    }
+
+    private ObservableList<UiMessage> currentVisibleMessages() {
+        if (currentGroupId != -1) return groupConversations.get(currentGroupId);
+        if (currentPrivateTarget != null) return privateConversations.get(currentPrivateTarget);
+        return messagesListView == null ? null : messagesListView.getItems();
     }
 
     private void removeMessageLocally(int messageId) {
@@ -2325,10 +2704,14 @@ public class MainChatController {
 
     @FXML
     private void onShareContact() {
+        if (isSendingContact) {
+            return;
+        }
         if (allContacts.isEmpty()) {
             showInfo("Aucun contact disponible a partager.");
             return;
         }
+        isSendingContact = true;
 
         ChoiceDialog<String> dialog = new ChoiceDialog<>(allContacts.get(0), allContacts);
         dialog.setTitle("Partager un contact");
@@ -2336,21 +2719,33 @@ public class MainChatController {
         dialog.setContentText("Contact :");
 
         Optional<String> choice = dialog.showAndWait();
-        if (choice.isEmpty()) return;
+        if (choice.isEmpty()) {
+            resetSendingContactGuard();
+            return;
+        }
 
         String sharedContact = choice.get();
         String text = "Contact partage: " + sharedContact;
         if (currentGroupId != -1) {
             networkClient.sendGroupMessage(currentGroupId, text);
+            resetSendingContactGuard();
             return;
         }
         if (currentPrivateTarget == null) {
             showInfo("Selectionnez une conversation d'abord.");
+            resetSendingContactGuard();
             return;
         }
         ChatMessage msg = new ChatMessage(MessageType.PRIVATE, username, currentPrivateTarget, currentConversationId, text);
         networkClient.send(msg);
         addPrivateMessage(msg);
+        resetSendingContactGuard();
+    }
+
+    private void resetSendingContactGuard() {
+        PauseTransition pause = new PauseTransition(Duration.seconds(1));
+        pause.setOnFinished(e -> isSendingContact = false);
+        pause.play();
     }
 
     @FXML

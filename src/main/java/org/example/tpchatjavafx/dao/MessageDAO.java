@@ -229,10 +229,22 @@ public class MessageDAO {
                 if (!isMissingTable(e)) throw e;
             }
 
-            stmt.setInt(1, utilisateurId);
-            stmt.setInt(2, messageId);
-            stmt.setInt(3, utilisateurId);
-            stmt.setInt(4, utilisateurId);
+            return hardDelete(messageId, utilisateurId);
+        }
+    }
+
+    public boolean hardDelete(int messageId, int userId) throws SQLException {
+        String sql = "DELETE m FROM message m " +
+                "LEFT JOIN groupe_membre gm ON gm.groupe_id = m.groupe_id " +
+                "AND gm.utilisateur_id = ? AND gm.role = 'ADMIN' " +
+                "LEFT JOIN groupe g ON g.id = m.groupe_id AND g.createur_id = ? " +
+                "WHERE m.id = ? AND (m.expediteur_id = ? OR gm.utilisateur_id IS NOT NULL OR g.createur_id IS NOT NULL)";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, userId);
+            stmt.setInt(2, userId);
+            stmt.setInt(3, messageId);
+            stmt.setInt(4, userId);
             return stmt.executeUpdate() > 0;
         }
     }
@@ -332,6 +344,14 @@ public class MessageDAO {
         m.setGroupeId(readNullableInt(rs, "groupe_id"));
         m.setReunionId(readNullableInt(rs, "reunion_id"));
         m.setEstLu(rs.getBoolean("estLu"));
+        try {
+            m.setDeleted(rs.getBoolean("is_deleted"));
+            Timestamp deletedAt = rs.getTimestamp("deleted_at");
+            if (deletedAt != null) m.setDeletedAt(deletedAt.toLocalDateTime());
+            m.setDeletedBy(readNullableInt(rs, "deleted_by"));
+        } catch (SQLException ignored) {
+            // Colonnes de migration absentes dans une ancienne BD.
+        }
 
         Utilisateur expediteur = new Utilisateur();
         expediteur.setId(m.getExpediteurId());

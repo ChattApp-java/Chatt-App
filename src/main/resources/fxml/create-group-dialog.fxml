@@ -6,7 +6,7 @@
 <VBox xmlns="http://javafx.com/javafx/21"
       xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="org.example.tpchatjavafx.client.controller.CreateGroupDialogController"
-      spacing="12" prefWidth="420"
+      spacing="12" minWidth="360" maxWidth="520"
       styleClass="group-dialog-content">
     <padding><Insets top="18" right="18" bottom="18" left="18"/></padding>
 
@@ -23,6 +23,6 @@
               styleClass="message-input"/>
 
     <Label text="Membres a ajouter" styleClass="field-label"/>
-    <ListView fx:id="contactsListView" prefHeight="180"
+    <ListView fx:id="contactsListView" minHeight="160" maxHeight="260"
               styleClass="contact-list group-dialog-list"/>
 </VBox>

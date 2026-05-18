@@ -7,10 +7,11 @@
            xmlns:fx="http://javafx.com/fxml"
            fx:controller="org.example.tpchatjavafx.client.controller.GroupController"
            dividerPositions="0.28"
-           prefWidth="800" prefHeight="600">
+           minWidth="800" minHeight="600"
+           VBox.vgrow="ALWAYS" HBox.hgrow="ALWAYS">
 
     <!-- ── Panneau gauche : liste des groupes ── -->
-    <VBox styleClass="sidebar" prefWidth="220">
+    <VBox styleClass="sidebar" minWidth="260" maxWidth="380" SplitPane.resizableWithParent="false">
         <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
 
         <Label text="👥 Groupes" styleClass="group-panel-title"/>
@@ -24,7 +25,7 @@
     </VBox>
 
     <!-- ── Panneau droit : chat de groupe ── -->
-    <VBox styleClass="chat-area">
+    <VBox styleClass="chat-area" minWidth="400">
 
         <!-- Top bar -->
         <HBox styleClass="chat-top-bar" alignment="CENTER_LEFT" spacing="10">

@@ -3,6 +3,7 @@ package org.example.tpchatjavafx.client.audio;
 import javax.sound.sampled.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.function.IntConsumer;
 
 /**
  * Joue l'audio reçu du réseau.
@@ -13,6 +14,11 @@ public class AudioPlaybackService {
     private Thread playbackThread;
     private volatile boolean running = false;
     private final BlockingQueue<byte[]> audioQueue = new LinkedBlockingQueue<>();
+    private IntConsumer onProgress;
+
+    public void setOnProgress(IntConsumer onProgress) {
+        this.onProgress = onProgress;
+    }
 
     public void start() throws LineUnavailableException {
         if (running) return;
@@ -63,6 +69,7 @@ public class AudioPlaybackService {
                 byte[] audioData = audioQueue.take();
                 if (audioData != null && speakers != null) {
                     speakers.write(audioData, 0, audioData.length);
+                    if (onProgress != null) onProgress.accept(speakers.getFramePosition());
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();

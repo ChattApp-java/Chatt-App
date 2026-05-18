@@ -10,7 +10,8 @@
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.VBox?>
 <BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="org.example.tpchatjavafx.client.controller.MeetingController">
+            fx:controller="org.example.tpchatjavafx.client.controller.MeetingController"
+            minWidth="800" minHeight="600">
     <top>
         <HBox spacing="12" styleClass="meeting-top-bar" alignment="CENTER_LEFT">
             <Label fx:id="meetingTitle" text="Réunion" styleClass="meeting-title" />
@@ -21,12 +22,12 @@
         </HBox>
     </top>
     <center>
-        <GridPane fx:id="videoGrid" styleClass="meeting-grid" />
+        <GridPane fx:id="videoGrid" styleClass="meeting-grid" VBox.vgrow="ALWAYS" HBox.hgrow="ALWAYS" />
     </center>
     <right>
         <VBox spacing="12" styleClass="meeting-sidebar" padding="12">
             <Label text="Participants" styleClass="meeting-sidebar-title" />
-            <ListView fx:id="participantsList" prefWidth="200" />
+            <ListView fx:id="participantsList" minWidth="160" maxWidth="260" VBox.vgrow="ALWAYS" />
         </VBox>
     </right>
 </BorderPane>
