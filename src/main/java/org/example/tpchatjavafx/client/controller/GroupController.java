@@ -23,6 +23,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.shape.SVGPath;
 import javafx.stage.FileChooser;
 import org.example.tpchatjavafx.client.NetworkClient;
 import org.example.tpchatjavafx.client.util.UiMessage;
@@ -45,6 +46,10 @@ import java.util.List;
 import java.util.Map;
 
 public class GroupController extends javafx.scene.control.SplitPane {
+    private static final String PHONE_ICON =
+            "M6.62 10.79 C8.06 13.62 10.38 15.93 13.21 17.38 L15.41 15.18 C15.68 14.91 16.08 14.82 16.43 14.94 C17.55 15.31 18.76 15.51 20 15.51 C20.55 15.51 21 15.96 21 16.51 V20 C21 20.55 20.55 21 20 21 C10.61 21 3 13.39 3 4 C3 3.45 3.45 3 4 3 H7.5 C8.05 3 8.5 3.45 8.5 4 C8.5 5.24 8.7 6.45 9.07 7.57 C9.18 7.92 9.1 8.31 8.82 8.59 L6.62 10.79 Z";
+    private static final String VIDEO_ICON =
+            "M17 10.5 V6 C17 5.45 16.55 5 16 5 H4 C3.45 5 3 5.45 3 6 V18 C3 18.55 3.45 19 4 19 H16 C16.55 19 17 18.55 17 18 V13.5 L21 17.5 V6.5 L17 10.5 Z";
 
     private NetworkClient networkClient;
     private String username;
@@ -189,12 +194,14 @@ public class GroupController extends javafx.scene.control.SplitPane {
         btnAddMember.setTooltip(new Tooltip("Ajouter un membre"));
         btnAddMember.setOnAction(e -> ouvrirAjoutMembre());
 
-        btnVoiceMeeting = new Button("\uf095");
+        btnVoiceMeeting = new Button();
+        btnVoiceMeeting.setGraphic(createActionIcon(PHONE_ICON));
         btnVoiceMeeting.getStyleClass().addAll("call-btn", "group-action-btn", "group-call-icon-btn");
         btnVoiceMeeting.setTooltip(new Tooltip("Appel vocal"));
         btnVoiceMeeting.setOnAction(e -> demarrerReunion("AUDIO"));
 
-        btnMeeting = new Button("\uf03d");
+        btnMeeting = new Button();
+        btnMeeting.setGraphic(createActionIcon(VIDEO_ICON));
         btnMeeting.getStyleClass().addAll("call-btn", "group-action-btn", "group-call-icon-btn");
         btnMeeting.setTooltip(new Tooltip("Appel video"));
         btnMeeting.setOnAction(e -> demarrerReunion("VIDEO"));
@@ -269,6 +276,13 @@ public class GroupController extends javafx.scene.control.SplitPane {
         getItems().addAll(left, right);
         setDividerPositions(0.24);
         updateGroupActions(false);
+    }
+
+    private SVGPath createActionIcon(String content) {
+        SVGPath icon = new SVGPath();
+        icon.setContent(content);
+        icon.getStyleClass().add("whatsapp-action-icon");
+        return icon;
     }
 
     private void registerCallbacks() {

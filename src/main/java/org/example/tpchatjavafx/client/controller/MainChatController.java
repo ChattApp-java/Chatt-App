@@ -22,6 +22,7 @@ import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.shape.SVGPath;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
 import javafx.util.Duration;
@@ -63,6 +64,11 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class MainChatController {
+    private static final String MIC_ICON =
+            "M12 14 C13.66 14 15 12.66 15 11 V5 C15 3.34 13.66 2 12 2 C10.34 2 9 3.34 9 5 V11 C9 12.66 10.34 14 12 14 Z M17.3 11 C17.3 14 14.76 16.1 12 16.1 C9.24 16.1 6.7 14 6.7 11 H5 C5 14.41 7.72 17.23 11 17.72 V21 H13 V17.72 C16.28 17.24 19 14.42 19 11 H17.3 Z";
+    private static final String STOP_ICON = "M6 6 H18 V18 H6 Z";
+    private static final String DOWNLOAD_ICON = "M12 3 V13.2 L15.6 9.6 L17 11 L12 16 L7 11 L8.4 9.6 L11 12.2 V3 H12 Z M5 19 H19 V21 H5 V19 Z";
+    private static final String PLAY_ICON = "M8 5 V19 L19 12 Z";
 
     @FXML private BorderPane rootPane;
     @FXML private VBox       privateChatPane;
@@ -545,10 +551,7 @@ public class MainChatController {
         chatTitleLabel.setText(groupName);
         chatStatusLabel.setText("Groupe de discussion");
         chatAvatarLabel.setText(groupName.substring(0, 1).toUpperCase());
-        voiceCallButton.setVisible(false);
-        voiceCallButton.setManaged(false);
-        videoCallButton.setVisible(false);
-        videoCallButton.setManaged(false);
+        updateCallButtonsVisibility();
         groupConversations.putIfAbsent(groupId, FXCollections.observableArrayList());
         messagesListView.setItems(groupConversations.get(groupId));
         networkClient.requestGroupHistory(groupId);
@@ -1344,6 +1347,10 @@ public class MainChatController {
 
     @FXML
     private void onStartVideoCall() {
+        if (currentGroupId != -1) {
+            startCurrentGroupCall("VIDEO");
+            return;
+        }
         if (currentPrivateTarget == null) {
             showInfo("Select a private contact first.");
             return;
@@ -1353,6 +1360,10 @@ public class MainChatController {
 
     @FXML
     private void onStartVoiceCall() {
+        if (currentGroupId != -1) {
+            startCurrentGroupCall("AUDIO");
+            return;
+        }
         if (currentPrivateTarget == null) {
             showInfo("SÃƒÂ©lectionnez un contact privÃƒÂ© d'abord.");
             return;
@@ -1449,15 +1460,25 @@ public class MainChatController {
 
     private void updateRecordButtonState() {
         if (recordAudioButton == null) return;
+        recordAudioButton.setText("");
         if (recordingAudio) {
-            recordAudioButton.setText("Ã¢â€“Â ");
-            recordAudioButton.setText("REC");
-            recordAudioButton.setStyle("-fx-text-fill: #f87171; -fx-font-weight: bold;");
+            recordAudioButton.setGraphic(createActionIcon(STOP_ICON));
+            if (!recordAudioButton.getStyleClass().contains("recording-icon-btn")) {
+                recordAudioButton.getStyleClass().add("recording-icon-btn");
+            }
+            recordAudioButton.setTooltip(new Tooltip("Arreter l'enregistrement"));
         } else {
-            recordAudioButton.setText("Ã°Å¸Å½â„¢");
-            recordAudioButton.setText("Audio");
-            recordAudioButton.setStyle("");
+            recordAudioButton.setGraphic(createActionIcon(MIC_ICON));
+            recordAudioButton.getStyleClass().remove("recording-icon-btn");
+            recordAudioButton.setTooltip(new Tooltip("Message audio"));
         }
+    }
+
+    private SVGPath createActionIcon(String content) {
+        SVGPath icon = new SVGPath();
+        icon.setContent(content);
+        icon.getStyleClass().add("whatsapp-action-icon");
+        return icon;
     }
 
     private void showRecordingWaveform(boolean visible) {
@@ -1612,8 +1633,10 @@ public class MainChatController {
                     }
                     case AUDIO -> {
                         Button play = new Button("Ã¢â€“Â¶");
-                        play.setText(">");
+                        play.setText("");
+                        play.setGraphic(createActionIcon(PLAY_ICON));
                         play.getStyleClass().add("btn-icon");
+                        play.getStyleClass().add("media-icon-btn");
                         play.setDisable(item.getFilePath() == null);
                         WaveformVisualizer waveform = new WaveformVisualizer(220, 34);
                         waveform.setData(loadWaveformData(item.getFilePath()));
@@ -1630,7 +1653,7 @@ public class MainChatController {
                         row.getChildren().add(content);
                     }
                     case FILE -> {
-                        Label icon = FileIconResolver.getIconForFile(item.getText());
+                        Node icon = FileIconResolver.getIconForFile(item.getText());
                         Label nameLabel = new Label("Ã°Å¸â€œÅ½ " + item.getText());
                         nameLabel.getStyleClass().add("file-name");
                         nameLabel.setText(item.getText() == null ? "Fichier" : item.getText());
@@ -1639,9 +1662,11 @@ public class MainChatController {
                         VBox fileInfo = new VBox(3, nameLabel, sizeLabel);
                         HBox.setHgrow(fileInfo, javafx.scene.layout.Priority.ALWAYS);
                         Button downloadBtn = new Button("Ã°Å¸â€™Â¾");
-                        downloadBtn.setText("\uf019");
+                        downloadBtn.setText("");
+                        downloadBtn.setGraphic(createActionIcon(DOWNLOAD_ICON));
                         downloadBtn.getStyleClass().add("btn-icon");
                         downloadBtn.getStyleClass().add("file-download-btn");
+                        downloadBtn.getStyleClass().add("media-icon-btn");
                         downloadBtn.setDisable(item.getFilePath() == null);
                         downloadBtn.setOnAction(e -> downloadFile(item.getFilePath(), item.getText()));
 
@@ -1657,6 +1682,9 @@ public class MainChatController {
                     }
                 }
                 setText(null);
+                if (selectionMode && item.getKind() != UiMessage.Kind.SYSTEM) {
+                    row.getChildren().add(0, createSelectionCheckBox(item));
+                }
                 setGraphic(row);
                 row.getStyleClass().remove("message-selection-row");
                 if (selectedMessages.contains(item) || item.isSelected()) {
@@ -1676,6 +1704,19 @@ public class MainChatController {
                 });
             }
         });
+    }
+
+    private CheckBox createSelectionCheckBox(UiMessage item) {
+        CheckBox checkBox = new CheckBox();
+        checkBox.getStyleClass().add("message-select-check");
+        checkBox.setSelected(selectedMessages.contains(item) || item.isSelected());
+        checkBox.setFocusTraversable(false);
+        checkBox.setOnAction(event -> {
+            toggleMessageSelection(item);
+            event.consume();
+        });
+        checkBox.setOnMouseClicked(event -> event.consume());
+        return checkBox;
     }
 
     private String messageFooter(UiMessage item, boolean isOwn) {
@@ -1699,14 +1740,14 @@ public class MainChatController {
     }
 
     private void updateCallButtonsVisibility() {
-        boolean inPrivate = currentPrivateTarget != null;
+        boolean canCall = currentPrivateTarget != null || currentGroupId != -1;
         if (voiceCallButton != null) {
-            voiceCallButton.setVisible(inPrivate);
-            voiceCallButton.setManaged(inPrivate);
+            voiceCallButton.setVisible(canCall);
+            voiceCallButton.setManaged(canCall);
         }
         if (videoCallButton != null) {
-            videoCallButton.setVisible(inPrivate);
-            videoCallButton.setManaged(inPrivate);
+            videoCallButton.setVisible(canCall);
+            videoCallButton.setManaged(canCall);
         }
     }
 
