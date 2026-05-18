@@ -58,10 +58,7 @@ CREATE TABLE IF NOT EXISTS conversation (
 CREATE TABLE IF NOT EXISTS participant_conversation (
     conversation_id INT NOT NULL,
     utilisateur_id INT NOT NULL,
-    PRIMARY KEY (
-        conversation_id,
-        utilisateur_id
-    ),
+    PRIMARY KEY (conversation_id, utilisateur_id),
     FOREIGN KEY (conversation_id) REFERENCES conversation (id) ON DELETE CASCADE,
     FOREIGN KEY (utilisateur_id) REFERENCES utilisateur (id) ON DELETE CASCADE
 ) ENGINE = InnoDB;
