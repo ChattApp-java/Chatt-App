@@ -93,6 +93,39 @@
     -fx-padding: 5 8;
 }
 
+.icon-only-btn {
+    -fx-min-width: 44;
+    -fx-pref-width: 44;
+    -fx-max-width: 44;
+    -fx-min-height: 40;
+    -fx-pref-height: 40;
+    -fx-max-height: 40;
+    -fx-padding: 0;
+    -fx-content-display: graphic-only;
+    -fx-alignment: center;
+}
+
+.input-icon-btn.icon-only-btn {
+    -fx-min-width: 44;
+    -fx-pref-width: 44;
+    -fx-max-width: 44;
+    -fx-min-height: 44;
+    -fx-pref-height: 44;
+    -fx-max-height: 44;
+}
+
+.whatsapp-action-icon {
+    -fx-fill: #0369a1;
+}
+
+.icon-only-btn:hover .whatsapp-action-icon {
+    -fx-fill: #075985;
+}
+
+.input-icon-btn.recording-icon-btn .whatsapp-action-icon {
+    -fx-fill: #f87171;
+}
+
 .header-icon-btn:hover,
 .call-action-btn:hover,
 .input-icon-btn:hover {
@@ -111,6 +144,10 @@
 .search-icon {
     -fx-text-fill: #64748b;
     -fx-font-size: 12px;
+}
+
+.search-field-icon {
+    -fx-fill: #64748b;
 }
 
 .search-field {
@@ -267,6 +304,34 @@
     -fx-padding: 8 10;
 }
 
+.message-select-check {
+    -fx-padding: 0 10 0 0;
+    -fx-cursor: hand;
+}
+
+.message-select-check > .box {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 999;
+    -fx-border-color: #7dd3fc;
+    -fx-border-radius: 999;
+    -fx-border-width: 2;
+    -fx-min-width: 22;
+    -fx-min-height: 22;
+    -fx-pref-width: 22;
+    -fx-pref-height: 22;
+    -fx-max-width: 22;
+    -fx-max-height: 22;
+}
+
+.message-select-check:selected > .box {
+    -fx-background-color: #0ea5e9;
+    -fx-border-color: #0ea5e9;
+}
+
+.message-select-check:selected > .box > .mark {
+    -fx-background-color: #ffffff;
+}
+
 .selection-bar {
     -fx-background-color: #075985;
     -fx-border-color: #38bdf8;
@@ -280,20 +345,29 @@
 }
 
 .selection-icon-btn {
-    -fx-font-family: "FontAwesome", "Font Awesome 6 Free", "Segoe UI Symbol";
     -fx-background-color: transparent;
-    -fx-text-fill: #e0f2fe;
-    -fx-font-size: 18px;
-    -fx-font-weight: 900;
     -fx-min-width: 38;
+    -fx-pref-width: 38;
+    -fx-max-width: 38;
     -fx-min-height: 38;
+    -fx-pref-height: 38;
+    -fx-max-height: 38;
+    -fx-padding: 0;
+    -fx-content-display: graphic-only;
     -fx-background-radius: 999;
     -fx-cursor: hand;
 }
 
+.selection-action-icon {
+    -fx-fill: #e0f2fe;
+}
+
 .selection-icon-btn:hover {
     -fx-background-color: #0ea5e9;
-    -fx-text-fill: #ffffff;
+}
+
+.selection-icon-btn:hover .selection-action-icon {
+    -fx-fill: #ffffff;
 }
 
 .selection-icon-btn.danger:hover {
@@ -301,25 +375,34 @@
 }
 
 .group-call-icon-btn {
-    -fx-font-family: "FontAwesome", "Font Awesome 6 Free", "Segoe UI Symbol";
-    -fx-font-size: 17px;
-    -fx-font-weight: 900;
-    -fx-text-fill: #16a34a;
     -fx-background-color: #dcfce7;
     -fx-border-color: #86efac;
     -fx-border-radius: 12;
     -fx-background-radius: 12;
     -fx-min-width: 42;
+    -fx-pref-width: 42;
+    -fx-max-width: 42;
     -fx-min-height: 38;
+    -fx-pref-height: 38;
+    -fx-max-height: 38;
     -fx-padding: 8 12;
+    -fx-content-display: graphic-only;
     -fx-cursor: hand;
+}
+
+.group-call-icon-btn .whatsapp-action-icon {
+    -fx-fill: #16a34a;
 }
 
 .group-call-icon-btn:hover,
 .group-call-icon-btn.group-join-btn {
-    -fx-text-fill: #ffffff;
     -fx-background-color: #16a34a;
     -fx-border-color: #16a34a;
+}
+
+.group-call-icon-btn:hover .whatsapp-action-icon,
+.group-call-icon-btn.group-join-btn .whatsapp-action-icon {
+    -fx-fill: #ffffff;
 }
 
 .search-result-row {
@@ -404,9 +487,6 @@
 }
 
 .file-type-icon {
-    -fx-font-family: "Font Awesome 6 Free", "FontAwesome";
-    -fx-font-size: 22px;
-    -fx-font-weight: 900;
     -fx-min-width: 40;
     -fx-min-height: 40;
     -fx-pref-width: 40;
@@ -415,39 +495,101 @@
     -fx-background-radius: 10;
 }
 
+.file-type-glyph {
+    -fx-scale-x: 0.86;
+    -fx-scale-y: 0.86;
+}
+
 .file-icon-green {
-    -fx-text-fill: #16a34a;
     -fx-background-color: rgba(22,163,74,0.14);
 }
 
+.file-icon-green .file-type-glyph {
+    -fx-fill: #16a34a;
+}
+
 .file-icon-red {
-    -fx-text-fill: #ef4444;
     -fx-background-color: rgba(239,68,68,0.14);
 }
 
+.file-icon-red .file-type-glyph {
+    -fx-fill: #ef4444;
+}
+
 .file-icon-purple {
-    -fx-text-fill: #8b5cf6;
     -fx-background-color: rgba(139,92,246,0.14);
 }
 
+.file-icon-purple .file-type-glyph {
+    -fx-fill: #8b5cf6;
+}
+
 .file-icon-blue {
-    -fx-text-fill: #2563eb;
     -fx-background-color: rgba(37,99,235,0.14);
 }
 
+.file-icon-blue .file-type-glyph {
+    -fx-fill: #2563eb;
+}
+
 .file-icon-yellow {
-    -fx-text-fill: #ca8a04;
     -fx-background-color: rgba(202,138,4,0.18);
 }
 
+.file-icon-yellow .file-type-glyph {
+    -fx-fill: #ca8a04;
+}
+
 .file-icon-gray {
-    -fx-text-fill: #64748b;
     -fx-background-color: rgba(100,116,139,0.16);
 }
 
+.file-icon-gray .file-type-glyph {
+    -fx-fill: #64748b;
+}
+
 .file-download-btn {
-    -fx-font-family: "Font Awesome 6 Free", "FontAwesome";
-    -fx-font-weight: 900;
+    -fx-background-color: rgba(255,255,255,0.88);
+    -fx-background-radius: 10;
+    -fx-border-color: rgba(186,230,253,0.9);
+    -fx-border-radius: 10;
+    -fx-min-width: 40;
+    -fx-pref-width: 40;
+    -fx-max-width: 40;
+    -fx-min-height: 40;
+    -fx-pref-height: 40;
+    -fx-max-height: 40;
+    -fx-padding: 0;
+    -fx-content-display: graphic-only;
+    -fx-cursor: hand;
+}
+
+.file-download-btn .whatsapp-action-icon {
+    -fx-fill: #0369a1;
+}
+
+.file-download-btn:hover {
+    -fx-background-color: #e0f2fe;
+}
+
+.media-icon-btn {
+    -fx-background-color: rgba(255,255,255,0.88);
+    -fx-background-radius: 10;
+    -fx-border-color: rgba(186,230,253,0.9);
+    -fx-border-radius: 10;
+    -fx-min-width: 40;
+    -fx-pref-width: 40;
+    -fx-max-width: 40;
+    -fx-min-height: 40;
+    -fx-pref-height: 40;
+    -fx-max-height: 40;
+    -fx-padding: 0;
+    -fx-content-display: graphic-only;
+    -fx-cursor: hand;
+}
+
+.media-icon-btn:hover {
+    -fx-background-color: #e0f2fe;
 }
 
 .audio-waveform {

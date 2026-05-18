@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import java.lang.String?>
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.SVGPath?>
 
 <HBox xmlns="http://javafx.com/javafx/21"
       xmlns:fx="http://javafx.com/fxml/1"
@@ -17,21 +19,57 @@
         <Insets top="10" right="16" bottom="10" left="16"/>
     </padding>
 
-    <Button text="&#xf00d;" styleClass="selection-icon-btn" onAction="#onClose">
+    <Button fx:id="closeButton" onAction="#onClose">
+        <styleClass>
+            <String fx:value="selection-icon-btn"/>
+        </styleClass>
+        <graphic>
+            <SVGPath styleClass="selection-action-icon"
+                     content="M6.4 5 L5 6.4 L10.6 12 L5 17.6 L6.4 19 L12 13.4 L17.6 19 L19 17.6 L13.4 12 L19 6.4 L17.6 5 L12 10.6 Z"/>
+        </graphic>
         <tooltip><Tooltip text="Fermer"/></tooltip>
     </Button>
     <Label fx:id="selectedCountLabel" text="0" styleClass="selection-count"/>
     <Region HBox.hgrow="ALWAYS"/>
-    <Button fx:id="copyButton" text="&#xf0c5;" styleClass="selection-icon-btn" onAction="#onCopy">
+    <Button fx:id="copyButton" onAction="#onCopy">
+        <styleClass>
+            <String fx:value="selection-icon-btn"/>
+        </styleClass>
+        <graphic>
+            <SVGPath styleClass="selection-action-icon"
+                     content="M8 7 H5 C4.45 7 4 7.45 4 8 V20 C4 20.55 4.45 21 5 21 H17 C17.55 21 18 20.55 18 20 V17 H16 V19 H6 V9 H8 V7 Z M10 3 H19 C19.55 3 20 3.45 20 4 V15 C20 15.55 19.55 16 19 16 H10 C9.45 16 9 15.55 9 15 V4 C9 3.45 9.45 3 10 3 Z M11 5 V14 H18 V5 H11 Z"/>
+        </graphic>
         <tooltip><Tooltip text="Copier"/></tooltip>
     </Button>
-    <Button fx:id="forwardButton" text="&#xf064;" styleClass="selection-icon-btn" onAction="#onForward">
+    <Button fx:id="forwardButton" onAction="#onForward">
+        <styleClass>
+            <String fx:value="selection-icon-btn"/>
+        </styleClass>
+        <graphic>
+            <SVGPath styleClass="selection-action-icon"
+                     content="M14 5 L21 12 L14 19 V15 H10 C7.24 15 5 17.24 5 20 C3.76 18.58 3 16.75 3 14.75 C3 10.47 6.47 7 10.75 7 H14 V5 Z"/>
+        </graphic>
         <tooltip><Tooltip text="Transferer"/></tooltip>
     </Button>
-    <Button fx:id="deleteButton" text="&#xf1f8;" styleClass="selection-icon-btn danger" onAction="#onDelete">
+    <Button fx:id="deleteButton" onAction="#onDelete">
+        <styleClass>
+            <String fx:value="selection-icon-btn"/>
+            <String fx:value="danger"/>
+        </styleClass>
+        <graphic>
+            <SVGPath styleClass="selection-action-icon"
+                     content="M8 4 L9 2 H15 L16 4 H21 V6 H19 V20 C19 21.1 18.1 22 17 22 H7 C5.9 22 5 21.1 5 20 V6 H3 V4 H8 Z M7 6 V20 H17 V6 H7 Z M9 9 H11 V17 H9 V9 Z M13 9 H15 V17 H13 V9 Z"/>
+        </graphic>
         <tooltip><Tooltip text="Supprimer"/></tooltip>
     </Button>
-    <Button fx:id="selectAllButton" text="&#xf046;" styleClass="selection-icon-btn" onAction="#onSelectAll">
+    <Button fx:id="selectAllButton" onAction="#onSelectAll">
+        <styleClass>
+            <String fx:value="selection-icon-btn"/>
+        </styleClass>
+        <graphic>
+            <SVGPath styleClass="selection-action-icon"
+                     content="M4 4 H20 V20 H4 V4 Z M6 6 V18 H18 V6 H6 Z M9.2 12.7 L11 14.5 L15.4 9.7 L16.8 11 L11.05 17.2 L7.8 13.95 Z"/>
+        </graphic>
         <tooltip><Tooltip text="Tout selectionner"/></tooltip>
     </Button>
 </HBox>
