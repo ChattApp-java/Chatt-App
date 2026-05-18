@@ -495,7 +495,7 @@ public class MainChatController {
         String time = msg.getTimestamp();
         if (time == null || time.isBlank()) time = java.time.LocalDateTime.now().format(timeFormatter);
         String filePath = saveIncomingGroupMedia(kind, msg.getContent(), msg.getBinaryData());
-        UiMessage uiMessage = new UiMessage(kind, own, text, filePath, time);
+        UiMessage uiMessage = new UiMessage(kind, own, text, filePath, time, msg.getMessageId());
         groupConversations.computeIfAbsent(gid, k -> FXCollections.observableArrayList()).add(uiMessage);
         if (gid == currentGroupId) {
             messagesListView.setItems(groupConversations.get(gid));
@@ -635,7 +635,6 @@ public class MainChatController {
 
         ChatMessage msg = new ChatMessage(MessageType.PRIVATE, username, currentPrivateTarget, currentConversationId, text);
         networkClient.send(msg);
-        addPrivateMessage(msg);
         messageField.clear();
     }
 
@@ -784,6 +783,7 @@ public class MainChatController {
 
         messagesListView.setItems(msgs);
         updateCallButtonsVisibility();
+        markVisibleMessagesRead(other, msgs);
 
         // Reset unread count
         unreadCounts.put(other, 0);
@@ -832,9 +832,11 @@ public class MainChatController {
                         System.err.println("Erreur sauvegarde mÃƒÂ©dia historique: " + e.getMessage());
                     }
                 }
-                uiMsg = new UiMessage(kind, own, msg.getContent(), localPath, time);
+                uiMsg = new UiMessage(kind, own, msg.getContent(), localPath, time, msg.getMessageId());
+                uiMsg.setRead(msg.isRead());
             } else {
-                uiMsg = new UiMessage(UiMessage.Kind.TEXT, own, msg.getContent(), null, time);
+                uiMsg = new UiMessage(UiMessage.Kind.TEXT, own, msg.getContent(), null, time, msg.getMessageId());
+                uiMsg.setRead(msg.isRead());
             }
 
             if (uiMsg != null) {
@@ -843,6 +845,7 @@ public class MainChatController {
 
             // Auto-scroll if it's the current view
             if (other.equals(currentPrivateTarget)) {
+                if (!own) markMessageRead(msg);
                 messagesListView.scrollTo(uiMsgs.size() - 1);
             }
         });
@@ -857,6 +860,23 @@ public class MainChatController {
     }
 
     private void onMessageReceived(ChatMessage msg) {
+        if (msg.getType() == MessageType.CHAT_DELETE_EVERYONE) {
+            Platform.runLater(() -> handlePrivateChatDeletedForEveryone(msg));
+            return;
+        }
+        if (msg.getType() == MessageType.GROUP_CHAT_DELETE_EVERYONE) {
+            Platform.runLater(() -> handleGroupChatDeletedForEveryone(msg));
+            return;
+        }
+        if (msg.getType() == MessageType.MESSAGE_DELETE_EVERYONE) {
+            Platform.runLater(() -> removeMessageLocally(msg.getMessageId()));
+            return;
+        }
+        if (msg.getType() == MessageType.MESSAGE_READ) {
+            Platform.runLater(() -> markLocalMessageRead(msg.getMessageId()));
+            return;
+        }
+
         // Avoid duplicates by tracking message ID
         if (msg.getMessageId() != -1) {
             if (processedMessageIds.contains(msg.getMessageId())) {
@@ -926,10 +946,12 @@ public class MainChatController {
             String time = msg.getTimestamp();
             if (time == null || time.isEmpty()) time = java.time.LocalDateTime.now().format(timeFormatter);
 
-            UiMessage uiMsg = new UiMessage(UiMessage.Kind.TEXT, isOwn, msg.getContent(), null, time);
+            UiMessage uiMsg = new UiMessage(UiMessage.Kind.TEXT, isOwn, msg.getContent(), null, time, msg.getMessageId());
+            uiMsg.setRead(msg.isRead());
             msgs.add(uiMsg);
 
             if (other.equals(currentPrivateTarget)) {
+                if (!isOwn) markMessageRead(msg);
                 messagesListView.scrollTo(msgs.size() - 1);
             }
             if (!privateListView.getItems().contains(other)) {
@@ -1202,12 +1224,10 @@ public class MainChatController {
                     String tempPath = saveTempFile("img-", name.substring(name.lastIndexOf('.') + 1), data);
                     ChatMessage msg = new ChatMessage(MessageType.PRIVATE_IMAGE, username, currentPrivateTarget, null, file.getName());
                     msg.setBinaryData(data);
-                    addLocalImageMessage(true, tempPath);
                     networkClient.send(msg);
                 } else {
                     ChatMessage msg = new ChatMessage(MessageType.PRIVATE_FILE, username, currentPrivateTarget, null, file.getName());
                     msg.setBinaryData(data);
-                    addLocalFileMessage(true, file.getName(), file.getAbsolutePath());
                     networkClient.send(msg);
                 }
             }
@@ -1313,7 +1333,6 @@ public class MainChatController {
             } else if (currentPrivateTarget != null) {
                 ChatMessage msg = new ChatMessage(MessageType.PRIVATE_AUDIO, username, currentPrivateTarget, null, "Audio");
                 msg.setBinaryData(Files.readAllBytes(tempFile));
-                addLocalAudioMessage(true, tempFile.toString());
                 networkClient.send(msg);
             }
         } catch (IOException e) {
@@ -1366,7 +1385,7 @@ public class MainChatController {
                 bubble.setMaxWidth(420);
                 bubble.getStyleClass().add(isOwn ? "bubble-sent" : "bubble-received");
 
-                Label time = new Label(item.getTimestamp());
+                Label time = new Label(messageFooter(item, isOwn));
                 time.getStyleClass().add(isOwn ? "timestamp-sent" : "timestamp-received");
 
                 VBox content = new VBox(2, bubble, time);
@@ -1404,7 +1423,7 @@ public class MainChatController {
                             header.getChildren().addAll(title, coords);
                             content.getChildren().addAll(header, openMap);
 
-                            Label time = new Label(item.getTimestamp());
+                            Label time = new Label(messageFooter(item, isOwn));
                             time.getStyleClass().add(isOwn ? "timestamp-sent" : "timestamp-received");
                             content.getChildren().add(time);
 
@@ -1426,7 +1445,7 @@ public class MainChatController {
                                     }
                                 });
 
-                                Label time = new Label(item.getTimestamp());
+                                Label time = new Label(messageFooter(item, isOwn));
                                 time.getStyleClass().add(isOwn ? "timestamp-sent" : "timestamp-received");
 
                                 VBox content = new VBox(2, contactButton, time);
@@ -1440,7 +1459,7 @@ public class MainChatController {
                             bubble.setMaxWidth(420);
                             bubble.getStyleClass().add(isOwn ? "bubble-sent" : "bubble-received");
 
-                            Label time = new Label(item.getTimestamp());
+                            Label time = new Label(messageFooter(item, isOwn));
                             time.getStyleClass().add(isOwn ? "timestamp-sent" : "timestamp-received");
 
                             VBox content = new VBox(2, bubble, time);
@@ -1454,7 +1473,7 @@ public class MainChatController {
                         try { imageView.setImage(new Image(new File(item.getFilePath()).toURI().toString(), 200, 0, true, true)); } catch (Exception ignored) {}
                         imageView.getStyleClass().add(isOwn ? "bubble-sent" : "bubble-received");
 
-                        Label time = new Label(item.getTimestamp());
+                        Label time = new Label(messageFooter(item, isOwn));
                         time.getStyleClass().add(isOwn ? "timestamp-sent" : "timestamp-received");
 
                         VBox content = new VBox(2, imageView, time);
@@ -1470,7 +1489,7 @@ public class MainChatController {
                         Label label = new Label(" Message vocal");
                         label.getStyleClass().add(isOwn ? "bubble-sent" : "bubble-received");
 
-                        Label time = new Label(item.getTimestamp());
+                        Label time = new Label(messageFooter(item, isOwn));
                         time.getStyleClass().add(isOwn ? "timestamp-sent" : "timestamp-received");
 
                         HBox inner = new HBox(6, play, label);
@@ -1488,7 +1507,7 @@ public class MainChatController {
                         downloadBtn.setDisable(item.getFilePath() == null);
                         downloadBtn.setOnAction(e -> downloadFile(item.getFilePath(), item.getText()));
 
-                        Label time = new Label(item.getTimestamp());
+                        Label time = new Label(messageFooter(item, isOwn));
                         time.getStyleClass().add(isOwn ? "timestamp-sent" : "timestamp-received");
 
                         HBox inner = new HBox(8, nameLabel, downloadBtn);
@@ -1502,6 +1521,12 @@ public class MainChatController {
                 setGraphic(row);
             }
         });
+    }
+
+    private String messageFooter(UiMessage item, boolean isOwn) {
+        String time = item.getTimestamp() == null ? "" : item.getTimestamp();
+        if (!isOwn) return time;
+        return time + "  " + (item.isRead() ? "Lu" : "Envoye");
     }
 
     private void updateCallButtonsVisibility() {
@@ -1537,8 +1562,14 @@ public class MainChatController {
             String other = msg.getFrom().equals(username) ? msg.getTo() : msg.getFrom();
             privateConversations.putIfAbsent(other, FXCollections.observableArrayList());
             String time = java.time.LocalDateTime.now().format(timeFormatter);
-            privateConversations.get(other).add(new UiMessage(UiMessage.Kind.AUDIO, msg.getFrom().equals(username), "Audio", path, time));
-            if (other.equals(currentPrivateTarget)) messagesListView.setItems(privateConversations.get(other));
+            boolean own = msg.getFrom().equals(username);
+            UiMessage uiMessage = new UiMessage(UiMessage.Kind.AUDIO, own, "Audio", path, time, msg.getMessageId());
+            uiMessage.setRead(msg.isRead());
+            privateConversations.get(other).add(uiMessage);
+            if (other.equals(currentPrivateTarget)) {
+                if (!own) markMessageRead(msg);
+                messagesListView.setItems(privateConversations.get(other));
+            }
             if (!privateListView.getItems().contains(other)) privateListView.getItems().add(other);
         } catch (IOException e) { showInfo("Impossible de sauvegarder l'audio reÃƒÂ§u."); }
     }
@@ -1561,8 +1592,14 @@ public class MainChatController {
             String other = msg.getFrom().equals(username) ? msg.getTo() : msg.getFrom();
             privateConversations.putIfAbsent(other, FXCollections.observableArrayList());
             String time = java.time.LocalDateTime.now().format(timeFormatter);
-            privateConversations.get(other).add(new UiMessage(UiMessage.Kind.IMAGE, msg.getFrom().equals(username), "", path, time));
-            if (other.equals(currentPrivateTarget)) messagesListView.setItems(privateConversations.get(other));
+            boolean own = msg.getFrom().equals(username);
+            UiMessage uiMessage = new UiMessage(UiMessage.Kind.IMAGE, own, "", path, time, msg.getMessageId());
+            uiMessage.setRead(msg.isRead());
+            privateConversations.get(other).add(uiMessage);
+            if (other.equals(currentPrivateTarget)) {
+                if (!own) markMessageRead(msg);
+                messagesListView.setItems(privateConversations.get(other));
+            }
             if (!privateListView.getItems().contains(other)) privateListView.getItems().add(other);
         } catch (IOException e) { showInfo("Impossible de sauvegarder l'image reÃƒÂ§ue."); }
     }
@@ -1577,8 +1614,14 @@ public class MainChatController {
             String other = msg.getFrom().equals(username) ? msg.getTo() : msg.getFrom();
             privateConversations.putIfAbsent(other, FXCollections.observableArrayList());
             String time = java.time.LocalDateTime.now().format(timeFormatter);
-            privateConversations.get(other).add(new UiMessage(UiMessage.Kind.FILE, msg.getFrom().equals(username), name != null ? name : "Fichier", path, time));
-            if (other.equals(currentPrivateTarget)) messagesListView.setItems(privateConversations.get(other));
+            boolean own = msg.getFrom().equals(username);
+            UiMessage uiMessage = new UiMessage(UiMessage.Kind.FILE, own, name != null ? name : "Fichier", path, time, msg.getMessageId());
+            uiMessage.setRead(msg.isRead());
+            privateConversations.get(other).add(uiMessage);
+            if (other.equals(currentPrivateTarget)) {
+                if (!own) markMessageRead(msg);
+                messagesListView.setItems(privateConversations.get(other));
+            }
             if (!privateListView.getItems().contains(other)) privateListView.getItems().add(other);
         } catch (IOException e) { showInfo("Impossible de sauvegarder le fichier reÃƒÂ§u."); }
     }
@@ -1663,6 +1706,14 @@ public class MainChatController {
     @FXML
     private void onMoreOptions() {
         ContextMenu menu = new ContextMenu();
+        UiMessage selectedMessage = messagesListView == null ? null : messagesListView.getSelectionModel().getSelectedItem();
+        if (selectedMessage != null && selectedMessage.getMessageId() > 0) {
+            MenuItem deleteMessageForMe = new MenuItem("Supprimer pour moi");
+            deleteMessageForMe.setOnAction(e -> deleteSelectedMessageForMe());
+            MenuItem deleteMessageForEveryone = new MenuItem("Supprimer pour tout le monde");
+            deleteMessageForEveryone.setOnAction(e -> deleteSelectedMessageForEveryone());
+            menu.getItems().addAll(deleteMessageForMe, deleteMessageForEveryone, new SeparatorMenuItem());
+        }
 
         if (currentGroupId != -1) {
             MenuItem addMemberItem = new MenuItem("Ajouter un membre");
@@ -1683,8 +1734,8 @@ public class MainChatController {
             MenuItem selectMessagesItem = new MenuItem("Selectionner des messages");
             selectMessagesItem.setOnAction(e -> showInfo("Selection des messages activee: cliquez sur un message pour le consulter."));
 
-            MenuItem clearItem = new MenuItem("Effacer la discussion");
-            clearItem.setOnAction(e -> clearCurrentChat());
+            MenuItem clearConversationItem = new MenuItem("Effacer la conversation");
+            clearConversationItem.setOnAction(e -> clearCurrentChatForMe());
 
             MenuItem leaveItem = new MenuItem("Quitter le groupe");
             leaveItem.setOnAction(e -> leaveCurrentGroup());
@@ -1697,7 +1748,7 @@ public class MainChatController {
                     searchItem,
                     selectMessagesItem,
                     new SeparatorMenuItem(),
-                    clearItem,
+                    clearConversationItem,
                     leaveItem
             );
             menu.show(rootPane, Side.TOP, 0, 60);
@@ -1706,9 +1757,9 @@ public class MainChatController {
 
         MenuItem searchItem = new MenuItem("Rechercher dans la conversation");
         searchItem.setOnAction(e -> searchInCurrentConversation());
-        MenuItem clearItem = new MenuItem("Effacer le chat");
-        clearItem.setOnAction(e -> clearCurrentChat());
-        menu.getItems().addAll(searchItem, clearItem);
+        MenuItem clearConversationItem = new MenuItem("Effacer la conversation");
+        clearConversationItem.setOnAction(e -> clearCurrentChatForMe());
+        menu.getItems().addAll(searchItem, clearConversationItem);
         menu.show(rootPane, Side.TOP, 0, 60);
     }
 
@@ -1822,6 +1873,33 @@ public class MainChatController {
                 networkClient.requestGroupList();
             }
         });
+    }
+
+    private void markMessageRead(ChatMessage msg) {
+        if (networkClient != null && msg != null && msg.getMessageId() > 0 && !username.equals(msg.getFrom())) {
+            networkClient.markMessageRead(msg.getMessageId());
+        }
+    }
+
+    private void markVisibleMessagesRead(String other, ObservableList<UiMessage> messages) {
+        if (networkClient == null || other == null || messages == null) return;
+        for (UiMessage message : messages) {
+            if (!message.isOwn() && message.getMessageId() > 0) {
+                networkClient.markMessageRead(message.getMessageId());
+            }
+        }
+    }
+
+    private void markLocalMessageRead(int messageId) {
+        if (messageId <= 0) return;
+        privateConversations.values().forEach(messages -> {
+            for (UiMessage message : messages) {
+                if (message.getMessageId() == messageId) {
+                    message.setRead(true);
+                }
+            }
+        });
+        if (messagesListView != null) messagesListView.refresh();
     }
 
     private void searchInCurrentConversation() {
@@ -1964,17 +2042,118 @@ public class MainChatController {
         return contact.isEmpty() ? null : contact;
     }
 
-    private void clearCurrentChat() {
+    private void clearCurrentChatForMe() {
         if (currentGroupId != -1 && groupConversations.containsKey(currentGroupId)) {
-            groupConversations.get(currentGroupId).clear();
-            messagesListView.setItems(groupConversations.get(currentGroupId));
-            showInfo("Chat efface.");
+            networkClient.clearGroupChat(currentGroupId);
+            clearGroupMessagesLocally(currentGroupId);
+            showInfo("Conversation effacee pour ce compte.");
             return;
         }
         if (currentPrivateTarget != null && privateConversations.containsKey(currentPrivateTarget)) {
-            privateConversations.get(currentPrivateTarget).clear();
-            messagesListView.setItems(privateConversations.get(currentPrivateTarget));
-            showInfo("Chat efface.");
+            networkClient.clearPrivateChat(currentPrivateTarget);
+            clearPrivateMessagesLocally(currentPrivateTarget);
+            showInfo("Conversation effacee pour ce compte.");
+        }
+    }
+
+    private void deleteSelectedMessageForMe() {
+        UiMessage selected = messagesListView.getSelectionModel().getSelectedItem();
+        if (selected == null || selected.getMessageId() <= 0) {
+            showInfo("Selectionnez un message d'abord.");
+            return;
+        }
+        networkClient.clearMessageForMe(selected.getMessageId());
+        removeMessageLocally(selected.getMessageId());
+        showInfo("Message supprime pour moi.");
+    }
+
+    private void deleteSelectedMessageForEveryone() {
+        UiMessage selected = messagesListView.getSelectionModel().getSelectedItem();
+        if (selected == null || selected.getMessageId() <= 0) {
+            showInfo("Selectionnez un message d'abord.");
+            return;
+        }
+        Alert confirm = new Alert(
+                Alert.AlertType.CONFIRMATION,
+                "Supprimer ce message pour tous les participants ?",
+                ButtonType.YES,
+                ButtonType.NO
+        );
+        confirm.setHeaderText("Supprimer le message");
+        if (confirm.showAndWait().orElse(ButtonType.NO) != ButtonType.YES) return;
+
+        networkClient.deleteMessageForEveryone(selected.getMessageId());
+        removeMessageLocally(selected.getMessageId());
+        showInfo("Message supprime pour tout le monde.");
+    }
+
+    private void removeMessageLocally(int messageId) {
+        if (messageId <= 0) return;
+        privateConversations.values().forEach(messages -> messages.removeIf(message -> message.getMessageId() == messageId));
+        groupConversations.values().forEach(messages -> messages.removeIf(message -> message.getMessageId() == messageId));
+        messagesListView.refresh();
+    }
+
+    private void deleteCurrentChatForEveryone() {
+        if (!confirmDeleteForEveryone()) return;
+
+        if (currentGroupId != -1 && groupConversations.containsKey(currentGroupId)) {
+            int groupId = currentGroupId;
+            networkClient.deleteGroupChatForEveryone(groupId);
+            clearGroupMessagesLocally(groupId);
+            showInfo("Discussion supprimee pour tout le monde.");
+            return;
+        }
+        if (currentPrivateTarget != null && privateConversations.containsKey(currentPrivateTarget)) {
+            String target = currentPrivateTarget;
+            networkClient.deletePrivateChatForEveryone(target);
+            clearPrivateMessagesLocally(target);
+            showInfo("Discussion supprimee pour tout le monde.");
+        }
+    }
+
+    private boolean confirmDeleteForEveryone() {
+        Alert confirm = new Alert(
+                Alert.AlertType.CONFIRMATION,
+                "Cette action supprime les messages pour tous les participants. Continuer ?",
+                ButtonType.YES,
+                ButtonType.NO
+        );
+        confirm.setHeaderText("Supprimer pour tout le monde");
+        return confirm.showAndWait().orElse(ButtonType.NO) == ButtonType.YES;
+    }
+
+    private void clearPrivateMessagesLocally(String contact) {
+        ObservableList<UiMessage> messages = privateConversations.get(contact);
+        if (messages != null) messages.clear();
+        if (contact != null && contact.equals(currentPrivateTarget)) {
+            messagesListView.setItems(messages != null ? messages : FXCollections.observableArrayList());
+        }
+    }
+
+    private void clearGroupMessagesLocally(int groupId) {
+        ObservableList<UiMessage> messages = groupConversations.get(groupId);
+        if (messages != null) messages.clear();
+        if (groupId == currentGroupId) {
+            messagesListView.setItems(messages != null ? messages : FXCollections.observableArrayList());
+        }
+    }
+
+    private void handlePrivateChatDeletedForEveryone(ChatMessage msg) {
+        String other = username != null && username.equals(msg.getFrom()) ? msg.getTo() : msg.getFrom();
+        if (other == null || "SERVER".equals(other)) {
+            other = msg.getContent();
+        }
+        clearPrivateMessagesLocally(other);
+        if (other != null && other.equals(currentPrivateTarget)) {
+            showInfo("La discussion a ete supprimee pour tout le monde.");
+        }
+    }
+
+    private void handleGroupChatDeletedForEveryone(ChatMessage msg) {
+        clearGroupMessagesLocally(msg.getGroupId());
+        if (msg.getGroupId() == currentGroupId) {
+            showInfo("La discussion du groupe a ete supprimee pour tout le monde.");
         }
     }
 

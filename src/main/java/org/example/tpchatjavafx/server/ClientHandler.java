@@ -95,6 +95,21 @@ public class ClientHandler implements Runnable {
             case HISTORY_REQUEST -> {
                 if (username != null) handleHistoryRequest(msg);
             }
+            case CHAT_CLEAR -> {
+                if (username != null) handleClearPrivateChat(msg);
+            }
+            case CHAT_DELETE_EVERYONE -> {
+                if (username != null) handleDeletePrivateChatForEveryone(msg);
+            }
+            case MESSAGE_CLEAR -> {
+                if (username != null) handleClearMessageForMe(msg);
+            }
+            case MESSAGE_DELETE_EVERYONE -> {
+                if (username != null) handleDeleteMessageForEveryone(msg);
+            }
+            case MESSAGE_READ -> {
+                if (username != null) handleMessageRead(msg);
+            }
             case LOGOUT   -> cleanup();
 
             // ===== APPELS =====
@@ -133,6 +148,12 @@ public class ClientHandler implements Runnable {
             }
             case GROUP_HISTORY_REQUEST -> {
                 if (username != null) handleGroupHistoryRequest(msg);
+            }
+            case GROUP_CHAT_CLEAR -> {
+                if (username != null) handleClearGroupChat(msg);
+            }
+            case GROUP_CHAT_DELETE_EVERYONE -> {
+                if (username != null) handleDeleteGroupChatForEveryone(msg);
             }
             case GROUP_DELETE -> {
                 if (username != null) handleGroupDelete(msg);
@@ -259,6 +280,7 @@ public class ClientHandler implements Runnable {
                 if (m.getDateEnvoi() != null) {
                     cmsg.setTimestamp(m.getDateEnvoi().format(timeFormatter));
                 }
+                cmsg.setRead(m.isEstLu());
 
                 // Load binary data if it's a media message
                 if (m.getType().contains("PRIVATE_AUDIO") || m.getType().contains("PRIVATE_IMAGE") || m.getType().contains("PRIVATE_FILE")) {
@@ -483,6 +505,27 @@ public class ClientHandler implements Runnable {
             }
         } catch (Exception e) {
             sendError("Historique de groupe indisponible : " + e.getMessage());
+        }
+    }
+
+    private void handleClearGroupChat(ChatMessage msg) {
+        try {
+            ChatServer.getGroupManager().getMembers(msg.getGroupId(), userId);
+            messageDAO.markGroupCleared(userId, msg.getGroupId());
+        } catch (Exception e) {
+            sendError("Impossible d'effacer la discussion du groupe : " + e.getMessage());
+        }
+    }
+
+    private void handleDeleteGroupChatForEveryone(ChatMessage msg) {
+        try {
+            ChatServer.getGroupManager().getMembers(msg.getGroupId(), userId);
+            messageDAO.deleteGroupMessages(msg.getGroupId());
+            ChatMessage notification = new ChatMessage(MessageType.GROUP_CHAT_DELETE_EVERYONE, "SERVER", null, null, "");
+            notification.setGroupId(msg.getGroupId());
+            ChatServer.broadcastToGroup(msg.getGroupId(), notification);
+        } catch (Exception e) {
+            sendError("Impossible de supprimer la discussion du groupe : " + e.getMessage());
         }
     }
 
@@ -758,7 +801,7 @@ public class ClientHandler implements Runnable {
 
             org.example.tpchatjavafx.model.Conversation conv = convDAO.findConversationBetween(userId, other.getId());
             if (conv != null) {
-                List<Message> history = messageDAO.getHistory(conv.getId());
+                List<Message> history = messageDAO.getHistoryForUser(conv.getId(), userId);
                 for (Message m : history) {
                     String senderName = m.getExpediteur().getUsername();
                     String recipientName = senderName.equals(username) ? otherUsername : username;
@@ -768,12 +811,13 @@ public class ClientHandler implements Runnable {
                             senderName,
                             recipientName,
                             m.getType(), // Pass original type (PRIVATE_AUDIO, etc.)
-                            m.getContenu()
-                    );
-                    syncMsg.setMessageId(m.getId());
-                    if (m.getDateEnvoi() != null) {
-                        syncMsg.setTimestamp(m.getDateEnvoi().format(timeFormatter));
-                    }
+                        m.getContenu()
+                );
+                syncMsg.setMessageId(m.getId());
+                syncMsg.setRead(m.isEstLu());
+                if (m.getDateEnvoi() != null) {
+                    syncMsg.setTimestamp(m.getDateEnvoi().format(timeFormatter));
+                }
 
                     // Charger les données binaires si c'est un média
                     if (m.getType().contains("AUDIO") || m.getType().contains("IMAGE") || m.getType().contains("FILE")) {
@@ -794,6 +838,91 @@ public class ClientHandler implements Runnable {
             }
         } catch (SQLException e) {
             System.err.println("Erreur history: " + e.getMessage());
+        }
+    }
+
+    private void handleClearPrivateChat(ChatMessage msg) {
+        String otherUsername = msg.getContent();
+        try {
+            Utilisateur other = userDAO.findByUsername(otherUsername);
+            if (other == null) return;
+
+            org.example.tpchatjavafx.model.Conversation conv = convDAO.findConversationBetween(userId, other.getId());
+            if (conv != null) {
+                messageDAO.markConversationCleared(userId, conv.getId());
+            }
+        } catch (SQLException e) {
+            sendError("Impossible d'effacer le chat : " + e.getMessage());
+        }
+    }
+
+    private void handleClearMessageForMe(ChatMessage msg) {
+        try {
+            messageDAO.markMessageCleared(userId, msg.getMessageId());
+        } catch (SQLException e) {
+            sendError("Impossible de supprimer le message : " + e.getMessage());
+        }
+    }
+
+    private void handleMessageRead(ChatMessage msg) {
+        try {
+            Message message = messageDAO.findById(msg.getMessageId());
+            if (message == null || message.getDestinataireId() == null || message.getDestinataireId() != userId) {
+                return;
+            }
+            messageDAO.markAsRead(msg.getMessageId());
+            ChatMessage receipt = new ChatMessage(MessageType.MESSAGE_READ, username, null, null, "");
+            receipt.setMessageId(msg.getMessageId());
+            receipt.setRead(true);
+            ChatServer.sendToUserId(message.getExpediteurId(), receipt);
+        } catch (SQLException e) {
+            sendError("Impossible de marquer le message comme lu : " + e.getMessage());
+        }
+    }
+
+    private void handleDeleteMessageForEveryone(ChatMessage msg) {
+        try {
+            Message message = messageDAO.findById(msg.getMessageId());
+            if (message == null) return;
+
+            boolean deleted = messageDAO.deleteMessageForEveryone(msg.getMessageId(), userId);
+            if (!deleted) return;
+
+            ChatMessage notification = new ChatMessage(MessageType.MESSAGE_DELETE_EVERYONE, username, null, null, "");
+            notification.setMessageId(msg.getMessageId());
+            if (message.getGroupeId() != null && message.getGroupeId() > 0) {
+                notification.setGroupId(message.getGroupeId());
+                ChatServer.broadcastToGroup(message.getGroupeId(), notification);
+                return;
+            }
+
+            if (message.getExpediteurId() > 0) {
+                ChatServer.sendToUserId(message.getExpediteurId(), notification);
+            }
+            if (message.getDestinataireId() != null && message.getDestinataireId() > 0) {
+                ChatServer.sendToUserId(message.getDestinataireId(), notification);
+            }
+        } catch (SQLException e) {
+            sendError("Impossible de supprimer le message pour tout le monde : " + e.getMessage());
+        }
+    }
+
+    private void handleDeletePrivateChatForEveryone(ChatMessage msg) {
+        String otherUsername = msg.getContent();
+        try {
+            Utilisateur other = userDAO.findByUsername(otherUsername);
+            if (other == null) return;
+
+            org.example.tpchatjavafx.model.Conversation conv = convDAO.findConversationBetween(userId, other.getId());
+            if (conv != null) {
+                messageDAO.deleteConversationMessages(conv.getId());
+            }
+
+            ChatMessage notification = new ChatMessage(MessageType.CHAT_DELETE_EVERYONE, username, otherUsername, null, username);
+            ChatServer.sendToUserId(other.getId(), notification);
+            ChatServer.sendToUserId(userId, notification);
+        } catch (SQLException e) {
+            sendError("Impossible de supprimer le chat : " + e.getMessage());
         }
     }
 }

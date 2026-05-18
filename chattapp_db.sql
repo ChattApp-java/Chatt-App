@@ -63,6 +63,24 @@ CREATE TABLE IF NOT EXISTS participant_conversation (
     FOREIGN KEY (utilisateur_id) REFERENCES utilisateur (id) ON DELETE CASCADE
 ) ENGINE = InnoDB;
 
+CREATE TABLE IF NOT EXISTS conversation_clear_state (
+    utilisateur_id INT NOT NULL,
+    conversation_id INT NOT NULL,
+    cleared_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (utilisateur_id, conversation_id),
+    FOREIGN KEY (utilisateur_id) REFERENCES utilisateur (id) ON DELETE CASCADE,
+    FOREIGN KEY (conversation_id) REFERENCES conversation (id) ON DELETE CASCADE
+) ENGINE = InnoDB;
+
+CREATE TABLE IF NOT EXISTS groupe_clear_state (
+    utilisateur_id INT NOT NULL,
+    groupe_id INT NOT NULL,
+    cleared_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (utilisateur_id, groupe_id),
+    FOREIGN KEY (utilisateur_id) REFERENCES utilisateur (id) ON DELETE CASCADE,
+    FOREIGN KEY (groupe_id) REFERENCES groupe (id) ON DELETE CASCADE
+) ENGINE = InnoDB;
+
 CREATE TABLE IF NOT EXISTS reunion (
     id INT AUTO_INCREMENT PRIMARY KEY,
     groupe_id INT NOT NULL,
@@ -105,6 +123,15 @@ CREATE TABLE IF NOT EXISTS message (
     FOREIGN KEY (reunion_id) REFERENCES reunion (id) ON DELETE SET NULL,
     INDEX idx_dateEnvoi (dateEnvoi),
     INDEX idx_message_groupe (groupe_id, dateEnvoi)
+) ENGINE = InnoDB;
+
+CREATE TABLE IF NOT EXISTS message_clear_state (
+    utilisateur_id INT NOT NULL,
+    message_id INT NOT NULL,
+    cleared_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (utilisateur_id, message_id),
+    FOREIGN KEY (utilisateur_id) REFERENCES utilisateur (id) ON DELETE CASCADE,
+    FOREIGN KEY (message_id) REFERENCES message (id) ON DELETE CASCADE
 ) ENGINE = InnoDB;
 
 CREATE TABLE IF NOT EXISTS fichier_media (

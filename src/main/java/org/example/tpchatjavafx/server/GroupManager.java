@@ -118,7 +118,7 @@ public class GroupManager {
 
     public List<Message> getGroupHistory(int groupeId, int requesterId) throws SQLException {
         requireMember(groupeId, requesterId);
-        return messageDAO.getMessagesByGroupeId(groupeId);
+        return messageDAO.getMessagesByGroupeIdForUser(groupeId, requesterId);
     }
 
     public List<Groupe> getGroupsForUser(int userId) throws SQLException {

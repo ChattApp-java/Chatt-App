@@ -150,7 +150,7 @@ public class ChatServer {
             Set<ClientHandler> senderHandlers = clients.get(from.getUsername());
             if (senderHandlers != null) {
                 for (ClientHandler h : senderHandlers) {
-                    if (h != from) h.send(msg);
+                    h.send(msg);
                 }
             }
         }

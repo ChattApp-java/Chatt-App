@@ -160,6 +160,33 @@ public class NetworkClient {
         send(new ChatMessage(MessageType.HISTORY_REQUEST, username, "SERVER", null, otherUser));
     }
 
+    public void clearPrivateChat(String otherUser) {
+        send(new ChatMessage(MessageType.CHAT_CLEAR, username, "SERVER", null, otherUser));
+    }
+
+    public void deletePrivateChatForEveryone(String otherUser) {
+        send(new ChatMessage(MessageType.CHAT_DELETE_EVERYONE, username, "SERVER", null, otherUser));
+    }
+
+    public void clearMessageForMe(int messageId) {
+        ChatMessage msg = new ChatMessage(MessageType.MESSAGE_CLEAR, username, "SERVER", null, "");
+        msg.setMessageId(messageId);
+        send(msg);
+    }
+
+    public void deleteMessageForEveryone(int messageId) {
+        ChatMessage msg = new ChatMessage(MessageType.MESSAGE_DELETE_EVERYONE, username, "SERVER", null, "");
+        msg.setMessageId(messageId);
+        send(msg);
+    }
+
+    public void markMessageRead(int messageId) {
+        if (messageId <= 0) return;
+        ChatMessage msg = new ChatMessage(MessageType.MESSAGE_READ, username, "SERVER", null, "");
+        msg.setMessageId(messageId);
+        send(msg);
+    }
+
     public void startMeeting(int groupId, String meetingType) {
         ChatMessage msg = new ChatMessage(MessageType.MEETING_START, username, "SERVER", null, "Demarrage reunion");
         msg.setGroupId(groupId);
@@ -303,6 +330,18 @@ public class NetworkClient {
 
     public void requestGroupHistory(int groupId) {
         ChatMessage msg = new ChatMessage(MessageType.GROUP_HISTORY_REQUEST, username, "SERVER", null, "");
+        msg.setGroupId(groupId);
+        send(msg);
+    }
+
+    public void clearGroupChat(int groupId) {
+        ChatMessage msg = new ChatMessage(MessageType.GROUP_CHAT_CLEAR, username, "SERVER", null, "");
+        msg.setGroupId(groupId);
+        send(msg);
+    }
+
+    public void deleteGroupChatForEveryone(int groupId) {
+        ChatMessage msg = new ChatMessage(MessageType.GROUP_CHAT_DELETE_EVERYONE, username, "SERVER", null, "");
         msg.setGroupId(groupId);
         send(msg);
     }

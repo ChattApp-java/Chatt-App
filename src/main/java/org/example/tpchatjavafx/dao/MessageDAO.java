@@ -50,6 +50,29 @@ public class MessageDAO {
         return history;
     }
 
+    public List<Message> getHistoryForUser(int conversationId, int utilisateurId) throws SQLException {
+        List<Message> history = new ArrayList<>();
+        String sql = "SELECT m.*, u.username FROM message m " +
+                "JOIN utilisateur u ON m.expediteur_id = u.id " +
+                "LEFT JOIN conversation_clear_state ccs ON ccs.conversation_id = m.conversation_id " +
+                "AND ccs.utilisateur_id = ? " +
+                "LEFT JOIN message_clear_state mcs ON mcs.message_id = m.id AND mcs.utilisateur_id = ? " +
+                "WHERE m.conversation_id = ? AND m.groupe_id IS NULL " +
+                "AND mcs.message_id IS NULL " +
+                "AND (ccs.cleared_at IS NULL OR m.dateEnvoi > ccs.cleared_at) " +
+                "ORDER BY m.dateEnvoi ASC";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, utilisateurId);
+            stmt.setInt(2, utilisateurId);
+            stmt.setInt(3, conversationId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) history.add(mapResultSetToMessage(rs));
+            }
+        }
+        return history;
+    }
+
     public List<Message> getMessagesByGroupeId(int groupeId) throws SQLException {
         return getMessagesByGroupeId(groupeId, 0, 0);
     }
@@ -74,14 +97,130 @@ public class MessageDAO {
         return history;
     }
 
+    public List<Message> getMessagesByGroupeIdForUser(int groupeId, int utilisateurId) throws SQLException {
+        List<Message> history = new ArrayList<>();
+        String sql = "SELECT m.*, u.username FROM message m " +
+                "JOIN utilisateur u ON m.expediteur_id = u.id " +
+                "LEFT JOIN groupe_clear_state gcs ON gcs.groupe_id = m.groupe_id " +
+                "AND gcs.utilisateur_id = ? " +
+                "LEFT JOIN message_clear_state mcs ON mcs.message_id = m.id AND mcs.utilisateur_id = ? " +
+                "WHERE m.groupe_id = ? " +
+                "AND mcs.message_id IS NULL " +
+                "AND (gcs.cleared_at IS NULL OR m.dateEnvoi > gcs.cleared_at) " +
+                "ORDER BY m.dateEnvoi ASC";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, utilisateurId);
+            stmt.setInt(2, utilisateurId);
+            stmt.setInt(3, groupeId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) history.add(mapResultSetToMessage(rs));
+            }
+        }
+        return history;
+    }
+
+    public void markConversationCleared(int utilisateurId, int conversationId) throws SQLException {
+        String sql = "INSERT INTO conversation_clear_state (utilisateur_id, conversation_id, cleared_at) " +
+                "VALUES (?, ?, CURRENT_TIMESTAMP) " +
+                "ON DUPLICATE KEY UPDATE cleared_at = CURRENT_TIMESTAMP";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, utilisateurId);
+            stmt.setInt(2, conversationId);
+            stmt.executeUpdate();
+        }
+    }
+
+    public void markGroupCleared(int utilisateurId, int groupeId) throws SQLException {
+        String sql = "INSERT INTO groupe_clear_state (utilisateur_id, groupe_id, cleared_at) " +
+                "VALUES (?, ?, CURRENT_TIMESTAMP) " +
+                "ON DUPLICATE KEY UPDATE cleared_at = CURRENT_TIMESTAMP";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, utilisateurId);
+            stmt.setInt(2, groupeId);
+            stmt.executeUpdate();
+        }
+    }
+
+    public void deleteConversationMessages(int conversationId) throws SQLException {
+        String sql = "DELETE FROM message WHERE conversation_id = ? AND groupe_id IS NULL";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, conversationId);
+            stmt.executeUpdate();
+        }
+    }
+
+    public void deleteGroupMessages(int groupeId) throws SQLException {
+        String sql = "DELETE FROM message WHERE groupe_id = ?";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, groupeId);
+            stmt.executeUpdate();
+        }
+    }
+
+    public Message findById(int messageId) throws SQLException {
+        String sql = "SELECT m.*, u.username FROM message m " +
+                "JOIN utilisateur u ON m.expediteur_id = u.id WHERE m.id = ?";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, messageId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) return mapResultSetToMessage(rs);
+            }
+        }
+        return null;
+    }
+
+    public void markMessageCleared(int utilisateurId, int messageId) throws SQLException {
+        String sql = "INSERT IGNORE INTO message_clear_state (utilisateur_id, message_id) " +
+                "SELECT ?, m.id FROM message m " +
+                "LEFT JOIN groupe_membre gm ON gm.groupe_id = m.groupe_id AND gm.utilisateur_id = ? " +
+                "WHERE m.id = ? AND (m.expediteur_id = ? OR m.destinataire_id = ? OR gm.utilisateur_id IS NOT NULL)";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, utilisateurId);
+            stmt.setInt(2, utilisateurId);
+            stmt.setInt(3, messageId);
+            stmt.setInt(4, utilisateurId);
+            stmt.setInt(5, utilisateurId);
+            stmt.executeUpdate();
+        }
+    }
+
+    public boolean deleteMessageForEveryone(int messageId, int utilisateurId) throws SQLException {
+        String sql = "DELETE m FROM message m " +
+                "LEFT JOIN groupe_membre gm ON gm.groupe_id = m.groupe_id AND gm.utilisateur_id = ? " +
+                "WHERE m.id = ? AND (m.expediteur_id = ? OR m.destinataire_id = ? OR gm.utilisateur_id IS NOT NULL)";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, utilisateurId);
+            stmt.setInt(2, messageId);
+            stmt.setInt(3, utilisateurId);
+            stmt.setInt(4, utilisateurId);
+            return stmt.executeUpdate() > 0;
+        }
+    }
+
     public List<Message> getUnreadMessages(int userId) throws SQLException {
         List<Message> unread = new ArrayList<>();
         String sql = "SELECT m.*, u.username FROM message m " +
                 "JOIN utilisateur u ON m.expediteur_id = u.id " +
-                "WHERE m.destinataire_id = ? AND m.groupe_id IS NULL AND m.estLu = FALSE ORDER BY m.dateEnvoi ASC";
+                "LEFT JOIN conversation_clear_state ccs ON ccs.conversation_id = m.conversation_id " +
+                "AND ccs.utilisateur_id = ? " +
+                "LEFT JOIN message_clear_state mcs ON mcs.message_id = m.id AND mcs.utilisateur_id = ? " +
+                "WHERE m.destinataire_id = ? AND m.groupe_id IS NULL AND m.estLu = FALSE " +
+                "AND mcs.message_id IS NULL " +
+                "AND (ccs.cleared_at IS NULL OR m.dateEnvoi > ccs.cleared_at) " +
+                "ORDER BY m.dateEnvoi ASC";
         try (Connection conn = DatabaseConnection.getInstance().getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, userId);
+            stmt.setInt(2, userId);
+            stmt.setInt(3, userId);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) unread.add(mapResultSetToMessage(rs));
             }
