@@ -6,10 +6,17 @@ import javafx.scene.control.*;
 import org.example.tpchatjavafx.client.ChatClientApp;
 import org.example.tpchatjavafx.client.NetworkClient;
 
+import java.util.prefs.Preferences;
+
 /**
  * Contrôleur de l'écran de connexion / inscription.
  */
 public class LoginController {
+    private static final String PREF_NODE = "org.example.tpchatjavafx.client.login";
+    private static final String PREF_HOST = "server_host";
+    private static final String PREF_PORT = "server_port";
+    private static final String DEFAULT_HOST = "localhost";
+    private static final String DEFAULT_PORT = "5555";
 
     // ── Champs Login ──
     @FXML private TextField     loginHostField;
@@ -35,6 +42,7 @@ public class LoginController {
     @FXML private TabPane       tabPane;
 
     private NetworkClient client;
+    private final Preferences preferences = Preferences.userRoot().node(PREF_NODE);
 
     @FXML
     private void initialize() {
@@ -43,10 +51,12 @@ public class LoginController {
         setupPasswordToggle(regPasswordField, regPasswordVisibleField, regShowPasswordCheck);
 
         // Default values
-        if (loginHostField != null) loginHostField.setText("localhost");
-        if (loginPortField != null) loginPortField.setText("5555");
-        if (regHostField != null) regHostField.setText("localhost");
-        if (regPortField != null) regPortField.setText("5555");
+        String savedHost = preferences.get(PREF_HOST, DEFAULT_HOST);
+        String savedPort = preferences.get(PREF_PORT, DEFAULT_PORT);
+        if (loginHostField != null) loginHostField.setText(savedHost);
+        if (loginPortField != null) loginPortField.setText(savedPort);
+        if (regHostField != null) regHostField.setText(savedHost);
+        if (regPortField != null) regPortField.setText(savedPort);
 
         if (loginErrorLabel != null) loginErrorLabel.setVisible(false);
         if (regErrorLabel != null) regErrorLabel.setVisible(false);
@@ -72,6 +82,10 @@ public class LoginController {
 
         if (username.isEmpty() || password.isEmpty()) {
             showError(loginErrorLabel, "Remplissez le nom d'utilisateur et le mot de passe.");
+            return;
+        }
+        if (isLoopbackHost(host)) {
+            showError(loginErrorLabel, "Pour 2 PC, utilisez l'IP du PC serveur au lieu de localhost.");
             return;
         }
 
@@ -103,6 +117,10 @@ public class LoginController {
             showError(regErrorLabel, "Adresse email invalide.");
             return;
         }
+        if (isLoopbackHost(host)) {
+            showError(regErrorLabel, "Pour 2 PC, utilisez l'IP du PC serveur au lieu de localhost.");
+            return;
+        }
         if (password.length() < 4) {
             showError(regErrorLabel, "Mot de passe trop court (min 4 caractères).");
             return;
@@ -130,6 +148,7 @@ public class LoginController {
 
         client.setOnAuthSuccess(msg -> Platform.runLater(() -> {
             try { 
+                saveServerPreferences(host, port);
                 String uname = msg.getContent();
                 int uId = Integer.parseInt(msg.getTo());
                 ChatClientApp.showMainChat(client, uname, uId); 
@@ -169,6 +188,20 @@ public class LoginController {
 
     private boolean isValidEmail(String email) {
         return email != null && email.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
+    }
+
+    private boolean isLoopbackHost(String host) {
+        if (host == null) return true;
+        String normalized = host.trim().toLowerCase();
+        return normalized.isEmpty()
+                || "localhost".equals(normalized)
+                || "127.0.0.1".equals(normalized)
+                || "::1".equals(normalized);
+    }
+
+    private void saveServerPreferences(String host, int port) {
+        preferences.put(PREF_HOST, host == null ? DEFAULT_HOST : host.trim());
+        preferences.put(PREF_PORT, String.valueOf(port));
     }
 
     private void setButtonsDisabled(boolean disabled) {
