@@ -540,17 +540,17 @@ public class MeetingController implements Initializable {
         container.setPrefWidth(tileWidth);
         container.setMaxWidth(tileWidth);
         container.setStyle(videoMeeting
-                ? "-fx-background-color: rgba(255,255,255,0.18); -fx-background-radius: 26; "
-                + "-fx-border-color: rgba(255,255,255,0.22); -fx-border-radius: 26; -fx-border-width: 1;"
-                : "-fx-background-color: white; -fx-background-radius: 26; "
-                + "-fx-border-color: rgba(10, 88, 202, 0.10); -fx-border-radius: 26; -fx-border-width: 1;");
+                ? "-fx-background-color: rgba(16, 43, 84, 0.92); -fx-background-radius: 26; "
+                + "-fx-border-color: rgba(173, 216, 255, 0.20); -fx-border-radius: 26; -fx-border-width: 1;"
+                : "-fx-background-color: rgba(245,250,255,0.98); -fx-background-radius: 26; "
+                + "-fx-border-color: rgba(82, 146, 255, 0.18); -fx-border-radius: 26; -fx-border-width: 1;");
 
         StackPane videoPane = new StackPane();
         videoPane.setPrefSize(mediaSize, mediaSize);
         videoPane.setMaxSize(mediaSize, mediaSize);
         videoPane.setStyle(videoMeeting
-                ? "-fx-background-color: rgba(13, 27, 42, 0.82); -fx-background-radius: 24;"
-                : "-fx-background-color: linear-gradient(to bottom right, #5ab2ff, #1976d2); -fx-background-radius: 48;");
+                ? "-fx-background-color: linear-gradient(to bottom right, #183a6b, #0d223f); -fx-background-radius: 24;"
+                : "-fx-background-color: linear-gradient(to bottom right, #78bdff, #2b79d6); -fx-background-radius: 48;");
 
         ImageView videoView = new ImageView();
         videoView.setFitWidth(mediaSize);
@@ -673,7 +673,7 @@ public class MeetingController implements Initializable {
                     placeholder.setManaged(false);
                 }
                 if (videoPane != null) {
-                    videoPane.setStyle("-fx-background-color: #102027; -fx-background-radius: 20;");
+                    videoPane.setStyle("-fx-background-color: #0d223f; -fx-background-radius: 20;");
                 }
                 System.out.println("[MEETING_UI] Frame affichee pour participant=" + userId);
             } else if (frame != null) {
