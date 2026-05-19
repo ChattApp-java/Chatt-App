@@ -166,6 +166,14 @@ public class MeetingController implements Initializable {
             return;
         }
         try {
+            if (webcam != null && webcam.isOpen()) {
+                webcam.close();
+                try {
+                    Thread.sleep(300);
+                } catch (InterruptedException interruptedException) {
+                    Thread.currentThread().interrupt();
+                }
+            }
             webcam = com.github.sarxos.webcam.Webcam.getDefault();
             if (webcam == null) {
                 System.err.println("[MEETING_UI] AUCUNE WEBCAM TROUVEE");
@@ -526,6 +534,10 @@ public class MeetingController implements Initializable {
                 return;
             }
         }
+    }
+
+    public void removeParticipantByName(String participantUsername) {
+        removeParticipantByUsername(participantUsername);
     }
 
     public void updateParticipantsList(String participantsCsv) {

@@ -266,6 +266,11 @@ public class NetworkClient {
         if (meetingVideoCapture != null) msg.setUdpVideoPort(meetingVideoCapture.getLocalPort());
     }
 
+    public void syncMeetingMediaPorts(int meetingId) {
+        if (meetingId <= 0) return;
+        joinMeeting(meetingId);
+    }
+
 
     public void leaveMeeting(int meetingId) {
         System.out.println("[NET_CLIENT] leaveMeeting: meeting=" + meetingId);
@@ -360,6 +365,9 @@ public class NetworkClient {
     }
 
     public void sendVideoFrame(byte[] frame, int meetingId) {
+        if (meetingId <= 0 || frame == null || frame.length == 0) {
+            return;
+        }
         sendMeetingVideoFrame(frame);
     }
 

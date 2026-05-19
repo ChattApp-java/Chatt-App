@@ -492,7 +492,7 @@ public class GroupController extends javafx.scene.control.SplitPane {
             System.out.println("[GROUP_UI] Participant rejoint: " + msg.getFrom());
             afficherSysteme(msg.getFrom() + " a rejoint la reunion.");
             if (currentMeetingController != null) {
-                currentMeetingController.addParticipant(1, msg.getFrom(), null);
+                currentMeetingController.syncParticipants(msg.getContent());
             }
         }));
 
@@ -500,7 +500,8 @@ public class GroupController extends javafx.scene.control.SplitPane {
             System.out.println("[GROUP_UI] Participant quitte: " + msg.getFrom());
             afficherSysteme(msg.getFrom() + " a quitte la reunion.");
             if (currentMeetingController != null) {
-                currentMeetingController.removeParticipantByUsername(msg.getFrom());
+                currentMeetingController.removeParticipantByName(msg.getFrom());
+                currentMeetingController.syncParticipants(msg.getContent());
             }
         }));
     }
@@ -733,6 +734,7 @@ public class GroupController extends javafx.scene.control.SplitPane {
             if (wantsVideo) {
                 networkClient.startMeetingVideo(meetingId, 0, videoPort, host);
             }
+            networkClient.syncMeetingMediaPorts(meetingId);
             if (currentMeetingController != null) {
                 currentMeetingController.updateParticipantsList(msg.getContent());
             }

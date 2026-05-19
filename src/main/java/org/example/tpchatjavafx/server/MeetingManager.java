@@ -98,6 +98,34 @@ public class MeetingManager {
         return participant;
     }
 
+    public void updateParticipantMediaPorts(int meetingId, int userId, ClientHandler handler, int udpAudioPort, int udpVideoPort) throws SQLException {
+        MeetingSession session = requireSession(meetingId);
+        ParticipantInfo current = session.participants.get(userId);
+        if (current == null) {
+            return;
+        }
+
+        int resolvedAudioPort = udpAudioPort > 0 ? udpAudioPort : current.udpAudioPort;
+        int resolvedVideoPort = udpVideoPort > 0 ? udpVideoPort : current.udpVideoPort;
+        String address = handler.getSocket().getInetAddress().getHostAddress();
+
+        ParticipantInfo refreshed = new ParticipantInfo(
+                userId,
+                current.username,
+                address,
+                resolvedAudioPort,
+                resolvedVideoPort,
+                handler
+        );
+        session.participants.put(userId, refreshed);
+
+        try {
+            udpRelayServer.registerParticipant(meetingId, userId, InetAddress.getByName(address), resolvedAudioPort, resolvedVideoPort);
+        } catch (java.net.UnknownHostException e) {
+            throw new IllegalStateException("Adresse reseau participant invalide.", e);
+        }
+    }
+
     public void leaveMeeting(int meetingId, int userId) throws SQLException {
         MeetingSession session = activeMeetings.get(meetingId);
         if (session == null) return;

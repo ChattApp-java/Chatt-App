@@ -704,8 +704,12 @@ public class ClientHandler implements Runnable {
                 return;
             }
 
+            int udpAudioPort = msg.getUdpAudioPort();
+            int udpVideoPort = msg.getUdpVideoPort();
+
             if (session.getParticipants().containsKey(userId)) {
                 System.out.println("[SERVER] User " + userId + " est deja dans la reunion");
+                ChatServer.getMeetingManager().updateParticipantMediaPorts(mid, userId, this, udpAudioPort, udpVideoPort);
                 send(ChatServer.getMeetingManager().buildMeetingInfo(session, username));
                 ChatMessage participants = new ChatMessage(MessageType.MEETING_PARTICIPANTS, "SERVER", username, null,
                         ChatServer.getMeetingManager().serializeParticipants(mid));
@@ -714,9 +718,6 @@ public class ClientHandler implements Runnable {
                 send(participants);
                 return;
             }
-
-            int udpAudioPort = msg.getUdpAudioPort();
-            int udpVideoPort = msg.getUdpVideoPort();
 
             ChatServer.getMeetingManager().joinMeeting(mid, userId, username, this, udpAudioPort, udpVideoPort);
 
