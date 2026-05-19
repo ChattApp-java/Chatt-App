@@ -118,10 +118,10 @@ public class MeetingController implements Initializable {
     }
 
     public void setCallType(String callType) {
-        this.callType = callType != null ? callType : "AUDIO";
+        this.callType = normalizeCallType(callType);
         System.out.println("[MEETING_UI] setCallType: " + this.callType);
         Platform.runLater(() -> {
-            boolean isVideo = "VIDEO".equals(this.callType);
+            boolean isVideo = isVideoMeeting();
             if (lblTitle != null) {
                 lblTitle.setText("Reunion " + (isVideo ? "video" : "audio"));
             }
@@ -151,19 +151,26 @@ public class MeetingController implements Initializable {
                 centerContainer.setManaged(showCenter);
             }
             updateSubtitle();
+            if (isVideo && networkClient != null && (webcam == null || !webcam.isOpen())) {
+                startVideoCapture();
+            }
         });
     }
 
     public void startServices() {
         System.out.println("[MEETING_UI] startServices() callType=" + callType);
-        if ("VIDEO".equals(callType)) {
+        if (isVideoMeeting()) {
             startVideoCapture();
         }
     }
 
     public void startVideoCapture() {
-        if (!"VIDEO".equals(callType)) {
+        if (!isVideoMeeting()) {
             System.out.println("[MEETING_UI] Pas VIDEO, pas de webcam");
+            return;
+        }
+        if (videoThread != null && videoThread.isAlive() && webcam != null && webcam.isOpen()) {
+            System.out.println("[MEETING_UI] Webcam deja active");
             return;
         }
         try {
@@ -262,7 +269,7 @@ public class MeetingController implements Initializable {
     }
 
     private void toggleVideo() {
-        if (!"VIDEO".equals(callType)) return;
+        if (!isVideoMeeting()) return;
         videoOn = !videoOn;
         updateVideoButton();
         if (!videoOn && webcam != null && webcam.isOpen()) {
@@ -445,6 +452,17 @@ public class MeetingController implements Initializable {
             }
             updateSubtitle();
         });
+    }
+
+    private boolean isVideoMeeting() {
+        return "VIDEO".equalsIgnoreCase(normalizeCallType(callType));
+    }
+
+    private String normalizeCallType(String value) {
+        if (value == null || value.isBlank()) {
+            return "AUDIO";
+        }
+        return value.trim().toUpperCase(Locale.ROOT);
     }
 
     private VBox createParticipantContainer(int userId, String name) {
