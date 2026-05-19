@@ -8,10 +8,14 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import org.example.tpchatjavafx.client.util.WindowSizingUtil;
 
 public class VoiceCallWindow {
 
@@ -21,13 +25,6 @@ public class VoiceCallWindow {
     private static Label timerLabel;
     private static Runnable hangupHandler;
 
-    /**
-     * Open the voice call window.
-     *
-     * @param localUser  your username (not really used now but you can show it)
-     * @param remoteUser other user's username
-     * @param onHangup   callback executed when user ends the call (button or X)
-     */
     public static void open(String localUser, String remoteUser, Runnable onHangup) {
         hangupHandler = onHangup;
 
@@ -38,21 +35,35 @@ public class VoiceCallWindow {
 
         Platform.runLater(() -> {
             currentStage = new Stage();
-            currentStage.setTitle("Voice Call");
+            currentStage.setTitle("Appel vocal - " + remoteUser);
 
-            Label title = new Label("Voice call with " + remoteUser);
-            title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+            Label callType = new Label("Appel vocal");
+            callType.setStyle("-fx-font-size: 14px; -fx-text-fill: #0f6aa6; -fx-font-weight: bold;");
+
+            Circle avatarCircle = new Circle(42, Color.web("#36a9e1"));
+            Label avatarLetter = new Label(remoteUser != null && !remoteUser.isBlank()
+                    ? remoteUser.substring(0, 1).toUpperCase()
+                    : "?");
+            avatarLetter.setStyle("-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: white;");
+            StackPane avatar = new StackPane(avatarCircle, avatarLetter);
+
+            Label title = new Label(remoteUser);
+            title.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #17324d;");
+
+            Label subtitle = new Label("Connexion audio en cours");
+            subtitle.setStyle("-fx-font-size: 13px; -fx-text-fill: #5f7c95;");
 
             timerLabel = new Label("00:00");
-            timerLabel.setStyle("-fx-font-size: 14px;");
+            timerLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #17324d;");
 
-            Button endButton = new Button("End Call");
+            Button endButton = new Button("Raccrocher");
             endButton.setStyle(
-                    "-fx-background-color: #ef4444;" +
+                    "-fx-background-color: #ff315a;" +
                             "-fx-text-fill: white;" +
+                            "-fx-font-size: 14px;" +
                             "-fx-font-weight: bold;" +
-                            "-fx-padding: 8 16 8 16;" +
-                            "-fx-background-radius: 20;"
+                            "-fx-padding: 12 28 12 28;" +
+                            "-fx-background-radius: 26;"
             );
             endButton.setOnAction(e -> {
                 if (hangupHandler != null) {
@@ -61,17 +72,17 @@ public class VoiceCallWindow {
                 closeInternal();
             });
 
-            VBox root = new VBox(15, title, timerLabel, endButton);
+            VBox root = new VBox(14, callType, avatar, title, subtitle, timerLabel, endButton);
             root.setAlignment(Pos.CENTER);
-            root.setPadding(new Insets(20));
-            root.setPrefSize(260, 150);
+            root.setPadding(new Insets(28));
+            root.setStyle("-fx-background-color: linear-gradient(to bottom, #eef8ff, #dceefe);");
 
-            Scene scene = new Scene(root);
+            Scene scene = new Scene(root, 340, 420);
             currentStage.setScene(scene);
             currentStage.initModality(Modality.NONE);
-            currentStage.setResizable(false);
+            currentStage.setResizable(true);
+            WindowSizingUtil.applyResponsiveStageSize(currentStage, 340, 420, 300, 360);
             currentStage.setOnCloseRequest(e -> {
-                // Treat window X as hangup too
                 if (hangupHandler != null) {
                     hangupHandler.run();
                 }
@@ -116,7 +127,6 @@ public class VoiceCallWindow {
         hangupHandler = null;
     }
 
-    /** Close the window from outside (remote ended the call) */
     public static void close() {
         Platform.runLater(VoiceCallWindow::closeInternal);
     }

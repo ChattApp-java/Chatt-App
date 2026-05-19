@@ -2,11 +2,14 @@ package org.example.tpchatjavafx.server;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.NetworkInterface;
 import java.net.SocketException;
+import java.net.Inet4Address;
+import java.util.Enumeration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -25,7 +28,7 @@ public class UDPRelayServer implements Closeable {
     private Thread videoThread;
 
     public UDPRelayServer() {
-        this(DEFAULT_AUDIO_PORT, DEFAULT_VIDEO_PORT, "127.0.0.1");
+        this(DEFAULT_AUDIO_PORT, DEFAULT_VIDEO_PORT, detectAdvertisedHost());
     }
 
     public UDPRelayServer(int audioPort, int videoPort, String host) {
@@ -66,6 +69,28 @@ public class UDPRelayServer implements Closeable {
     public int getAudioPort() { return audioPort; }
     public int getVideoPort() { return videoPort; }
     public String getHost() { return host; }
+
+    private static String detectAdvertisedHost() {
+        try {
+            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+            while (interfaces != null && interfaces.hasMoreElements()) {
+                NetworkInterface networkInterface = interfaces.nextElement();
+                if (!networkInterface.isUp() || networkInterface.isLoopback() || networkInterface.isVirtual()) {
+                    continue;
+                }
+                Enumeration<InetAddress> addresses = networkInterface.getInetAddresses();
+                while (addresses.hasMoreElements()) {
+                    InetAddress address = addresses.nextElement();
+                    if (address instanceof Inet4Address && !address.isLoopbackAddress()) {
+                        return address.getHostAddress();
+                    }
+                }
+            }
+            return InetAddress.getLocalHost().getHostAddress();
+        } catch (Exception e) {
+            return "127.0.0.1";
+        }
+    }
 
     private void relayLoop(DatagramSocket socket, MediaKind kind) {
         byte[] buffer = new byte[65507];

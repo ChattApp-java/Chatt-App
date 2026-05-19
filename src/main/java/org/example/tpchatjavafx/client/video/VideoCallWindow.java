@@ -4,6 +4,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 import org.example.tpchatjavafx.client.NetworkClient;
+import org.example.tpchatjavafx.client.util.WindowSizingUtil;
 
 public class VideoCallWindow {
 
@@ -20,16 +21,18 @@ public class VideoCallWindow {
             controller.init(client, me, other);
 
             window = new Stage();
-            window.setTitle("Video Call with " + other);
+            window.setTitle("Appel video - " + other);
             window.setScene(scene);
-            
+            window.setResizable(true);
+            WindowSizingUtil.applyResponsiveStageSize(window, 1000, 680, 760, 520);
+
             window.setOnCloseRequest(e -> {
                 if (!closingFromCode && controller != null) {
                     e.consume();
                     controller.onEndCall();
                 }
             });
-            
+
             window.show();
 
         } catch (Exception e) {

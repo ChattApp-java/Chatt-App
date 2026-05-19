@@ -8,6 +8,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import org.example.tpchatjavafx.client.util.WindowSizingUtil;
 
 import java.io.IOException;
 import java.net.URL;
@@ -39,7 +40,7 @@ public class IncomingMeetingDialogController {
     }
 
     public void setInitiator(String initiator) {
-        initiatorLabel.setText("Invité par : " + initiator);
+        initiatorLabel.setText("Invite par : " + initiator);
     }
 
     public void setMeetingType(String meetingType) {
@@ -75,10 +76,10 @@ public class IncomingMeetingDialogController {
         controller.setStage(stage);
         Scene scene = new Scene(root);
         stage.setScene(scene);
-        stage.setTitle("Invitation réunion");
+        stage.setTitle("Invitation reunion");
         stage.initModality(Modality.APPLICATION_MODAL);
-        stage.setResizable(false);
+        stage.setResizable(true);
+        WindowSizingUtil.applyResponsiveStageSize(stage, 430, 260, 360, 220);
         stage.showAndWait();
     }
 }
-

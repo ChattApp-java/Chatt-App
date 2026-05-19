@@ -4,12 +4,12 @@ import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
-import org.example.tpchatjavafx.client.controller.LoginController;
+import org.example.tpchatjavafx.client.util.WindowSizingUtil;
 
 import java.net.URL;
 
 /**
- * Point d'entrée JavaFX — démarre sur l'écran de login.
+ * Point d'entree JavaFX - demarre sur l'ecran de login.
  */
 public class ChatClientApp extends Application {
 
@@ -20,12 +20,8 @@ public class ChatClientApp extends Application {
         primaryStage = stage;
         primaryStage.setTitle("WeChat");
         primaryStage.setResizable(true);
-        primaryStage.setMinWidth(800);
-        primaryStage.setMinHeight(600);
         showLoginView();
     }
-
-    // ── Login ─────────────────────────────────────────────────
 
     public static void showLoginView() throws Exception {
         URL fxml = ChatClientApp.class.getResource("/fxml/login.fxml");
@@ -38,11 +34,10 @@ public class ChatClientApp extends Application {
         if (css != null) scene.getStylesheets().add(css.toExternalForm());
 
         primaryStage.setScene(scene);
-        primaryStage.setTitle("WeChat — Connexion");
+        primaryStage.setTitle("WeChat - Connexion");
+        WindowSizingUtil.applyResponsiveStageSize(primaryStage, 900, 600, 720, 520);
         primaryStage.show();
     }
-
-    // ── Main chat ─────────────────────────────────────────────
 
     public static void showMainChat(NetworkClient networkClient, String username, int userId) throws Exception {
         URL fxml = ChatClientApp.class.getResource("/fxml/main-chat-view.fxml");
@@ -55,7 +50,8 @@ public class ChatClientApp extends Application {
         if (css != null) scene.getStylesheets().add(css.toExternalForm());
 
         primaryStage.setScene(scene);
-        primaryStage.setTitle("WeChat — " + username);
+        primaryStage.setTitle("WeChat - " + username);
+        WindowSizingUtil.applyResponsiveStageSize(primaryStage, 1100, 700, 820, 560);
 
         org.example.tpchatjavafx.client.controller.MainChatController ctrl = loader.getController();
         ctrl.init(networkClient, username, userId);
@@ -66,7 +62,11 @@ public class ChatClientApp extends Application {
         ctrl.onWindowResize(primaryStage.getWidth(), primaryStage.getHeight());
     }
 
-    public static Stage getPrimaryStage() { return primaryStage; }
+    public static Stage getPrimaryStage() {
+        return primaryStage;
+    }
 
-    public static void main(String[] args) { launch(args); }
+    public static void main(String[] args) {
+        launch(args);
+    }
 }

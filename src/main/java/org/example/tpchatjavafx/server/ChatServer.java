@@ -237,7 +237,9 @@ public class ChatServer {
 
 
         forwardToTarget(infoMsg);
-        from.send(new ChatMessage(MessageType.CALL_ANSWER, msg.getTo(), msg.getFrom(), msg.getConversationId(), "Appel accepte"));
+        ChatMessage answered = new ChatMessage(MessageType.CALL_ANSWER, msg.getTo(), msg.getFrom(), msg.getConversationId(), "Appel accepte");
+        answered.setCallType(msg.getCallType());
+        from.send(answered);
 
     }
 
