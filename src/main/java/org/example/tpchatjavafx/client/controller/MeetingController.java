@@ -530,58 +530,66 @@ public class MeetingController implements Initializable {
 
     private VBox createParticipantContainer(int userId, String name) {
         boolean videoMeeting = isVideoMeeting();
+        boolean localParticipant = userId == localParticipantId || (userId == -1 && localParticipantId <= 0);
+        double tileWidth = videoMeeting ? (localParticipant ? 148 : 248) : 240;
+        double mediaSize = videoMeeting ? (localParticipant ? 120 : 220) : 96;
+
         VBox container = new VBox(10);
         container.setAlignment(Pos.CENTER);
         container.setPadding(new Insets(14));
-        container.setPrefWidth(videoMeeting ? 190 : 220);
-        container.setMaxWidth(videoMeeting ? 190 : 220);
+        container.setPrefWidth(tileWidth);
+        container.setMaxWidth(tileWidth);
         container.setStyle(videoMeeting
-                ? "-fx-background-color: rgba(17, 27, 33, 0.72); -fx-background-radius: 22;"
-                : "-fx-background-color: linear-gradient(to bottom right, #1f2c34, #111b21); -fx-background-radius: 24;");
+                ? "-fx-background-color: rgba(255,255,255,0.18); -fx-background-radius: 26; "
+                + "-fx-border-color: rgba(255,255,255,0.22); -fx-border-radius: 26; -fx-border-width: 1;"
+                : "-fx-background-color: white; -fx-background-radius: 26; "
+                + "-fx-border-color: rgba(10, 88, 202, 0.10); -fx-border-radius: 26; -fx-border-width: 1;");
 
         StackPane videoPane = new StackPane();
-        videoPane.setPrefSize(videoMeeting ? 160 : 92, videoMeeting ? 160 : 92);
-        videoPane.setMaxSize(videoMeeting ? 160 : 92, videoMeeting ? 160 : 92);
+        videoPane.setPrefSize(mediaSize, mediaSize);
+        videoPane.setMaxSize(mediaSize, mediaSize);
         videoPane.setStyle(videoMeeting
-                ? "-fx-background-color: #233138; -fx-background-radius: 20;"
-                : "-fx-background-color: linear-gradient(to bottom right, #25d366, #128c7e); -fx-background-radius: 46;");
+                ? "-fx-background-color: rgba(13, 27, 42, 0.82); -fx-background-radius: 24;"
+                : "-fx-background-color: linear-gradient(to bottom right, #5ab2ff, #1976d2); -fx-background-radius: 48;");
 
         ImageView videoView = new ImageView();
-        videoView.setFitWidth(videoMeeting ? 160 : 92);
-        videoView.setFitHeight(videoMeeting ? 160 : 92);
+        videoView.setFitWidth(mediaSize);
+        videoView.setFitHeight(mediaSize);
         videoView.setPreserveRatio(true);
 
         Label videoPlaceholder = null;
         if (videoMeeting) {
             videoPlaceholder = new Label(userId == -1 ? "Camera active" : "Video en attente");
-            videoPlaceholder.setStyle("-fx-text-fill: #dfe7ea; -fx-font-size: 12; -fx-font-weight: bold;");
+            videoPlaceholder.setStyle("-fx-text-fill: #edf4ff; -fx-font-size: 12; -fx-font-weight: bold;");
             videoPlaceholder.setWrapText(true);
             videoPlaceholder.setMaxWidth(110);
             videoPane.getChildren().addAll(videoView, videoPlaceholder);
         } else {
             Label initial = new Label(buildParticipantInitial(name));
-            initial.setStyle("-fx-text-fill: white; -fx-font-size: 32; -fx-font-weight: bold;");
+            initial.setStyle("-fx-text-fill: white; -fx-font-size: 34; -fx-font-weight: bold;");
             videoPane.getChildren().add(initial);
         }
 
-        Rectangle clip = new Rectangle(videoMeeting ? 160 : 92, videoMeeting ? 160 : 92);
-        clip.setArcWidth(videoMeeting ? 20 : 92);
-        clip.setArcHeight(videoMeeting ? 20 : 92);
+        Rectangle clip = new Rectangle(mediaSize, mediaSize);
+        clip.setArcWidth(videoMeeting ? 24 : 96);
+        clip.setArcHeight(videoMeeting ? 24 : 96);
         videoPane.setClip(clip);
 
-        Label nameLabel = new Label(userId == localParticipantId ? name + " (Vous)" : name);
+        Label nameLabel = new Label(localParticipant ? name + " (Vous)" : name);
         nameLabel.setStyle(videoMeeting
-                ? "-fx-text-fill: white; -fx-font-size: 15; -fx-font-weight: bold;"
-                : "-fx-text-fill: white; -fx-font-size: 16; -fx-font-weight: bold;");
+                ? "-fx-text-fill: white; -fx-font-size: " + (localParticipant ? "13" : "16") + "; -fx-font-weight: bold;"
+                : "-fx-text-fill: #0f3d91; -fx-font-size: 16; -fx-font-weight: bold;");
         nameLabel.setWrapText(true);
-        nameLabel.setMaxWidth(videoMeeting ? 160 : 190);
+        nameLabel.setMaxWidth(tileWidth - 20);
         nameLabel.setAlignment(Pos.CENTER);
 
         FontIcon micIcon = new FontIcon(FontAwesomeSolid.MICROPHONE);
         micIcon.setIconSize(14);
         micIcon.setIconColor(Color.web("#25D366"));
         Label micStatus = new Label(videoMeeting ? "" : "Micro actif");
-        micStatus.setStyle("-fx-text-fill: #9fb3bd; -fx-font-size: 11;");
+        micStatus.setStyle(videoMeeting
+                ? "-fx-text-fill: #cfe0ff; -fx-font-size: 11;"
+                : "-fx-text-fill: #6b7b93; -fx-font-size: 11;");
         HBox micIndicator = new HBox(6, micIcon, micStatus);
         micIndicator.setAlignment(Pos.CENTER);
 
@@ -610,9 +618,19 @@ public class MeetingController implements Initializable {
             return Integer.compare(a, b);
         });
 
-        int count = orderedIds.size();
-        for (int index = 0; index < orderedIds.size(); index++) {
-            VBox container = participantContainers.get(orderedIds.get(index));
+        List<Integer> remoteIds = new ArrayList<>();
+        Integer localId = null;
+        for (Integer id : orderedIds) {
+            if (id == localParticipantId || (id == -1 && localParticipantId <= 0)) {
+                localId = id;
+            } else {
+                remoteIds.add(id);
+            }
+        }
+
+        int count = remoteIds.size();
+        for (int index = 0; index < remoteIds.size(); index++) {
+            VBox container = participantContainers.get(remoteIds.get(index));
             if (container == null) {
                 continue;
             }
@@ -629,6 +647,16 @@ public class MeetingController implements Initializable {
                 row = index / 2;
                 videoGrid.add(container, col, row);
                 GridPane.setHalignment(container, HPos.CENTER);
+            }
+        }
+
+        if (localId != null) {
+            VBox localContainer = participantContainers.get(localId);
+            if (localContainer != null) {
+                int localRow = Math.max(0, (count + 1) / 2);
+                videoGrid.add(localContainer, 1, localRow);
+                GridPane.setHalignment(localContainer, HPos.RIGHT);
+                GridPane.setMargin(localContainer, new Insets(8, 0, 0, 0));
             }
         }
     }
