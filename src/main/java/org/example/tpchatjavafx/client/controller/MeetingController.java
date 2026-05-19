@@ -16,6 +16,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
+import javafx.geometry.HPos;
 import javafx.stage.Modality;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
@@ -463,11 +464,11 @@ public class MeetingController implements Initializable {
             }
 
             if ("VIDEO".equals(callType) && videoGrid != null) {
-                addToVideoGrid(container);
                 if (centerContainer != null) {
                     centerContainer.setVisible(false);
                     centerContainer.setManaged(false);
                 }
+                rebuildVideoGrid();
             } else if (centerContainer != null) {
                 centerContainer.getChildren().add(container);
             }
@@ -594,11 +595,42 @@ public class MeetingController implements Initializable {
         return container;
     }
 
-    private void addToVideoGrid(VBox container) {
-        int count = participantContainers.size();
-        int row = (count - 1) / 2;
-        int col = (count - 1) % 2;
-        videoGrid.add(container, col, row);
+    private void rebuildVideoGrid() {
+        if (videoGrid == null) {
+            return;
+        }
+        videoGrid.getChildren().clear();
+
+        List<Integer> orderedIds = new ArrayList<>(participantContainers.keySet());
+        orderedIds.sort((a, b) -> {
+            if (Objects.equals(a, localParticipantId)) return -1;
+            if (Objects.equals(b, localParticipantId)) return 1;
+            if (a == -1) return -1;
+            if (b == -1) return 1;
+            return Integer.compare(a, b);
+        });
+
+        int count = orderedIds.size();
+        for (int index = 0; index < orderedIds.size(); index++) {
+            VBox container = participantContainers.get(orderedIds.get(index));
+            if (container == null) {
+                continue;
+            }
+
+            int col;
+            int row;
+            if (count == 3 && index == 2) {
+                col = 0;
+                row = 1;
+                videoGrid.add(container, col, row, 2, 1);
+                GridPane.setHalignment(container, HPos.CENTER);
+            } else {
+                col = index % 2;
+                row = index / 2;
+                videoGrid.add(container, col, row);
+                GridPane.setHalignment(container, HPos.CENTER);
+            }
+        }
     }
 
     public void updateParticipantVideo(int userId, Image frame) {
@@ -662,7 +694,7 @@ public class MeetingController implements Initializable {
             VBox container = participantContainers.remove(userId);
             if (container != null) {
                 if ("VIDEO".equals(callType) && videoGrid != null) {
-                    videoGrid.getChildren().remove(container);
+                    rebuildVideoGrid();
                 } else if (centerContainer != null) {
                     centerContainer.getChildren().remove(container);
                 }

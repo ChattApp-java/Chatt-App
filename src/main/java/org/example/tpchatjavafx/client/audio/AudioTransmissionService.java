@@ -42,6 +42,8 @@ public class AudioTransmissionService {
         this.userId = userId;
         this.socket = (localPort > 0) ? new DatagramSocket(localPort) : new DatagramSocket();
         this.socket.setSoTimeout(1000);
+        this.socket.setReceiveBufferSize(262144);
+        this.socket.setSendBufferSize(262144);
 
         captureService = new AudioCaptureService();
         playbackService = new AudioPlaybackService();
@@ -91,6 +93,9 @@ public class AudioTransmissionService {
                 int length = packet.getLength();
                 if (length > 0 && playbackService != null) {
                     int offset = hasRelayHeader(packet.getData(), length) ? 8 : 0;
+                    if (length <= offset) {
+                        continue;
+                    }
                     byte[] audioData = new byte[length - offset];
                     System.arraycopy(packet.getData(), offset, audioData, 0, audioData.length);
                     if (onAudioReceived != null) {
