@@ -67,8 +67,17 @@ public class GroupManager {
 
     public void addMember(int groupeId, int requesterId, int newMemberId) throws SQLException {
         requireAdmin(groupeId, requesterId);
-        if (utilisateurDAO.findById(newMemberId) == null) throw new IllegalArgumentException("Utilisateur introuvable.");
+        org.example.tpchatjavafx.model.Utilisateur newMember = utilisateurDAO.findById(newMemberId);
+        if (newMember == null) throw new IllegalArgumentException("Utilisateur introuvable.");
         membreDAO.addMember(groupeId, newMemberId, GroupeMembre.ROLE_MEMBRE);
+
+        Message systemMsg = new Message();
+        systemMsg.setContenu(newMember.getUsername() + " a rejoint le groupe.");
+        systemMsg.setType("SYSTEM");
+        systemMsg.setExpediteurId(requesterId);
+        systemMsg.setGroupeId(groupeId);
+        systemMsg.setDateEnvoi(LocalDateTime.now());
+        messageDAO.saveGroupMessage(systemMsg);
     }
 
     public void removeMember(int groupeId, int requesterId, int memberId) throws SQLException {
@@ -129,7 +138,18 @@ public class GroupManager {
 
     public void leaveGroup(int groupeId, int userId) throws SQLException {
         requireMember(groupeId, userId);
+        org.example.tpchatjavafx.model.Utilisateur u = utilisateurDAO.findById(userId);
         membreDAO.removeMember(groupeId, userId);
+
+        if (u != null) {
+            Message systemMsg = new Message();
+            systemMsg.setContenu(u.getUsername() + " a quitte le groupe.");
+            systemMsg.setType("SYSTEM");
+            systemMsg.setExpediteurId(userId);
+            systemMsg.setGroupeId(groupeId);
+            systemMsg.setDateEnvoi(LocalDateTime.now());
+            messageDAO.saveGroupMessage(systemMsg);
+        }
     }
 
     public List<Integer> getGroupIdsForUser(int userId) throws SQLException {
