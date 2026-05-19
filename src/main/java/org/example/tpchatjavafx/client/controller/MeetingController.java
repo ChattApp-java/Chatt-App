@@ -60,6 +60,7 @@ public class MeetingController implements Initializable {
     private String username;
     private int groupId;
     private int meetingId;
+    private int localParticipantId = -1;
     private String callType = "AUDIO";
     private boolean isInitiator;
 
@@ -205,7 +206,8 @@ public class MeetingController implements Initializable {
                         BufferedImage frame = webcam.getImage();
                         if (frame != null) {
                             Image fxImage = javafx.embed.swing.SwingFXUtils.toFXImage(frame, null);
-                            Platform.runLater(() -> updateParticipantVideo(-1, fxImage));
+                            int localVideoTargetId = resolveLocalVideoTargetId();
+                            Platform.runLater(() -> updateParticipantVideo(localVideoTargetId, fxImage));
                             if (networkClient != null && meetingId > 0) {
                                 byte[] encodedFrame = encodeMeetingFrame(frame);
                                 if (encodedFrame != null && encodedFrame.length > 0) {
@@ -424,6 +426,9 @@ public class MeetingController implements Initializable {
 
     public void addParticipant(int userId, String name, String avatarUrl) {
         if (participantIds.contains(userId)) return;
+        if (name != null && name.equals(username) && userId > 0) {
+            localParticipantId = userId;
+        }
         if (name != null && name.equals(username) && participantIds.contains(-1) && userId != -1) {
             Image localFrame = null;
             ImageView localView = participantVideos.get(-1);
@@ -618,6 +623,9 @@ public class MeetingController implements Initializable {
     public void removeParticipant(int userId) {
         if (!participantIds.contains(userId)) return;
         participantIds.remove(userId);
+        if (userId == localParticipantId) {
+            localParticipantId = -1;
+        }
 
         Platform.runLater(() -> {
             Label label = participantLabels.get(userId);
@@ -711,6 +719,13 @@ public class MeetingController implements Initializable {
         if (lblSubtitle == null) return;
         int count = participantsList != null ? participantsList.getItems().size() : participantIds.size();
         lblSubtitle.setText(count + " participant(s)");
+    }
+
+    private int resolveLocalVideoTargetId() {
+        if (localParticipantId > 0 && participantVideos.containsKey(localParticipantId)) {
+            return localParticipantId;
+        }
+        return participantVideos.containsKey(-1) ? -1 : localParticipantId;
     }
 
     private void endCall() {
