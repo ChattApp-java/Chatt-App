@@ -80,6 +80,14 @@ public class AudioPlaybackService {
         audioQueue.offer(audioData);
     }
 
+    public void playAudio(byte[] audioData, AudioFormat sourceFormat) {
+        if (!running || volume <= 0.0 || audioData == null || audioData.length == 0) return;
+        if (sourceFormat != null && currentFormat != null && !AudioFormatUtil.sameFormat(sourceFormat, currentFormat)) {
+            audioData = AudioFormatUtil.convert(audioData, sourceFormat, currentFormat);
+        }
+        audioQueue.offer(audioData);
+    }
+
     public void setVolume(double volume) {
         this.volume = Math.max(0.0, Math.min(1.0, volume));
         if (speakers != null && speakers.isControlSupported(FloatControl.Type.MASTER_GAIN)) {

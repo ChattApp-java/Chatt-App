@@ -48,6 +48,7 @@ public class NetworkClient {
     private int activeMeetingAudioPort = -1;
     private int activeMeetingVideoPort = -1;
     private final Set<Integer> syncedMeetingMediaPorts = new HashSet<>();
+    private final Set<Integer> joinedMeetings = new HashSet<>();
 
     public void setActiveMeetingController(MeetingController controller) {
         this.activeMeetingController = controller;
@@ -261,6 +262,16 @@ public class NetworkClient {
     }
 
     public void joinMeeting(int meetingId) {
+        if (meetingId <= 0) return;
+        if (joinedMeetings.contains(meetingId)) {
+            System.out.println("[NET_CLIENT] joinMeeting ignore (deja joint): meeting=" + meetingId);
+            return;
+        }
+        joinedMeetings.add(meetingId);
+        sendMeetingJoin(meetingId);
+    }
+
+    private void sendMeetingJoin(int meetingId) {
         System.out.println("[NET_CLIENT] joinMeeting: meeting=" + meetingId);
         ChatMessage msg = new ChatMessage();
         msg.setType(MessageType.MEETING_JOIN);
@@ -279,12 +290,14 @@ public class NetworkClient {
         if (meetingId <= 0) return;
         if (syncedMeetingMediaPorts.contains(meetingId)) return;
         syncedMeetingMediaPorts.add(meetingId);
-        joinMeeting(meetingId);
+        sendMeetingJoin(meetingId);
     }
 
 
     public void leaveMeeting(int meetingId) {
         System.out.println("[NET_CLIENT] leaveMeeting: meeting=" + meetingId);
+        joinedMeetings.remove(meetingId);
+        syncedMeetingMediaPorts.remove(meetingId);
         ChatMessage msg = new ChatMessage();
         msg.setType(MessageType.MEETING_LEAVE);
         msg.setFrom(username);
@@ -294,6 +307,8 @@ public class NetworkClient {
 
     public void endMeeting(int meetingId) {
         System.out.println("[NET_CLIENT] endMeeting: meeting=" + meetingId);
+        joinedMeetings.remove(meetingId);
+        syncedMeetingMediaPorts.remove(meetingId);
         ChatMessage msg = new ChatMessage();
         msg.setType(MessageType.MEETING_END);
         msg.setFrom(username);
@@ -377,6 +392,7 @@ public class NetworkClient {
         activeMeetingAudioPort = -1;
         activeMeetingVideoPort = -1;
         syncedMeetingMediaPorts.clear();
+        joinedMeetings.clear();
     }
 
     public void setupUdpSockets() {

@@ -24,7 +24,7 @@ public class VideoCallWindow {
             window.setTitle("Appel video - " + other);
             window.setScene(scene);
             window.setResizable(true);
-            WindowSizingUtil.applyResponsiveStageSize(window, 1000, 680, 760, 520);
+            WindowSizingUtil.applyResponsiveStageSize(window, 860, 560, 620, 430);
 
             window.setOnCloseRequest(e -> {
                 if (!closingFromCode && controller != null) {

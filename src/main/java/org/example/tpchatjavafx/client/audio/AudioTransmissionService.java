@@ -24,7 +24,6 @@ public class AudioTransmissionService {
     private int userId;
     private Consumer<byte[]> onAudioReceived;
     private AudioFormat captureFormat;
-    private AudioFormat playbackFormat;
 
     public void initiate(String remoteHost, int remotePort) throws Exception {
         initiate(remoteHost, remotePort, 0);
@@ -52,7 +51,6 @@ public class AudioTransmissionService {
         captureService.start(transportFormat, this::sendAudio);
         playbackService.start(transportFormat);
         captureFormat = captureService.getFormat();
-        playbackFormat = playbackService.getCurrentFormat();
 
         running = true;
         receiveThread = new Thread(this::receiveAudioLoop, "AudioReceive");
@@ -95,13 +93,10 @@ public class AudioTransmissionService {
                     int offset = hasRelayHeader(packet.getData(), length) ? 8 : 0;
                     byte[] audioData = new byte[length - offset];
                     System.arraycopy(packet.getData(), offset, audioData, 0, audioData.length);
-                    if (playbackFormat != null && !AudioFormatUtil.sameFormat(AudioFormatUtil.NETWORK_FORMAT, playbackFormat)) {
-                        audioData = AudioFormatUtil.convert(audioData, AudioFormatUtil.NETWORK_FORMAT, playbackFormat);
-                    }
                     if (onAudioReceived != null) {
                         onAudioReceived.accept(audioData);
                     } else if (playbackService != null) {
-                        playbackService.playAudio(audioData);
+                        playbackService.playAudio(audioData, AudioFormatUtil.NETWORK_FORMAT);
                     }
                 }
             } catch (SocketTimeoutException ignored) {
@@ -149,7 +144,9 @@ public class AudioTransmissionService {
         if (captureService == null) return;
         if (enabled && !captureService.isRunning()) {
             try {
-                captureService.start();
+                captureService.setOnAudioCaptured(this::sendAudio);
+                captureService.start(AudioFormatUtil.NETWORK_FORMAT, this::sendAudio);
+                captureFormat = captureService.getFormat();
             } catch (LineUnavailableException e) {
                 System.err.println("Impossible d'activer le micro: " + e.getMessage());
             }

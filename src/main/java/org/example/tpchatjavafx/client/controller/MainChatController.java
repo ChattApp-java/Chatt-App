@@ -1231,9 +1231,21 @@ public class MainChatController {
             currentVoiceCall.start();
 
             // Ouvrir la fenÃƒÆ’Ã‚Âªtre d'appel
-            VoiceCallWindow.open(username, otherUser, () -> {
-                endAudioCall();
-            });
+            VoiceCallWindow.open(
+                    username,
+                    otherUser,
+                    this::endAudioCall,
+                    () -> {
+                        if (currentVoiceCall != null) {
+                            currentVoiceCall.setMicrophoneMuted(!currentVoiceCall.isMicrophoneMuted());
+                        }
+                    },
+                    () -> {
+                        if (currentVoiceCall != null) {
+                            currentVoiceCall.setSpeakerEnabled(!currentVoiceCall.isSpeakerEnabled());
+                        }
+                    }
+            );
 
             showInfo("Appel " + callType.toLowerCase() + " dÃƒÆ’Ã‚Â©marrÃƒÆ’Ã‚Â© avec " + otherUser);
 

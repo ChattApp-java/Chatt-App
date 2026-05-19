@@ -707,19 +707,14 @@ public class ClientHandler implements Runnable {
             int udpAudioPort = msg.getUdpAudioPort();
             int udpVideoPort = msg.getUdpVideoPort();
 
-            if (session.getParticipants().containsKey(userId)) {
-                System.out.println("[SERVER] User " + userId + " est deja dans la reunion");
+            boolean alreadyParticipant = session.getParticipants().containsKey(userId);
+            if (alreadyParticipant) {
+                System.out.println("[SERVER] User " + userId + " deja dans la reunion, mise a jour des ports UDP");
                 ChatServer.getMeetingManager().updateParticipantMediaPorts(mid, userId, this, udpAudioPort, udpVideoPort);
-                send(ChatServer.getMeetingManager().buildMeetingInfo(session, username));
-                ChatMessage participants = new ChatMessage(MessageType.MEETING_PARTICIPANTS, "SERVER", username, null,
-                        ChatServer.getMeetingManager().serializeParticipants(mid));
-                participants.setMeetingId(mid);
-                participants.setGroupId(session.getGroupeId());
-                send(participants);
-                return;
+            } else {
+                ChatServer.getMeetingManager().joinMeeting(mid, userId, username, this, udpAudioPort, udpVideoPort);
+                System.out.println("[SERVER] " + username + " a rejoint la reunion " + mid);
             }
-
-            ChatServer.getMeetingManager().joinMeeting(mid, userId, username, this, udpAudioPort, udpVideoPort);
 
             send(ChatServer.getMeetingManager().buildMeetingInfo(session, username));
 
@@ -728,8 +723,6 @@ public class ClientHandler implements Runnable {
             participants.setMeetingId(mid);
             participants.setGroupId(session.getGroupeId());
             send(participants);
-
-            System.out.println("[SERVER] " + username + " a rejoint la reunion " + mid);
 
         } catch (Exception e) {
             System.out.println("[SERVER] ERREUR handleMeetingJoin: " + e.getMessage());

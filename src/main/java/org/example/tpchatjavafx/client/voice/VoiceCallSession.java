@@ -21,6 +21,8 @@ public class VoiceCallSession {
 
     private Thread captureThread;
     private volatile boolean running = false;
+    private volatile boolean microphoneMuted = false;
+    private volatile boolean speakerEnabled = true;
 
     public VoiceCallSession(NetworkClient networkClient, String localUser, String remoteUser) {
         this.networkClient = networkClient;
@@ -59,7 +61,7 @@ public class VoiceCallSession {
         try {
             while (running) {
                 int count = mic.read(buffer, 0, buffer.length);
-                if (count > 0) {
+                if (count > 0 && !microphoneMuted) {
                     byte[] frame = new byte[count];
                     System.arraycopy(buffer, 0, frame, 0, count);
                     if (!AudioFormatUtil.sameFormat(captureFormat, AudioFormatUtil.NETWORK_FORMAT)) {
@@ -83,10 +85,27 @@ public class VoiceCallSession {
 
     public void playRemoteAudio(byte[] data) {
         if (speakers == null || data == null) return;
+        if (!speakerEnabled) return;
         if (!AudioFormatUtil.sameFormat(AudioFormatUtil.NETWORK_FORMAT, playbackFormat)) {
             data = AudioFormatUtil.convert(data, AudioFormatUtil.NETWORK_FORMAT, playbackFormat);
         }
         speakers.write(data, 0, data.length);
+    }
+
+    public void setMicrophoneMuted(boolean microphoneMuted) {
+        this.microphoneMuted = microphoneMuted;
+    }
+
+    public void setSpeakerEnabled(boolean speakerEnabled) {
+        this.speakerEnabled = speakerEnabled;
+    }
+
+    public boolean isMicrophoneMuted() {
+        return microphoneMuted;
+    }
+
+    public boolean isSpeakerEnabled() {
+        return speakerEnabled;
     }
 
     public void stop() {
