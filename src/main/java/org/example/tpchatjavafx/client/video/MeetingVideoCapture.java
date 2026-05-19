@@ -1,43 +1,28 @@
 package org.example.tpchatjavafx.client.video;
 
-import javafx.application.Platform;
-import javafx.embed.swing.SwingFXUtils;
-import javafx.scene.image.ImageView;
-import org.bytedeco.javacv.FFmpegFrameGrabber;
-import org.bytedeco.javacv.Frame;
-import org.bytedeco.javacv.FrameGrabber;
-import org.bytedeco.javacv.Java2DFrameConverter;
-
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketTimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Consumer;
 import java.util.function.BiConsumer;
 
+/**
+ * Relais vidéo UDP pour les réunions (réception + envoi).
+ * La capture locale est gérée par {@link org.example.tpchatjavafx.client.controller.MeetingController}
+ * via webcam-capture (sarxos), pas JavaCV/FFmpeg.
+ */
 public class MeetingVideoCapture {
 
-    private FFmpegFrameGrabber grabber;
     private DatagramSocket socket;
     private InetAddress remoteAddress;
     private int remotePort;
     private final AtomicBoolean running = new AtomicBoolean(false);
-    private Thread captureThread;
     private Thread receiveThread;
-    private final Java2DFrameConverter converter = new Java2DFrameConverter();
-    private Consumer<byte[]> onFrameCaptured;
     private BiConsumer<Integer, byte[]> onRemoteFrame;
     private int meetingId;
     private int userId;
-
-    public void setOnFrameCaptured(Consumer<byte[]> onFrameCaptured) {
-        this.onFrameCaptured = onFrameCaptured;
-    }
 
     public void setOnRemoteFrame(BiConsumer<Integer, byte[]> onRemoteFrame) {
         this.onRemoteFrame = onRemoteFrame;
@@ -55,38 +40,12 @@ public class MeetingVideoCapture {
         this.userId = userId;
         this.socket = (localPort > 0) ? new DatagramSocket(localPort) : new DatagramSocket();
         this.socket.setSoTimeout(1000);
-        grabber = createGrabber();
 
         running.set(true);
-        captureThread = new Thread(this::captureLoop, "MeetingVideoCapture");
-        captureThread.setDaemon(true);
-        captureThread.start();
         receiveThread = new Thread(this::receiveLoop, "MeetingVideoReceive");
         receiveThread.setDaemon(true);
         receiveThread.start();
-    }
-
-    public void startCapture(ImageView target) {
-        stop();
-        try {
-            grabber = createGrabber();
-            running.set(true);
-            captureThread = new Thread(() -> previewLoop(target), "MeetingVideoPreview");
-            captureThread.setDaemon(true);
-            captureThread.start();
-        } catch (Exception e) {
-            System.err.println("Impossible de demarrer la webcam JavaCV : " + e.getMessage());
-            stop();
-        }
-    }
-
-    private FFmpegFrameGrabber createGrabber() throws FrameGrabber.Exception {
-        FFmpegFrameGrabber newGrabber = new FFmpegFrameGrabber("video=Integrated Webcam");
-        newGrabber.setFormat("dshow");
-        newGrabber.setImageWidth(640);
-        newGrabber.setImageHeight(480);
-        newGrabber.start();
-        return newGrabber;
+        System.out.println("[MEETING_VIDEO] Relais UDP video actif sur le port " + socket.getLocalPort());
     }
 
     public void sendFrame(byte[] jpegFrame) {
@@ -99,7 +58,7 @@ public class MeetingVideoCapture {
         try {
             socket.send(packet);
         } catch (IOException e) {
-            System.err.println("Erreur envoi vidéo : " + e.getMessage());
+            System.err.println("[MEETING_VIDEO] Erreur envoi: " + e.getMessage());
         }
     }
 
@@ -114,90 +73,20 @@ public class MeetingVideoCapture {
                 int senderId = readInt(packet.getData(), 4);
                 byte[] frame = new byte[length - 8];
                 System.arraycopy(packet.getData(), 8, frame, 0, frame.length);
-                if (onRemoteFrame != null && senderId > 0) onRemoteFrame.accept(senderId, frame);
+                if (onRemoteFrame != null && senderId > 0) {
+                    onRemoteFrame.accept(senderId, frame);
+                }
             } catch (SocketTimeoutException ignored) {
             } catch (IOException e) {
-                if (running.get()) System.err.println("Erreur reception video reunion : " + e.getMessage());
-            }
-        }
-    }
-
-    private void captureLoop() {
-        while (running.get()) {
-            try {
-                Frame frame = grabber.grab();
-                if (frame != null && frame.image != null) {
-                    byte[] jpeg = frameToJpeg(frame);
-                    if (jpeg != null) {
-                        if (onFrameCaptured != null) {
-                            onFrameCaptured.accept(jpeg);
-                        }
-                        sendFrame(jpeg);
-                    }
-                }
-                Thread.sleep(100);
-            } catch (IOException | InterruptedException e) {
                 if (running.get()) {
-                    System.err.println("Erreur capture vidéo réunion : " + e.getMessage());
+                    System.err.println("[MEETING_VIDEO] Erreur reception: " + e.getMessage());
                 }
-                Thread.currentThread().interrupt();
-                break;
             }
-        }
-    }
-
-    private void previewLoop(ImageView target) {
-        while (running.get()) {
-            try {
-                Frame frame = grabber.grab();
-                if (frame != null && frame.image != null && target != null) {
-                    BufferedImage image = converter.convert(frame);
-                    if (image != null) {
-                        Platform.runLater(() -> target.setImage(SwingFXUtils.toFXImage(image, null)));
-                    }
-                }
-                Thread.sleep(33);
-            } catch (FrameGrabber.Exception | InterruptedException e) {
-                if (running.get()) {
-                    System.err.println("Erreur preview webcam JavaCV : " + e.getMessage());
-                }
-                Thread.currentThread().interrupt();
-                break;
-            }
-        }
-    }
-
-    private byte[] frameToJpeg(Frame frame) throws IOException {
-        BufferedImage image = converter.convert(frame);
-        if (image == null) {
-            return null;
-        }
-        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-            ImageIO.write(image, "jpg", baos);
-            return baos.toByteArray();
         }
     }
 
     public void stop() {
         running.set(false);
-        if (captureThread != null) {
-            captureThread.interrupt();
-            try {
-                captureThread.join(1000);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-            captureThread = null;
-        }
-        if (grabber != null) {
-            try {
-                grabber.stop();
-                grabber.release();
-            } catch (FrameGrabber.Exception e) {
-                // ignore
-            }
-            grabber = null;
-        }
         if (socket != null) {
             socket.close();
             socket = null;
@@ -235,4 +124,3 @@ public class MeetingVideoCapture {
                 | (data[offset + 3] & 0xFF);
     }
 }
-

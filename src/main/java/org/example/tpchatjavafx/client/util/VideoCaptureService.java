@@ -83,9 +83,23 @@ public class VideoCaptureService {
     }
     
     public void stop() {
+        stopCapture();
+    }
+
+    public void startCapture(java.util.function.Consumer<byte[]> callback) {
+        setOnFrameCaptured(callback);
+        start();
+    }
+
+    public void stopCapture() {
         isRunning = false;
         if (webcam != null && webcam.isOpen()) {
             webcam.close();
         }
+    }
+
+    public void switchCamera(boolean front) {
+        stopCapture();
+        start();
     }
 }

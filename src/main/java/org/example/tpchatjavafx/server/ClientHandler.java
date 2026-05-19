@@ -182,6 +182,21 @@ public class ClientHandler implements Runnable {
             case MEETING_INFO -> {
                 if (username != null) handleMeetingInfo(msg);
             }
+            case MEETING_MIC_STATE -> {
+                if (username != null) handleMicState(msg);
+            }
+            case MEETING_VIDEO_STATE -> {
+                if (username != null) handleVideoState(msg);
+            }
+            case MEETING_PARTICIPANTS_REQUEST -> {
+                if (username != null) handleMeetingParticipantsRequest(msg);
+            }
+            case MEETING_NON_PARTICIPANTS_REQUEST -> {
+                if (username != null) handleMeetingNonParticipantsRequest(msg);
+            }
+            case MEETING_INVITE_USER -> {
+                if (username != null) handleMeetingInviteUser(msg);
+            }
 
             default       -> {
                 // N'autoriser que les utilisateurs authentifiés
@@ -590,43 +605,124 @@ public class ClientHandler implements Runnable {
 
     private void handleMeetingStart(ChatMessage msg) {
         try {
+            System.out.println("[SERVER] handleMeetingStart appele");
+            System.out.println("[SERVER] msg.getMeetingType() = " + msg.getMeetingType());
+            System.out.println("[SERVER] msg.getGroupId() = " + msg.getGroupId());
+            System.out.println("[SERVER] userId = " + userId);
+
+            String meetingType = msg.getMeetingType();
+            if (meetingType == null || meetingType.isBlank()) {
+                System.out.println("[SERVER] ERREUR: meetingType est null ou vide !");
+                sendError("Type de reunion non specifie (AUDIO ou VIDEO)");
+                return;
+            }
+
+            MeetingManager.MeetingSession existing = ChatServer.getMeetingManager().getActiveMeetingForGroup(msg.getGroupId());
+            if (existing != null) {
+                System.out.println("[SERVER] Reunion deja active (" + existing.getMeetingId() + "), on rejoint...");
+
+                ChatMessage started = new ChatMessage(MessageType.MEETING_STARTED, "SERVER", username, null, "Reunion rejointe");
+                started.setGroupId(msg.getGroupId());
+                started.setMeetingId(existing.getMeetingId());
+                started.setMeetingType(existing.getType());
+                send(started);
+
+                send(ChatServer.getMeetingManager().buildMeetingInfo(existing, username));
+
+                handleMeetingJoin(msg);
+                return;
+            }
+
             MeetingManager.MeetingSession session = ChatServer.getMeetingManager()
-                    .startMeeting(msg.getGroupId(), userId, username, msg.getMeetingType(), this);
+                    .startMeeting(msg.getGroupId(), userId, username, meetingType, this);
+
+            System.out.println("[SERVER] Reunion creee: " + session.getMeetingId());
 
             ChatMessage started = new ChatMessage(MessageType.MEETING_STARTED, "SERVER", username, null, "Reunion demarree");
             started.setGroupId(msg.getGroupId());
             started.setMeetingId(session.getMeetingId());
             started.setMeetingType(session.getType());
             send(started);
-            send(ChatServer.getMeetingManager().buildMeetingInfo(session, username));
 
-            ChatMessage invite = new ChatMessage(MessageType.MEETING_INVITE, username, null, null, "Invitation reunion");
+            ChatMessage info = ChatServer.getMeetingManager().buildMeetingInfo(session, username);
+            send(info);
+
+            ChatMessage invite = new ChatMessage(MessageType.MEETING_INVITE, username, null, null,
+                    "Invitation reunion " + meetingType);
             invite.setGroupId(msg.getGroupId());
             invite.setMeetingId(session.getMeetingId());
             invite.setMeetingType(session.getType());
+
+            System.out.println("[SERVER] Broadcast invitation aux membres du groupe " + msg.getGroupId());
             ChatServer.broadcastToGroupExcept(msg.getGroupId(), invite, userId);
+
         } catch (Exception e) {
+            System.out.println("[SERVER] ERREUR handleMeetingStart: " + e.getMessage());
+            e.printStackTrace();
             sendError("Demarrage de reunion impossible : " + e.getMessage());
         }
     }
 
     private void handleMeetingJoin(ChatMessage msg) {
         try {
+            System.out.println("[SERVER] handleMeetingJoin appele");
             int mid = msg.getMeetingId();
-            if (mid <= 0 && msg.getGroupId() > 0) {
-                MeetingManager.MeetingSession s = ChatServer.getMeetingManager().getActiveMeetingForGroup(msg.getGroupId());
-                if (s != null) mid = s.getMeetingId();
+            int gid = msg.getGroupId();
+
+            System.out.println("[SERVER] meetingId=" + mid + ", groupId=" + gid);
+
+            if (mid <= 0 && gid > 0) {
+                MeetingManager.MeetingSession s = ChatServer.getMeetingManager().getActiveMeetingForGroup(gid);
+                if (s != null) {
+                    mid = s.getMeetingId();
+                    System.out.println("[SERVER] Reunion active trouvee pour groupe " + gid + ": " + mid);
+                } else {
+                    System.out.println("[SERVER] Aucune reunion active pour groupe " + gid);
+                    sendError("Aucune reunion active dans ce groupe");
+                    return;
+                }
             }
+
+            if (mid <= 0) {
+                sendError("ID de reunion invalide");
+                return;
+            }
+
             MeetingManager.MeetingSession session = ChatServer.getMeetingManager().getActiveMeeting(mid);
-            if (session == null) throw new IllegalArgumentException("Reunion inactive ou introuvable.");
-            ChatServer.getMeetingManager().joinMeeting(mid, userId, username, this, msg.getUdpAudioPort(), msg.getUdpVideoPort());
+            if (session == null) {
+                sendError("Reunion inactive ou introuvable");
+                return;
+            }
+
+            if (session.getParticipants().containsKey(userId)) {
+                System.out.println("[SERVER] User " + userId + " est deja dans la reunion");
+                send(ChatServer.getMeetingManager().buildMeetingInfo(session, username));
+                ChatMessage participants = new ChatMessage(MessageType.MEETING_PARTICIPANTS, "SERVER", username, null,
+                        ChatServer.getMeetingManager().serializeParticipants(mid));
+                participants.setMeetingId(mid);
+                participants.setGroupId(session.getGroupeId());
+                send(participants);
+                return;
+            }
+
+            int udpAudioPort = msg.getUdpAudioPort();
+            int udpVideoPort = msg.getUdpVideoPort();
+
+            ChatServer.getMeetingManager().joinMeeting(mid, userId, username, this, udpAudioPort, udpVideoPort);
+
             send(ChatServer.getMeetingManager().buildMeetingInfo(session, username));
+
             ChatMessage participants = new ChatMessage(MessageType.MEETING_PARTICIPANTS, "SERVER", username, null,
                     ChatServer.getMeetingManager().serializeParticipants(mid));
             participants.setMeetingId(mid);
             participants.setGroupId(session.getGroupeId());
             send(participants);
+
+            System.out.println("[SERVER] " + username + " a rejoint la reunion " + mid);
+
         } catch (Exception e) {
+            System.out.println("[SERVER] ERREUR handleMeetingJoin: " + e.getMessage());
+            e.printStackTrace();
             sendError("Impossible de rejoindre la reunion : " + e.getMessage());
         }
     }
@@ -659,6 +755,90 @@ public class ClientHandler implements Runnable {
             }
         } catch (Exception e) {
             System.err.println("Erreur chargement media historique: " + e.getMessage());
+        }
+    }
+
+    private void handleMeetingParticipantsRequest(ChatMessage msg) {
+        try {
+            MeetingManager.MeetingSession session = ChatServer.getMeetingManager().getActiveMeeting(msg.getMeetingId());
+            if (session == null) {
+                sendError("Reunion introuvable.");
+                return;
+            }
+            ChatMessage participants = new ChatMessage(MessageType.MEETING_PARTICIPANTS, "SERVER", username, null,
+                    ChatServer.getMeetingManager().serializeParticipants(msg.getMeetingId()));
+            participants.setMeetingId(msg.getMeetingId());
+            participants.setGroupId(session.getGroupeId());
+            send(participants);
+        } catch (Exception e) {
+            sendError("Impossible de lister les participants : " + e.getMessage());
+        }
+    }
+
+    private void handleMeetingNonParticipantsRequest(ChatMessage msg) {
+        try {
+            MeetingManager.MeetingSession session = ChatServer.getMeetingManager().getActiveMeeting(msg.getMeetingId());
+            if (session == null) {
+                sendError("Reunion introuvable.");
+                return;
+            }
+            int gid = msg.getGroupId() > 0 ? msg.getGroupId() : session.getGroupeId();
+            String csv = ChatServer.getMeetingManager().serializeNonParticipants(msg.getMeetingId(), gid);
+            ChatMessage response = new ChatMessage(MessageType.MEETING_NON_PARTICIPANTS, "SERVER", username, null, csv);
+            response.setMeetingId(msg.getMeetingId());
+            response.setGroupId(gid);
+            send(response);
+        } catch (Exception e) {
+            sendError("Impossible de lister les membres disponibles : " + e.getMessage());
+        }
+    }
+
+    private void handleMeetingInviteUser(ChatMessage msg) {
+        try {
+            MeetingManager.MeetingSession session = ChatServer.getMeetingManager().getActiveMeeting(msg.getMeetingId());
+            if (session == null) {
+                sendError("Reunion introuvable.");
+                return;
+            }
+            org.example.tpchatjavafx.model.Utilisateur target = userDAO.findByUsername(msg.getContent());
+            if (target == null) {
+                sendError("Utilisateur introuvable : " + msg.getContent());
+                return;
+            }
+            ChatMessage invite = new ChatMessage(MessageType.MEETING_INVITE, username, null, null,
+                    "Invitation reunion " + session.getType());
+            invite.setGroupId(session.getGroupeId());
+            invite.setMeetingId(session.getMeetingId());
+            invite.setMeetingType(session.getType());
+            ChatServer.sendToUserId(target.getId(), invite);
+        } catch (Exception e) {
+            sendError("Invitation impossible : " + e.getMessage());
+        }
+    }
+
+    private void handleMicState(ChatMessage msg) {
+        try {
+            MeetingManager.MeetingSession session = ChatServer.getMeetingManager().getActiveMeeting(msg.getMeetingId());
+            if (session == null) return;
+            ChatMessage broadcast = new ChatMessage(MessageType.MEETING_MIC_STATE, username, String.valueOf(userId), null, msg.getContent());
+            broadcast.setMeetingId(msg.getMeetingId());
+            broadcast.setGroupId(session.getGroupeId());
+            ChatServer.getMeetingManager().notifyParticipants(session, broadcast, -1);
+        } catch (Exception e) {
+            sendError("Etat micro impossible : " + e.getMessage());
+        }
+    }
+
+    private void handleVideoState(ChatMessage msg) {
+        try {
+            MeetingManager.MeetingSession session = ChatServer.getMeetingManager().getActiveMeeting(msg.getMeetingId());
+            if (session == null) return;
+            ChatMessage broadcast = new ChatMessage(MessageType.MEETING_VIDEO_STATE, username, String.valueOf(userId), null, msg.getContent());
+            broadcast.setMeetingId(msg.getMeetingId());
+            broadcast.setGroupId(session.getGroupeId());
+            ChatServer.getMeetingManager().notifyParticipants(session, broadcast, -1);
+        } catch (Exception e) {
+            sendError("Etat video impossible : " + e.getMessage());
         }
     }
 

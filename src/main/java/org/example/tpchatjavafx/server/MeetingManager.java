@@ -37,15 +37,43 @@ public class MeetingManager {
     }
 
     public MeetingSession startMeeting(int groupeId, int initiatorId, String initiatorUsername, String type, ClientHandler handler) throws SQLException {
-        if (!isMemberOrCreator(groupeId, initiatorId)) throw new SecurityException("Utilisateur non membre du groupe.");
-        Reunion active = reunionDAO.findActiveByGroupeId(groupeId);
-        if (active != null || activeMeetings.values().stream().anyMatch(s -> s.getGroupeId() == groupeId)) {
-            throw new IllegalStateException("Une reunion est deja active pour ce groupe.");
+        System.out.println("[MEETING_MGR] startMeeting() groupe=" + groupeId + " initiator=" + initiatorId + " type=" + type);
+
+        if (!isMemberOrCreator(groupeId, initiatorId)) {
+            throw new SecurityException("Utilisateur non membre du groupe.");
         }
+
+        MeetingSession existingSession = activeMeetings.values().stream()
+                .filter(s -> s.getGroupeId() == groupeId)
+                .findFirst()
+                .orElse(null);
+
+        if (existingSession != null) {
+            System.out.println("[MEETING_MGR] Reunion deja active en memoire: " + existingSession.getMeetingId());
+            if (existingSession.getParticipants().containsKey(initiatorId)) {
+                throw new IllegalStateException("Vous etes deja dans une reunion active pour ce groupe.");
+            }
+            System.out.println("[MEETING_MGR] Rejointure de la reunion existante");
+            joinMeeting(existingSession.getMeetingId(), initiatorId, initiatorUsername, handler, 0, 0);
+            return existingSession;
+        }
+
+        Reunion activeInDb = reunionDAO.findActiveByGroupeId(groupeId);
+        if (activeInDb != null) {
+            System.out.println("[MEETING_MGR] Reunion fantome trouvee en BDD: " + activeInDb.getId() + ", on la termine et en cree une nouvelle");
+            reunionDAO.endMeeting(activeInDb.getId());
+            activeMeetings.remove(activeInDb.getId());
+            udpRelayServer.unregisterMeeting(activeInDb.getId());
+        }
+
         Reunion reunion = reunionDAO.create(groupeId, initiatorId, type);
         MeetingSession session = new MeetingSession(reunion.getId(), groupeId, initiatorId, reunion.getType());
         activeMeetings.put(reunion.getId(), session);
+
+        System.out.println("[MEETING_MGR] Nouvelle reunion creee: " + reunion.getId());
+
         joinMeeting(reunion.getId(), initiatorId, initiatorUsername, handler, 0, 0);
+
         return session;
     }
 
@@ -132,6 +160,16 @@ public class MeetingManager {
                 .collect(Collectors.joining(","));
     }
 
+    public String serializeNonParticipants(int meetingId, int groupeId) throws SQLException {
+        MeetingSession session = activeMeetings.get(meetingId);
+        if (session == null) return "";
+        java.util.Set<Integer> inMeeting = session.participants.keySet();
+        return membreDAO.getMembers(groupeId).stream()
+                .filter(u -> !inMeeting.contains(u.getId()))
+                .map(Utilisateur::getUsername)
+                .collect(Collectors.joining(","));
+    }
+
     private MeetingSession requireSession(int meetingId) {
         MeetingSession session = activeMeetings.get(meetingId);
         if (session == null) throw new IllegalArgumentException("Reunion inactive ou introuvable.");
@@ -144,9 +182,10 @@ public class MeetingManager {
         return membreDAO.isMember(groupeId, userId);
     }
 
-    private void notifyParticipants(MeetingSession session, ChatMessage msg, int exceptUserId) {
+    public void notifyParticipants(MeetingSession session, ChatMessage msg, int exceptUserId) {
         for (ParticipantInfo participant : session.participants.values()) {
-            if (participant.userId != exceptUserId && participant.handler != null) participant.handler.send(msg);
+            if (exceptUserId >= 0 && participant.userId == exceptUserId) continue;
+            if (participant.handler != null) participant.handler.send(msg);
         }
     }
 

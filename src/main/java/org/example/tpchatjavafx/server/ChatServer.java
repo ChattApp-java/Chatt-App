@@ -58,6 +58,18 @@ public class ChatServer {
     public static MeetingManager getMeetingManager() { return meetingManager; }
     public static UDPRelayServer getUdpRelayServer() { return udpRelayServer; }
 
+    public static String getServerHost() {
+        return udpRelayServer.getHost();
+    }
+
+    public static int getUdpAudioPort() {
+        return udpRelayServer.getAudioPort();
+    }
+
+    public static int getUdpVideoPort() {
+        return udpRelayServer.getVideoPort();
+    }
+
     static void registerClient(String username, int userId, ClientHandler handler) {
         clients.computeIfAbsent(username, k -> Collections.synchronizedSet(new HashSet<>())).add(handler);
         clientsById.computeIfAbsent(userId, k -> Collections.synchronizedSet(new HashSet<>())).add(handler);
@@ -111,13 +123,18 @@ public class ChatServer {
     }
 
     public static void broadcastToGroupExcept(int groupeId, ChatMessage msg, int exceptUserId) {
+        System.out.println("[SERVER] broadcastToGroupExcept: group=" + groupeId + ", except=" + exceptUserId);
         try {
-            for (Integer memberId : groupeMembreDAO.getMemberIds(groupeId)) {
+            java.util.List<Integer> memberIds = groupeMembreDAO.getMemberIds(groupeId);
+            System.out.println("[SERVER] Membres du groupe: " + memberIds.size());
+            for (Integer memberId : memberIds) {
                 if (memberId == exceptUserId) continue;
+                System.out.println("[SERVER] Envoi a: id=" + memberId);
                 sendToUserId(memberId, msg);
             }
         } catch (Exception e) {
             System.err.println("Erreur broadcast groupe " + groupeId + ": " + e.getMessage());
+            e.printStackTrace();
         }
     }
 

@@ -7,8 +7,11 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
@@ -25,7 +28,9 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.shape.SVGPath;
 import javafx.stage.FileChooser;
+import javafx.stage.Stage;
 import org.example.tpchatjavafx.client.NetworkClient;
+import org.example.tpchatjavafx.client.model.ChatMessage;
 import org.example.tpchatjavafx.client.util.UiMessage;
 import org.example.tpchatjavafx.common.MessageType;
 
@@ -37,6 +42,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.net.URL;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -85,6 +91,12 @@ public class GroupController extends javafx.scene.control.SplitPane {
     private boolean currentUserAdmin;
     private volatile boolean recordingAudio;
     private TargetDataLine targetDataLine;
+
+    private Stage meetingStage;
+    private MeetingController meetingController;
+    private MeetingController currentMeetingController;
+    private int currentMeetingId = -1;
+    private boolean currentMeetingInitiator;
 
     public GroupController() {
         buildUI();
@@ -403,6 +415,94 @@ public class GroupController extends javafx.scene.control.SplitPane {
             }
             Platform.runLater(() -> chatScroll.setVvalue(1.0));
         }));
+
+        networkClient.setOnMeetingStarted(msg -> Platform.runLater(() -> {
+            System.out.println("[GROUP_UI] MEETING_STARTED: meeting=" + msg.getMeetingId()
+                    + ", type=" + msg.getMeetingType());
+            activeMeetingGroupIds.add(msg.getGroupId());
+            groupListView.refresh();
+            String callType = msg.getMeetingType() != null ? msg.getMeetingType() : "AUDIO";
+            openMeetingWindow(msg.getGroupId(), callType, msg.getMeetingId(), true);
+        }));
+
+        networkClient.setOnMeetingInvite(msg -> Platform.runLater(() -> {
+            System.out.println("[GROUP_UI] MEETING_INVITE: group=" + msg.getGroupId() + ", from=" + msg.getFrom());
+            activeMeetingGroupIds.add(msg.getGroupId());
+
+            if (msg.getGroupId() == selectedGroupId) {
+                lblGroupStatus.setText("Reunion en cours");
+                lblGroupStatus.setStyle("-fx-text-fill: #25D366; -fx-font-weight: bold;");
+                btnVoiceMeeting.setTooltip(new Tooltip("Rejoindre la reunion"));
+                btnMeeting.setTooltip(new Tooltip("Rejoindre la reunion"));
+            }
+
+            groupListView.refresh();
+
+            if (msg.getGroupId() != selectedGroupId) {
+                showCallNotification(msg.getGroupId(), msg.getMeetingId(), msg.getMeetingType());
+            } else {
+                Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+                alert.setTitle("Reunion " + msg.getMeetingType());
+                alert.setHeaderText(msg.getFrom() + " a demarre une reunion " + msg.getMeetingType());
+                alert.setContentText("Voulez-vous rejoindre ?");
+
+                ButtonType joinBtn = new ButtonType("Rejoindre", ButtonBar.ButtonData.OK_DONE);
+                ButtonType ignoreBtn = new ButtonType("Ignorer", ButtonBar.ButtonData.CANCEL_CLOSE);
+                alert.getButtonTypes().setAll(joinBtn, ignoreBtn);
+
+                alert.showAndWait().ifPresent(result -> {
+                    if (result == joinBtn) {
+                        networkClient.joinMeeting(msg.getMeetingId());
+                    }
+                });
+            }
+        }));
+
+        networkClient.setOnMeetingInfo(msg -> Platform.runLater(() -> {
+            configureUdpConnection(msg);
+            if ((meetingStage == null || !meetingStage.isShowing()) && msg.getMeetingId() > 0) {
+                activeMeetingGroupIds.add(msg.getGroupId());
+                String callType = msg.getMeetingType() != null ? msg.getMeetingType() : "AUDIO";
+                if (msg.getGroupId() != selectedGroupId) {
+                    selectGroupById(msg.getGroupId());
+                }
+                openMeetingWindow(msg.getGroupId(), callType, msg.getMeetingId(), false);
+            }
+        }));
+
+        networkClient.setOnMeetingParticipants(msg -> Platform.runLater(() -> {
+            System.out.println("[GROUP_UI] MEETING_PARTICIPANTS: " + msg.getContent());
+            updateMeetingParticipants(msg.getContent());
+        }));
+
+        networkClient.setOnMeetingEnded(msg -> Platform.runLater(() -> {
+            System.out.println("[GROUP_UI] MEETING_ENDED");
+            activeMeetingGroupIds.remove(msg.getGroupId());
+            if (msg.getGroupId() == selectedGroupId) {
+                lblGroupStatus.setText("Groupe actif");
+                lblGroupStatus.setStyle("");
+                btnVoiceMeeting.setTooltip(new Tooltip("Appel vocal"));
+                btnMeeting.setTooltip(new Tooltip("Appel video"));
+            }
+            groupListView.refresh();
+            closeMeetingWindow();
+        }));
+
+        networkClient.setOnMeetingParticipantJoined(msg -> Platform.runLater(() -> {
+            System.out.println("[GROUP_UI] Participant rejoint: " + msg.getFrom());
+            afficherSysteme(msg.getFrom() + " a rejoint la reunion.");
+            if (currentMeetingController != null) {
+                currentMeetingController.addParticipant(1, msg.getFrom(), null);
+            }
+        }));
+
+        networkClient.setOnMeetingParticipantLeft(msg -> Platform.runLater(() -> {
+            System.out.println("[GROUP_UI] Participant quitte: " + msg.getFrom());
+            afficherSysteme(msg.getFrom() + " a quitte la reunion.");
+            if (currentMeetingController != null) {
+                currentMeetingController.removeParticipantByUsername(msg.getFrom());
+            }
+        }));
     }
 
     private void selectionnerGroupe(int groupId, String nom) {
@@ -514,13 +614,168 @@ public class GroupController extends javafx.scene.control.SplitPane {
     }
 
     private void demarrerReunion(String type) {
-        if (selectedGroupId == -1) return;
+        if (selectedGroupId == -1 || networkClient == null) return;
+        System.out.println("[GROUP_UI] Clic bouton appel " + type + " — groupeId=" + selectedGroupId);
         if (activeMeetingGroupIds.contains(selectedGroupId)) {
-            // Rejoindre au lieu de démarrer
             networkClient.joinMeetingByGroup(selectedGroupId);
         } else {
             networkClient.startGroupMeeting(selectedGroupId, type);
         }
+    }
+
+    private void openMeetingWindow(int groupId, String callType, int meetingId, boolean isInitiator) {
+        try {
+            if (meetingStage != null && meetingStage.isShowing()) {
+                meetingStage.close();
+            }
+
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/meeting-window.fxml"));
+            Parent root = loader.load();
+
+            MeetingController controller = loader.getController();
+            controller.setCallType(callType);
+            controller.setGroupId(groupId);
+            controller.setMeetingId(meetingId);
+            controller.setInitiator(isInitiator);
+            controller.setNetworkClient(networkClient);
+            controller.setUsername(username);
+
+            this.currentMeetingController = controller;
+            this.meetingController = controller;
+
+            networkClient.setupUdpSockets();
+            controller.startServices();
+
+            currentMeetingId = meetingId;
+            currentMeetingInitiator = isInitiator;
+
+            String displayName = selectedGroupName != null && !selectedGroupName.isBlank()
+                    ? selectedGroupName
+                    : groupNameFor(groupId);
+
+            Scene scene = new Scene(root, 900, 700);
+            meetingStage = new Stage();
+            meetingStage.setTitle("Reunion " + callType + " — " + displayName);
+            meetingStage.setScene(scene);
+            meetingStage.setMinWidth(600);
+            meetingStage.setMinHeight(500);
+
+            meetingStage.setOnShown(e -> controller.addParticipant(-1, username, null));
+
+            meetingStage.setOnCloseRequest(e -> {
+                controller.cleanup();
+                if (isInitiator) {
+                    networkClient.endMeeting(meetingId);
+                } else {
+                    networkClient.leaveMeeting(meetingId);
+                }
+                meetingStage = null;
+                meetingController = null;
+                currentMeetingController = null;
+                currentMeetingId = -1;
+            });
+            meetingStage.show();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            showAlert("Erreur", "Impossible d'ouvrir: " + e.getMessage());
+        }
+    }
+
+    private int resolveUserIdFromParticipants(String csv, String username) {
+        if (csv == null || username == null) return -1;
+        for (String entry : csv.split(",")) {
+            String[] parts = entry.split(":");
+            if (parts.length >= 2 && username.equals(parts[1].trim())) {
+                try {
+                    return Integer.parseInt(parts[0].trim());
+                } catch (NumberFormatException e) {
+                    return -1;
+                }
+            }
+        }
+        return -1;
+    }
+
+    private void showAlert(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    private void closeMeetingWindow() {
+        if (meetingStage != null && meetingStage.isShowing()) {
+            meetingStage.close();
+        }
+        meetingStage = null;
+        meetingController = null;
+        currentMeetingController = null;
+        currentMeetingId = -1;
+    }
+
+    private void configureUdpConnection(ChatMessage msg) {
+        String host = msg.getServerHost();
+        int audioPort = msg.getServerUdpAudioPort();
+        int videoPort = msg.getServerUdpVideoPort();
+        int meetingId = msg.getMeetingId();
+        String meetingType = msg.getMeetingType();
+
+        System.out.println("[GROUP_UI] Configuration UDP: " + host + ":" + audioPort
+                + " (audio), " + videoPort + " (video)");
+
+        if (networkClient == null || host == null || host.isBlank()) return;
+        try {
+            boolean wantsVideo = meetingType != null && meetingType.toUpperCase().contains("VIDEO");
+            networkClient.startMeetingAudio(meetingId, 0, audioPort, host);
+            if (wantsVideo) {
+                networkClient.startMeetingVideo(meetingId, 0, videoPort, host);
+            }
+            if (currentMeetingController != null) {
+                currentMeetingController.updateParticipantsList(msg.getContent());
+            }
+        } catch (Exception e) {
+            System.err.println("[GROUP_UI] Erreur configuration UDP: " + e.getMessage());
+        }
+    }
+
+    private void updateMeetingParticipants(String participantsCsv) {
+        if (currentMeetingController != null) {
+            currentMeetingController.updateParticipantsList(participantsCsv);
+        }
+    }
+
+    private void showCallNotification(int groupId, int meetingId, String callType) {
+        playNotificationSound();
+
+        String groupName = "";
+        for (int i = 0; i < groupIds.size(); i++) {
+            if (groupIds.get(i)[0] == groupId) {
+                groupName = groupNames.get(i);
+                break;
+            }
+        }
+
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Appel " + callType);
+        alert.setHeaderText("Reunion en cours !");
+        alert.setContentText("Une reunion " + callType + " est en cours dans \"" + groupName + "\"");
+
+        ButtonType joinBtn = new ButtonType("Rejoindre", ButtonBar.ButtonData.OK_DONE);
+        ButtonType ignoreBtn = new ButtonType("Ignorer", ButtonBar.ButtonData.CANCEL_CLOSE);
+        alert.getButtonTypes().setAll(joinBtn, ignoreBtn);
+
+        alert.showAndWait().ifPresent(result -> {
+            if (result == joinBtn) {
+                selectGroupById(groupId);
+                networkClient.joinMeeting(meetingId);
+            }
+        });
+    }
+
+    private void playNotificationSound() {
+        // Son optionnel — ignoré si indisponible
     }
 
     @FXML
@@ -829,6 +1084,15 @@ public class GroupController extends javafx.scene.control.SplitPane {
         dialog.getDialogPane().getStyleClass().add("group-dialog");
         String stylesheet = getClass().getResource("/css/whatsapp.css").toExternalForm();
         dialog.getDialogPane().getStylesheets().add(stylesheet);
+    }
+
+    private String groupNameFor(int groupId) {
+        for (int i = 0; i < groupIds.size(); i++) {
+            if (groupIds.get(i)[0] == groupId) {
+                return groupNames.get(i);
+            }
+        }
+        return "Groupe";
     }
 
     private String initialFor(String value) {

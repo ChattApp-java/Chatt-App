@@ -17,13 +17,7 @@ public class AudioCaptureService {
     private Consumer<byte[]> onAudioCaptured;
     private final List<Double> amplitudeData = Collections.synchronizedList(new ArrayList<>());
 
-    private static final AudioFormat FORMAT = new AudioFormat(
-            16000,
-            16,
-            1,
-            true,
-            false
-    );
+    private AudioFormat currentFormat;
 
     public void setOnAudioCaptured(Consumer<byte[]> callback) {
         this.onAudioCaptured = callback;
@@ -40,15 +34,39 @@ public class AudioCaptureService {
 
         this.onAudioCaptured = callback;
 
-        DataLine.Info info = new DataLine.Info(TargetDataLine.class, FORMAT);
+        // Try multiple audio formats with fallback
+        AudioFormat format = findSupportedAudioFormat();
+        if (format == null) {
+            throw new LineUnavailableException("Aucun format audio supporte n'a ete trouve");
+        }
+
+        this.currentFormat = format;
+        DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
         microphone = (TargetDataLine) AudioSystem.getLine(info);
-        microphone.open(FORMAT);
+        microphone.open(format);
         microphone.start();
 
         isRunning = true;
         Thread captureThread = new Thread(this::captureLoop, "AudioCapture");
         captureThread.setDaemon(true);
         captureThread.start();
+        System.out.println("[AUDIO_CAPTURE] Format audio utilise: " + format.getSampleRate() + " Hz");
+    }
+
+    private AudioFormat findSupportedAudioFormat() {
+        // Essayer les formats dans cet ordre
+        float[] sampleRates = {8000.0f, 16000.0f, 44100.0f, 22050.0f};
+        
+        for (float sampleRate : sampleRates) {
+            AudioFormat format = new AudioFormat(sampleRate, 16, 1, true, false);
+            DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
+            
+            if (AudioSystem.isLineSupported(info)) {
+                System.out.println("[AUDIO_CAPTURE] Format audio trouve: " + sampleRate + " Hz");
+                return format;
+            }
+        }
+        return null;
     }
 
     private void captureLoop() {
@@ -72,8 +90,16 @@ public class AudioCaptureService {
         }
     }
 
-    public static AudioFormat getFormat() {
-        return FORMAT;
+    public void startCapture(java.util.function.Consumer<byte[]> callback) throws LineUnavailableException {
+        start(callback);
+    }
+
+    public void stopCapture() {
+        stop();
+    }
+
+    public AudioFormat getFormat() {
+        return currentFormat;
     }
 
     public boolean isRunning() {

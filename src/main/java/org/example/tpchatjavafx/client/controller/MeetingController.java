@@ -1,173 +1,720 @@
 package org.example.tpchatjavafx.client.controller;
 
 import javafx.application.Platform;
+import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.fxml.Initializable;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.ListView;
-import javafx.scene.layout.GridPane;
+import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import org.example.tpchatjavafx.client.NetworkClient;
-import org.example.tpchatjavafx.client.util.MeetingAudioMixer;
-import org.example.tpchatjavafx.client.video.MeetingVideoDisplay;
+import org.example.tpchatjavafx.client.model.ChatMessage;
+import org.example.tpchatjavafx.common.MessageType;
+import org.kordamp.ikonli.javafx.FontIcon;
+import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
 
+import javax.imageio.ImageIO;
+import javax.sound.sampled.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URL;
-import java.util.Objects;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
-public class MeetingController {
+public class MeetingController implements Initializable {
 
-    @FXML
-    private Label meetingTitle;
+    @FXML private Label lblTitle;
+    @FXML private Label lblSubtitle;
+    @FXML private Label lblVideoCaption;
+    @FXML private VBox centerContainer;
+    @FXML private GridPane videoGrid;
+    @FXML private ListView<String> participantsList;
+    @FXML private Button btnMore;
+    @FXML private Button btnVideo;
+    @FXML private Button btnSpeaker;
+    @FXML private Button btnMic;
+    @FXML private Button btnEndCall;
+    @FXML private Button btnSwitchCamera;
+    @FXML private Button btnFlashlight;
+    @FXML private Button btnAddParticipant;
+    @FXML private VBox bottomControls;
 
-    @FXML
-    private GridPane videoGrid;
-
-    @FXML
-    private ListView<String> participantsList;
-
-    @FXML
-    private Button leaveButton;
-
-    @FXML
-    private Button muteButton;
-
-    @FXML
-    private Button cameraButton;
-
-    private final MeetingVideoDisplay videoDisplay = new MeetingVideoDisplay();
-    private final MeetingAudioMixer audioMixer = new MeetingAudioMixer();
-
-    private boolean muted;
-    private boolean cameraEnabled = true;
     private NetworkClient networkClient;
+    private String username;
+    private int groupId;
     private int meetingId;
+    private String callType = "AUDIO";
+    private boolean isInitiator;
 
-    @FXML
-    public void initialize() {
-        videoDisplay.setGrid(videoGrid);
-        videoGrid.getChildren().clear();
-        participantsList.getItems().clear();
+    private boolean micMuted = false;
+    private boolean speakerOn = true;
+    private boolean videoOn = true;
+
+    private TargetDataLine microphone;
+    private SourceDataLine speakers;
+    private Thread captureThread;
+    private volatile boolean audioRunning = false;
+
+    private com.github.sarxos.webcam.Webcam webcam;
+    private Thread videoThread;
+
+    private final Map<Integer, VBox> participantContainers = new ConcurrentHashMap<>();
+    private final Map<Integer, ImageView> participantVideos = new ConcurrentHashMap<>();
+    private final Map<Integer, Label> participantLabels = new ConcurrentHashMap<>();
+    private final Set<Integer> participantIds = ConcurrentHashMap.newKeySet();
+
+    @Override
+    public void initialize(URL location, ResourceBundle resources) {
+        System.out.println("[MEETING_UI] MeetingController initialise");
+        if (participantsList != null) {
+            participantsList.setItems(FXCollections.observableArrayList());
+        }
+        setupButtonActions();
     }
 
-    public void init(NetworkClient networkClient, int meetingId, String title) {
-        this.networkClient = networkClient;
+    private void setupButtonActions() {
+        if (btnMore != null) btnMore.setOnAction(e -> showMoreOptions());
+        if (btnVideo != null) btnVideo.setOnAction(e -> toggleVideo());
+        if (btnSpeaker != null) btnSpeaker.setOnAction(e -> toggleSpeaker());
+        if (btnMic != null) btnMic.setOnAction(e -> toggleMic());
+        if (btnEndCall != null) btnEndCall.setOnAction(e -> endCall());
+        if (btnSwitchCamera != null) btnSwitchCamera.setOnAction(e -> switchCamera());
+        if (btnFlashlight != null) btnFlashlight.setOnAction(e -> toggleFlashlight());
+        if (btnAddParticipant != null) btnAddParticipant.setOnAction(e -> handleAddParticipant());
+    }
+
+    public void setNetworkClient(NetworkClient client) {
+        this.networkClient = client;
+        if (client != null) {
+            client.setActiveMeetingController(this);
+            client.setOnMeetingNonParticipantsResponse(msg ->
+                    Platform.runLater(() -> showAddParticipantDialog(msg.getContent())));
+        }
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public void setGroupId(int groupId) {
+        this.groupId = groupId;
+        Platform.runLater(this::updateSubtitle);
+    }
+
+    public void setMeetingId(int meetingId) {
         this.meetingId = meetingId;
-        meetingTitle.setText(Objects.requireNonNullElse(title, "Réunion"));
-        
-        if (networkClient != null) {
-            networkClient.setActiveMeetingController(this);
-            addParticipant(String.valueOf(networkClient.getUserId()), networkClient.getUsername());
-        }
+    }
 
-        try {
-            audioMixer.start();
-        } catch (Exception e) {
-            System.err.println("Impossible de démarrer le mixeur audio de réunion : " + e.getMessage());
+    public void setInitiator(boolean initiator) {
+        this.isInitiator = initiator;
+    }
+
+    public void setCallType(String callType) {
+        this.callType = callType != null ? callType : "AUDIO";
+        System.out.println("[MEETING_UI] setCallType: " + this.callType);
+        Platform.runLater(() -> {
+            boolean isVideo = "VIDEO".equals(this.callType);
+            if (lblTitle != null) {
+                lblTitle.setText("Reunion " + (isVideo ? "video" : "audio"));
+            }
+            if (btnVideo != null) {
+                btnVideo.setVisible(isVideo);
+                btnVideo.setManaged(isVideo);
+            }
+            if (btnSwitchCamera != null) {
+                btnSwitchCamera.setVisible(isVideo);
+                btnSwitchCamera.setManaged(isVideo);
+            }
+            if (btnFlashlight != null) {
+                btnFlashlight.setVisible(isVideo);
+                btnFlashlight.setManaged(isVideo);
+            }
+            if (videoGrid != null) {
+                videoGrid.setVisible(isVideo);
+                videoGrid.setManaged(isVideo);
+            }
+            if (lblVideoCaption != null) {
+                lblVideoCaption.setVisible(isVideo);
+                lblVideoCaption.setManaged(isVideo);
+            }
+            if (centerContainer != null) {
+                boolean showCenter = !isVideo;
+                centerContainer.setVisible(showCenter);
+                centerContainer.setManaged(showCenter);
+            }
+            updateSubtitle();
+        });
+    }
+
+    public void startServices() {
+        System.out.println("[MEETING_UI] startServices() callType=" + callType);
+        startAudioCapture();
+        startAudioPlayback();
+        if ("VIDEO".equals(callType)) {
+            startVideoCapture();
         }
     }
 
-    public void addParticipant(String participantId, String displayName) {
+    public void startAudioCapture() {
+        try {
+            AudioFormat format = new AudioFormat(8000.0f, 16, 1, true, false);
+            DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
+
+            if (!AudioSystem.isLineSupported(info)) {
+                format = new AudioFormat(44100.0f, 16, 1, true, false);
+                info = new DataLine.Info(TargetDataLine.class, format);
+            }
+
+            microphone = (TargetDataLine) AudioSystem.getLine(info);
+            microphone.open(format);
+            microphone.start();
+            audioRunning = true;
+
+            captureThread = new Thread(() -> {
+                byte[] buffer = new byte[1024];
+                while (audioRunning && microphone != null) {
+                    try {
+                        int count = microphone.read(buffer, 0, buffer.length);
+                        if (count > 0 && !micMuted && networkClient != null && meetingId > 0) {
+                            networkClient.sendAudioData(Arrays.copyOf(buffer, count), meetingId);
+                        }
+                    } catch (Exception ignored) {
+                    }
+                }
+            }, "MeetingAudioCapture");
+            captureThread.setDaemon(true);
+            captureThread.start();
+            System.out.println("[MEETING_UI] Capture audio OK (" + format.getSampleRate() + "Hz)");
+        } catch (Exception e) {
+            System.err.println("[MEETING_UI] ERREUR audio: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    public void startAudioPlayback() {
+        try {
+            AudioFormat format = new AudioFormat(8000.0f, 16, 1, true, false);
+            DataLine.Info info = new DataLine.Info(SourceDataLine.class, format);
+
+            if (!AudioSystem.isLineSupported(info)) {
+                format = new AudioFormat(44100.0f, 16, 1, true, false);
+                info = new DataLine.Info(SourceDataLine.class, format);
+            }
+
+            speakers = (SourceDataLine) AudioSystem.getLine(info);
+            speakers.open(format);
+            speakers.start();
+
+            if (networkClient != null) {
+                networkClient.startAudioReceiving(data -> {
+                    if (speakerOn && speakers != null && speakers.isOpen()) {
+                        speakers.write(data, 0, data.length);
+                    }
+                });
+            }
+            System.out.println("[MEETING_UI] Playback audio OK");
+        } catch (Exception e) {
+            System.err.println("[MEETING_UI] ERREUR playback: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    public void startVideoCapture() {
+        if (!"VIDEO".equals(callType)) {
+            System.out.println("[MEETING_UI] Pas VIDEO, pas de webcam");
+            return;
+        }
+        try {
+            webcam = com.github.sarxos.webcam.Webcam.getDefault();
+            if (webcam == null) {
+                System.err.println("[MEETING_UI] AUCUNE WEBCAM TROUVEE");
+                return;
+            }
+            System.out.println("[MEETING_UI] Webcam: " + webcam.getName());
+            webcam.setViewSize(com.github.sarxos.webcam.WebcamResolution.VGA.getSize());
+            webcam.open();
+            videoOn = true;
+
+            videoThread = new Thread(() -> {
+                while (videoOn && webcam != null && webcam.isOpen()) {
+                    try {
+                        java.awt.image.BufferedImage frame = webcam.getImage();
+                        if (frame != null) {
+                            Image fxImage = javafx.embed.swing.SwingFXUtils.toFXImage(frame, null);
+                            Platform.runLater(() -> updateParticipantVideo(-1, fxImage));
+                            if (networkClient != null && meetingId > 0) {
+                                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                                ImageIO.write(frame, "jpg", baos);
+                                networkClient.sendVideoFrame(baos.toByteArray(), meetingId);
+                            }
+                        }
+                    } catch (Exception e) {
+                        System.err.println("[MEETING_UI] Erreur frame: " + e.getMessage());
+                    }
+                    try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException ignored) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }, "MeetingWebcam");
+            videoThread.setDaemon(true);
+            videoThread.start();
+            System.out.println("[MEETING_UI] Capture video demarree");
+        } catch (Exception e) {
+            System.err.println("[MEETING_UI] ERREUR webcam: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private void toggleMic() {
+        micMuted = !micMuted;
+        updateMicButton();
+        if (networkClient != null && meetingId > 0) {
+            networkClient.sendMicState(meetingId, !micMuted);
+            networkClient.setMeetingMicEnabled(!micMuted);
+        }
+    }
+
+    private void updateMicButton() {
         Platform.runLater(() -> {
-            videoDisplay.addParticipant(participantId, displayName);
-            if (!participantsList.getItems().contains(displayName)) {
-                participantsList.getItems().add(displayName);
+            if (btnMic == null) return;
+            FontIcon icon = new FontIcon(micMuted ? FontAwesomeSolid.MICROPHONE_SLASH : FontAwesomeSolid.MICROPHONE);
+            icon.setIconSize(24);
+            icon.setIconColor(micMuted ? Color.web("#ff1744") : Color.WHITE);
+            btnMic.setGraphic(icon);
+            btnMic.setStyle(micMuted
+                    ? "-fx-background-color: #ffcdd2; -fx-background-radius: 50%;"
+                    : "-fx-background-color: #b0bec5; -fx-background-radius: 50%;");
+        });
+    }
+
+    private void toggleSpeaker() {
+        speakerOn = !speakerOn;
+        if (networkClient != null) {
+            networkClient.setMeetingPlaybackVolume(speakerOn ? 1.0 : 0.0);
+        }
+        updateSpeakerButton();
+    }
+
+    private void updateSpeakerButton() {
+        Platform.runLater(() -> {
+            if (btnSpeaker == null) return;
+            FontIcon icon = new FontIcon(speakerOn ? FontAwesomeSolid.VOLUME_UP : FontAwesomeSolid.VOLUME_MUTE);
+            icon.setIconSize(24);
+            icon.setIconColor(speakerOn ? Color.web("#01579b") : Color.web("#ff1744"));
+            btnSpeaker.setGraphic(icon);
+            btnSpeaker.setStyle(speakerOn
+                    ? "-fx-background-color: white; -fx-background-radius: 50%;"
+                    : "-fx-background-color: #ffcdd2; -fx-background-radius: 50%;");
+        });
+    }
+
+    private void toggleVideo() {
+        if (!"VIDEO".equals(callType)) return;
+        videoOn = !videoOn;
+        updateVideoButton();
+        if (!videoOn && webcam != null && webcam.isOpen()) {
+            webcam.close();
+        } else if (videoOn && (webcam == null || !webcam.isOpen())) {
+            startVideoCapture();
+        }
+        if (networkClient != null && meetingId > 0) {
+            networkClient.sendVideoState(meetingId, videoOn);
+        }
+    }
+
+    private void updateVideoButton() {
+        Platform.runLater(() -> {
+            if (btnVideo == null) return;
+            FontIcon icon = new FontIcon(videoOn ? FontAwesomeSolid.VIDEO : FontAwesomeSolid.VIDEO_SLASH);
+            icon.setIconSize(24);
+            icon.setIconColor(videoOn ? Color.WHITE : Color.web("#ff1744"));
+            btnVideo.setGraphic(icon);
+            btnVideo.setStyle(videoOn
+                    ? "-fx-background-color: #b0bec5; -fx-background-radius: 50%;"
+                    : "-fx-background-color: #ffcdd2; -fx-background-radius: 50%;");
+        });
+    }
+
+    private void switchCamera() {
+        System.out.println("[MEETING_UI] Switch camera");
+    }
+
+    private void toggleFlashlight() {
+        System.out.println("[MEETING_UI] Flashlight");
+    }
+
+    private void showMoreOptions() {
+        ContextMenu menu = new ContextMenu();
+        menu.setStyle("-fx-background-color: white; -fx-background-radius: 8;");
+
+        MenuItem itemParticipants = new MenuItem("Participants");
+        itemParticipants.setOnAction(e -> showParticipantsPanel());
+
+        MenuItem itemInfo = new MenuItem("Infos de la reunion");
+        itemInfo.setOnAction(e -> showMeetingInfo());
+
+        menu.getItems().addAll(itemParticipants, new SeparatorMenuItem(), itemInfo);
+        menu.show(btnMore, javafx.geometry.Side.TOP, 0, -5);
+    }
+
+    private void showParticipantsPanel() {
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.setTitle("Participants");
+        int count = participantsList != null ? participantsList.getItems().size() : 0;
+        dialog.setHeaderText("Participants (" + count + ")");
+        ListView<String> list = new ListView<>();
+        if (participantsList != null) {
+            list.setItems(FXCollections.observableArrayList(participantsList.getItems()));
+        }
+        list.setPrefHeight(300);
+        dialog.getDialogPane().setContent(list);
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+        dialog.showAndWait();
+    }
+
+    private void showMeetingInfo() {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Infos");
+        alert.setHeaderText("Reunion #" + meetingId);
+        int count = participantsList != null ? participantsList.getItems().size() : 0;
+        alert.setContentText("Type: " + callType + "\nGroupe: #" + groupId + "\nParticipants: " + count);
+        alert.showAndWait();
+    }
+
+    private void handleAddParticipant() {
+        if (networkClient == null || meetingId <= 0) return;
+        ChatMessage req = new ChatMessage();
+        req.setType(MessageType.MEETING_NON_PARTICIPANTS_REQUEST);
+        req.setGroupId(groupId);
+        req.setMeetingId(meetingId);
+        networkClient.send(req);
+    }
+
+    public void showAddParticipantDialog(String membersCsv) {
+        List<String> available = new ArrayList<>();
+        Set<String> alreadyIn = new HashSet<>();
+        if (participantsList != null) {
+            alreadyIn.addAll(participantsList.getItems());
+        }
+        if (membersCsv != null && !membersCsv.isBlank()) {
+            for (String m : membersCsv.split(",")) {
+                String name = m.trim();
+                if (!name.isEmpty() && !alreadyIn.contains(name)) {
+                    available.add(name);
+                }
+            }
+        }
+        if (available.isEmpty()) {
+            new Alert(Alert.AlertType.INFORMATION, "Tous les membres sont deja dans la reunion.").showAndWait();
+            return;
+        }
+
+        Dialog<List<String>> dialog = new Dialog<>();
+        dialog.setTitle("Ajouter participants");
+        dialog.setHeaderText("Selectionnez:");
+        VBox content = new VBox(10);
+        content.setPadding(new Insets(20));
+        List<CheckBox> cbs = new ArrayList<>();
+        for (String m : available) {
+            CheckBox cb = new CheckBox(m);
+            cb.setStyle("-fx-text-fill: #01579b;");
+            cbs.add(cb);
+            content.getChildren().add(cb);
+        }
+        ScrollPane scroll = new ScrollPane(content);
+        scroll.setFitToWidth(true);
+        scroll.setPrefHeight(300);
+        dialog.getDialogPane().setContent(scroll);
+        dialog.getDialogPane().getButtonTypes().addAll(
+                new ButtonType("Inviter", ButtonBar.ButtonData.OK_DONE),
+                ButtonType.CANCEL
+        );
+        dialog.setResultConverter(btn -> {
+            if (btn != null && btn.getButtonData() == ButtonBar.ButtonData.OK_DONE) {
+                List<String> sel = new ArrayList<>();
+                for (CheckBox cb : cbs) {
+                    if (cb.isSelected()) sel.add(cb.getText());
+                }
+                return sel;
+            }
+            return null;
+        });
+        Optional<List<String>> res = dialog.showAndWait();
+        res.ifPresent(sel -> {
+            for (String name : sel) {
+                ChatMessage inv = new ChatMessage();
+                inv.setType(MessageType.MEETING_INVITE_USER);
+                inv.setGroupId(groupId);
+                inv.setMeetingId(meetingId);
+                inv.setContent(name);
+                networkClient.send(inv);
             }
         });
     }
 
-    public void syncParticipants(String serialized) {
+    public void addParticipant(int userId, String name, String avatarUrl) {
+        if (participantIds.contains(userId)) return;
+        participantIds.add(userId);
+
         Platform.runLater(() -> {
-            videoDisplay.clearParticipants();
-            participantsList.getItems().clear();
-            if (serialized == null || serialized.isBlank()) return;
-            for (String entry : serialized.split(",")) {
-                String[] parts = entry.split(":", 2);
-                if (parts.length == 2) {
-                    videoDisplay.addParticipant(parts[0], parts[1]);
-                    if (!participantsList.getItems().contains(parts[1])) {
-                        participantsList.getItems().add(parts[1]);
-                    }
+            if (participantsList != null && name != null && !participantsList.getItems().contains(name)) {
+                participantsList.getItems().add(name);
+            }
+            VBox container = createParticipantContainer(userId, name);
+            participantContainers.put(userId, container);
+
+            if ("VIDEO".equals(callType) && videoGrid != null) {
+                addToVideoGrid(container);
+                if (centerContainer != null) {
+                    centerContainer.setVisible(false);
+                    centerContainer.setManaged(false);
+                }
+            } else if (centerContainer != null) {
+                centerContainer.getChildren().add(container);
+            }
+            updateSubtitle();
+        });
+    }
+
+    private VBox createParticipantContainer(int userId, String name) {
+        VBox container = new VBox(5);
+        container.setAlignment(Pos.CENTER);
+        container.setPadding(new Insets(10));
+
+        StackPane videoPane = new StackPane();
+        videoPane.setPrefSize(140, 140);
+        videoPane.setMaxSize(140, 140);
+        videoPane.setStyle("-fx-background-color: #29b6f6; -fx-background-radius: 16;");
+
+        ImageView videoView = new ImageView();
+        videoView.setFitWidth(140);
+        videoView.setFitHeight(140);
+        videoView.setPreserveRatio(true);
+        videoPane.getChildren().add(videoView);
+
+        Rectangle clip = new Rectangle(140, 140);
+        clip.setArcWidth(16);
+        clip.setArcHeight(16);
+        videoPane.setClip(clip);
+
+        Label nameLabel = new Label(name);
+        nameLabel.setStyle("-fx-text-fill: #01579b; -fx-font-size: 14; -fx-font-weight: bold;");
+
+        FontIcon micIcon = new FontIcon(FontAwesomeSolid.MICROPHONE);
+        micIcon.setIconSize(14);
+        micIcon.setIconColor(Color.web("#4caf50"));
+        HBox micIndicator = new HBox(micIcon);
+        micIndicator.setAlignment(Pos.CENTER);
+
+        container.getChildren().addAll(videoPane, nameLabel, micIndicator);
+        participantVideos.put(userId, videoView);
+        participantLabels.put(userId, nameLabel);
+        return container;
+    }
+
+    private void addToVideoGrid(VBox container) {
+        int count = participantContainers.size();
+        int row = (count - 1) / 2;
+        int col = (count - 1) % 2;
+        videoGrid.add(container, col, row);
+    }
+
+    public void updateParticipantVideo(int userId, Image frame) {
+        Platform.runLater(() -> {
+            ImageView video = participantVideos.get(userId);
+            if (video != null && frame != null) {
+                video.setImage(frame);
+            }
+        });
+    }
+
+    public void updateParticipantFrame(String participantId, byte[] jpegFrame) {
+        if (jpegFrame == null || jpegFrame.length == 0) return;
+        try {
+            updateParticipantVideo(Integer.parseInt(participantId), new Image(new ByteArrayInputStream(jpegFrame)));
+        } catch (NumberFormatException ignored) {
+        }
+    }
+
+    public void updateParticipantMicState(int userId, boolean micOn) {
+        Platform.runLater(() -> {
+            VBox container = participantContainers.get(userId);
+            if (container != null && container.getChildren().size() > 2) {
+                HBox micIndicator = (HBox) container.getChildren().get(2);
+                if (!micIndicator.getChildren().isEmpty() && micIndicator.getChildren().get(0) instanceof FontIcon micIcon) {
+                    micIcon.setIconLiteral(micOn ? "fas-microphone" : "fas-microphone-slash");
+                    micIcon.setIconColor(micOn ? Color.web("#4caf50") : Color.web("#ff1744"));
                 }
             }
         });
     }
 
-    public void removeParticipant(String participantId, String displayName) {
+    public void removeParticipant(int userId) {
+        if (!participantIds.contains(userId)) return;
+        participantIds.remove(userId);
+
         Platform.runLater(() -> {
-            videoDisplay.removeParticipant(participantId);
-            participantsList.getItems().remove(displayName);
+            Label label = participantLabels.get(userId);
+            if (label != null && participantsList != null) {
+                participantsList.getItems().remove(label.getText());
+            }
+            VBox container = participantContainers.remove(userId);
+            if (container != null) {
+                if ("VIDEO".equals(callType) && videoGrid != null) {
+                    videoGrid.getChildren().remove(container);
+                } else if (centerContainer != null) {
+                    centerContainer.getChildren().remove(container);
+                }
+            }
+            participantVideos.remove(userId);
+            participantLabels.remove(userId);
+            updateSubtitle();
+            System.out.println("[MEETING_UI] Participant " + userId + " retire");
         });
     }
 
-    public void updateParticipantFrame(String participantId, byte[] jpegFrame) {
-        Platform.runLater(() -> videoDisplay.updateFrame(participantId, jpegFrame));
+    public void removeParticipantByUsername(String participantUsername) {
+        if (participantUsername == null) return;
+        for (Map.Entry<Integer, Label> entry : participantLabels.entrySet()) {
+            if (participantUsername.equals(entry.getValue().getText())) {
+                removeParticipant(entry.getKey());
+                return;
+            }
+        }
+    }
+
+    public void updateParticipantsList(String participantsCsv) {
+        if (participantsCsv == null || participantsCsv.isBlank()) return;
+        for (String p : participantsCsv.split(",")) {
+            String[] parts = p.split(":");
+            if (parts.length >= 2) {
+                try {
+                    int id = Integer.parseInt(parts[0].trim());
+                    String name = parts[1].trim();
+                    if (!participantIds.contains(id)) {
+                        addParticipant(id, name, null);
+                    }
+                } catch (NumberFormatException ignored) {
+                }
+            }
+        }
+    }
+
+    public void syncParticipants(String csv) {
+        updateParticipantsList(csv);
     }
 
     public void addAudioFrame(String participantId, byte[] audioData) {
-        audioMixer.addAudioFrame(participantId, audioData);
-    }
-
-    @FXML
-    private void onLeaveMeeting() {
-        if (networkClient != null) {
-            networkClient.leaveMeeting(meetingId);
-        }
-        closeWindow();
-    }
-
-    @FXML
-    private void onToggleMute() {
-        muted = !muted;
-        muteButton.setText(muted ? "Activer son" : "Muet");
-    }
-
-    @FXML
-    private void onToggleCamera() {
-        cameraEnabled = !cameraEnabled;
-        cameraButton.setText(cameraEnabled ? "Caméra" : "Caméra off");
-    }
-
-    private void closeWindow() {
-        audioMixer.stop();
-        if (networkClient != null) {
-            networkClient.stopMeetingMedia();
-            networkClient.setActiveMeetingController(null);
-        }
-        Stage stage = (Stage) leaveButton.getScene().getWindow();
-        stage.close();
+        // Audio via relais UDP
     }
 
     public void handleMeetingEnded() {
-        Platform.runLater(this::closeWindow);
+        Platform.runLater(() -> {
+            if (btnEndCall != null && btnEndCall.getScene() != null) {
+                Stage stage = (Stage) btnEndCall.getScene().getWindow();
+                if (stage != null) stage.close();
+            }
+        });
     }
 
-    public static void openMeetingWindow(NetworkClient networkClient, int meetingId, String title) throws IOException {
-        URL resource = MeetingController.class.getResource("/fxml/meeting-window.fxml");
-        if (resource == null) {
-            throw new IllegalStateException("meeting-window.fxml introuvable");
+    private void updateSubtitle() {
+        if (lblSubtitle == null) return;
+        int count = participantsList != null ? participantsList.getItems().size() : participantIds.size();
+        lblSubtitle.setText(count + " participant(s)");
+    }
+
+    private void endCall() {
+        cleanup();
+        if (networkClient != null && meetingId > 0) {
+            if (isInitiator) {
+                networkClient.endMeeting(meetingId);
+            } else {
+                networkClient.leaveMeeting(meetingId);
+            }
         }
+        Platform.runLater(() -> {
+            if (btnEndCall != null && btnEndCall.getScene() != null) {
+                Stage stage = (Stage) btnEndCall.getScene().getWindow();
+                if (stage != null) stage.close();
+            }
+        });
+    }
+
+    public void cleanup() {
+        audioRunning = false;
+        videoOn = false;
+        if (microphone != null) {
+            microphone.stop();
+            microphone.close();
+        }
+        if (speakers != null) {
+            speakers.stop();
+            speakers.close();
+        }
+        if (captureThread != null) {
+            captureThread.interrupt();
+        }
+        if (videoThread != null) {
+            videoThread.interrupt();
+        }
+        if (webcam != null && webcam.isOpen()) {
+            webcam.close();
+        }
+        if (networkClient != null) {
+            networkClient.setActiveMeetingController(null);
+            networkClient.closeUdpSockets();
+        }
+    }
+
+    public static void openMeetingWindow(NetworkClient networkClient, int groupId, String callType,
+                                         int meetingId, String title, String username, boolean isInitiator) throws IOException {
+        URL resource = MeetingController.class.getResource("/fxml/meeting-window.fxml");
+        if (resource == null) throw new IllegalStateException("meeting-window.fxml introuvable");
+
         FXMLLoader loader = new FXMLLoader(resource);
         Parent root = loader.load();
         MeetingController controller = loader.getController();
-        controller.init(networkClient, meetingId, title);
+
+        controller.setCallType(callType != null ? callType : "AUDIO");
+        controller.setGroupId(groupId);
+        controller.setMeetingId(meetingId);
+        controller.setInitiator(isInitiator);
+        controller.setNetworkClient(networkClient);
+        controller.setUsername(username);
+
+        networkClient.setupUdpSockets();
+        controller.startServices();
 
         Stage stage = new Stage();
-        Scene scene = new Scene(root, 1100, 720);
-        URL css = MeetingController.class.getResource("/css/meeting.css");
-        if (css != null) {
-            scene.getStylesheets().add(css.toExternalForm());
-        }
-        stage.setScene(scene);
-        stage.setTitle("Réunion — " + title);
+        stage.setScene(new Scene(root, 900, 700));
+        stage.setTitle("Reunion " + callType + " — " + title);
         stage.initModality(Modality.NONE);
-        stage.setMinWidth(800);
-        stage.setMinHeight(600);
+        stage.setMinWidth(600);
+        stage.setMinHeight(500);
+
+        stage.setOnShown(e -> controller.addParticipant(-1, username, null));
+        stage.setOnCloseRequest(e -> {
+            controller.cleanup();
+            if (isInitiator) {
+                networkClient.endMeeting(meetingId);
+            } else {
+                networkClient.leaveMeeting(meetingId);
+            }
+        });
         stage.show();
     }
 }
-

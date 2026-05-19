@@ -80,6 +80,18 @@
             <artifactId>logback-classic</artifactId>
             <version>1.5.6</version>
         </dependency>
+
+        <!-- Ikonli icons for meeting UI -->
+        <dependency>
+            <groupId>org.kordamp.ikonli</groupId>
+            <artifactId>ikonli-javafx</artifactId>
+            <version>12.3.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.kordamp.ikonli</groupId>
+            <artifactId>ikonli-fontawesome5-pack</artifactId>
+            <version>12.3.1</version>
+        </dependency>
     </dependencies>
 
     <build>

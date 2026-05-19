@@ -70,6 +70,8 @@ public class NetworkClient {
     private Consumer<ChatMessage> onMeetingParticipantJoined;
     private Consumer<ChatMessage> onMeetingParticipantLeft;
     private Consumer<ChatMessage> onMeetingInfo;
+    private Consumer<ChatMessage> onMeetingParticipants;
+    private Consumer<ChatMessage> onMeetingNonParticipantsResponse;
     // ── Callbacks Groupes ─────────────────────────────────────
     private Consumer<ChatMessage> onGroupCreated;
     private Consumer<ChatMessage> onGroupListResponse;
@@ -113,6 +115,34 @@ public class NetworkClient {
 
     public void setOnMeetingInfo(Consumer<ChatMessage> cb) {
         this.onMeetingInfo = cb;
+    }
+
+    public void setOnMeetingParticipants(Consumer<ChatMessage> cb) {
+        this.onMeetingParticipants = cb;
+    }
+
+    public void setOnMeetingNonParticipantsResponse(Consumer<ChatMessage> cb) {
+        this.onMeetingNonParticipantsResponse = cb;
+    }
+
+    public void requestMeetingParticipants(int meetingId) {
+        ChatMessage msg = new ChatMessage(MessageType.MEETING_PARTICIPANTS_REQUEST, username, "SERVER", null, "");
+        msg.setMeetingId(meetingId);
+        send(msg);
+    }
+
+    public void requestNonMeetingParticipants(int groupId, int meetingId) {
+        ChatMessage msg = new ChatMessage(MessageType.MEETING_NON_PARTICIPANTS_REQUEST, username, "SERVER", null, "");
+        msg.setGroupId(groupId);
+        msg.setMeetingId(meetingId);
+        send(msg);
+    }
+
+    public void inviteUserToMeeting(int groupId, int meetingId, String memberName) {
+        ChatMessage msg = new ChatMessage(MessageType.MEETING_INVITE_USER, username, "SERVER", null, memberName);
+        msg.setGroupId(groupId);
+        msg.setMeetingId(meetingId);
+        send(msg);
     }
     public void setOnGroupCreated(Consumer<ChatMessage> cb)         { this.onGroupCreated = cb; }
     public void setOnGroupListResponse(Consumer<ChatMessage> cb)    { this.onGroupListResponse = cb; }
@@ -200,23 +230,33 @@ public class NetworkClient {
         send(msg);
     }
 
-    public void startMeeting(int groupId, String meetingType) {
-        ChatMessage msg = new ChatMessage(MessageType.MEETING_START, username, "SERVER", null, "Demarrage reunion");
+    public void startGroupMeeting(int groupId, String meetingType) {
+        System.out.println("[NET_CLIENT] startGroupMeeting: group=" + groupId + ", type=" + meetingType);
+        ChatMessage msg = new ChatMessage();
+        msg.setType(MessageType.MEETING_START);
+        msg.setFrom(username);
         msg.setGroupId(groupId);
         msg.setMeetingType(meetingType);
-        send(msg);
-    }
-
-    public void joinMeeting(int meetingId) {
-        ChatMessage msg = new ChatMessage(MessageType.MEETING_JOIN, username, "SERVER", null, "Rejoint reunion");
-        msg.setMeetingId(meetingId);
-        fillUdpPorts(msg);
+        msg.setContent("Demarrage reunion " + meetingType);
         send(msg);
     }
 
     public void joinMeetingByGroup(int groupId) {
-        ChatMessage msg = new ChatMessage(MessageType.MEETING_JOIN, username, "SERVER", null, "Rejoint reunion par groupe");
+        System.out.println("[NET_CLIENT] joinMeetingByGroup: group=" + groupId);
+        ChatMessage msg = new ChatMessage();
+        msg.setType(MessageType.MEETING_JOIN);
+        msg.setFrom(username);
         msg.setGroupId(groupId);
+        fillUdpPorts(msg);
+        send(msg);
+    }
+
+    public void joinMeeting(int meetingId) {
+        System.out.println("[NET_CLIENT] joinMeeting: meeting=" + meetingId);
+        ChatMessage msg = new ChatMessage();
+        msg.setType(MessageType.MEETING_JOIN);
+        msg.setFrom(username);
+        msg.setMeetingId(meetingId);
         fillUdpPorts(msg);
         send(msg);
     }
@@ -228,13 +268,19 @@ public class NetworkClient {
 
 
     public void leaveMeeting(int meetingId) {
-        ChatMessage msg = new ChatMessage(MessageType.MEETING_LEAVE, username, "SERVER", null, "Quitte reunion");
+        System.out.println("[NET_CLIENT] leaveMeeting: meeting=" + meetingId);
+        ChatMessage msg = new ChatMessage();
+        msg.setType(MessageType.MEETING_LEAVE);
+        msg.setFrom(username);
         msg.setMeetingId(meetingId);
         send(msg);
     }
 
     public void endMeeting(int meetingId) {
-        ChatMessage msg = new ChatMessage(MessageType.MEETING_END, username, "SERVER", null, "Fin de reunion");
+        System.out.println("[NET_CLIENT] endMeeting: meeting=" + meetingId);
+        ChatMessage msg = new ChatMessage();
+        msg.setType(MessageType.MEETING_END);
+        msg.setFrom(username);
         msg.setMeetingId(meetingId);
         send(msg);
     }
@@ -288,6 +334,56 @@ public class NetworkClient {
         if (meetingVideoCapture != null) {
             meetingVideoCapture.stop();
             meetingVideoCapture = null;
+        }
+    }
+
+    public void setupUdpSockets() {
+        if (meetingAudioService == null) {
+            meetingAudioService = new AudioTransmissionService();
+        }
+        System.out.println("[NET_CLIENT] UDP sockets prets");
+    }
+
+    public void closeUdpSockets() {
+        stopMeetingMedia();
+        System.out.println("[NET_CLIENT] UDP sockets fermes");
+    }
+
+    public void sendAudioData(byte[] data, int meetingId) {
+        sendMeetingAudioFrame(data);
+    }
+
+    public void startAudioReceiving(java.util.function.Consumer<byte[]> callback) {
+        if (meetingAudioService != null) {
+            meetingAudioService.setOnAudioReceived(callback);
+        }
+    }
+
+    public void sendVideoFrame(byte[] frame, int meetingId) {
+        sendMeetingVideoFrame(frame);
+    }
+
+    public void sendMicState(int meetingId, boolean micOn) {
+        ChatMessage msg = new ChatMessage(MessageType.MEETING_MIC_STATE, username, null, null, micOn ? "ON" : "OFF");
+        msg.setMeetingId(meetingId);
+        send(msg);
+    }
+
+    public void sendVideoState(int meetingId, boolean videoOn) {
+        ChatMessage msg = new ChatMessage(MessageType.MEETING_VIDEO_STATE, username, null, null, videoOn ? "ON" : "OFF");
+        msg.setMeetingId(meetingId);
+        send(msg);
+    }
+
+    public void setMeetingMicEnabled(boolean enabled) {
+        if (meetingAudioService != null) {
+            meetingAudioService.setCaptureEnabled(enabled);
+        }
+    }
+
+    public void setMeetingPlaybackVolume(double volume) {
+        if (meetingAudioService != null) {
+            meetingAudioService.setPlaybackVolume(volume);
         }
     }
 
@@ -365,13 +461,11 @@ public class NetworkClient {
         send(msg);
     }
 
-    public void startGroupMeeting(int groupId, String meetingType) {
-        ChatMessage msg = new ChatMessage(MessageType.MEETING_START, username, "SERVER", null, meetingType);
-        msg.setGroupId(groupId);
-        msg.setMeetingType(meetingType);
-        send(msg);
-    }
     public void send(ChatMessage msg) {
+        if (msg != null && msg.getType() != null) {
+            System.out.println("[NET_CLIENT] SEND: " + msg.getType() + "|group=" + msg.getGroupId()
+                    + "|meeting=" + msg.getMeetingId() + "|type=" + msg.getMeetingType());
+        }
         if (out != null) {
             out.println(msg.serialize());
             out.flush();
@@ -472,50 +566,46 @@ public class NetworkClient {
                         onCallRejected.accept(msg);
                     }
                 }
-                case MEETING_INVITE -> {
-                    if (onMeetingInvite != null) {
-                        onMeetingInvite.accept(msg);
-                    }
-                }
                 case MEETING_STARTED -> {
-                    if (onMeetingStarted != null) {
-                        onMeetingStarted.accept(msg);
+                    System.out.println("[NET_CLIENT] MEETING_STARTED recu: meeting=" + msg.getMeetingId());
+                    if (onMeetingStarted != null) onMeetingStarted.accept(msg);
+                }
+                case MEETING_INVITE -> {
+                    System.out.println("[NET_CLIENT] MEETING_INVITE recu: group=" + msg.getGroupId()
+                            + ", type=" + msg.getMeetingType());
+                    if (onMeetingInvite != null) onMeetingInvite.accept(msg);
+                }
+                case MEETING_INFO -> {
+                    System.out.println("[NET_CLIENT] MEETING_INFO recu: host=" + msg.getServerHost());
+                    if (onMeetingInfo != null) onMeetingInfo.accept(msg);
+                }
+                case MEETING_PARTICIPANTS -> {
+                    System.out.println("[NET_CLIENT] MEETING_PARTICIPANTS recu: " + msg.getContent());
+                    if (onMeetingParticipants != null) onMeetingParticipants.accept(msg);
+                    if (activeMeetingController != null) {
+                        activeMeetingController.syncParticipants(msg.getContent());
                     }
                 }
                 case MEETING_ENDED -> {
-                    if (onMeetingEnded != null) {
-                        onMeetingEnded.accept(msg);
-                    }
+                    System.out.println("[NET_CLIENT] MEETING_ENDED recu");
+                    if (onMeetingEnded != null) onMeetingEnded.accept(msg);
                     stopMeetingMedia();
                     if (activeMeetingController != null) {
                         activeMeetingController.handleMeetingEnded();
                     }
                 }
                 case MEETING_PARTICIPANT_JOINED -> {
-                    if (onMeetingParticipantJoined != null) {
-                        onMeetingParticipantJoined.accept(msg);
-                    }
+                    System.out.println("[NET_CLIENT] MEETING_PARTICIPANT_JOINED: " + msg.getFrom());
+                    if (onMeetingParticipantJoined != null) onMeetingParticipantJoined.accept(msg);
                     if (activeMeetingController != null) {
                         activeMeetingController.syncParticipants(msg.getContent());
                     }
                 }
                 case MEETING_PARTICIPANT_LEFT -> {
-                    if (onMeetingParticipantLeft != null) {
-                        onMeetingParticipantLeft.accept(msg);
-                    }
+                    System.out.println("[NET_CLIENT] MEETING_PARTICIPANT_LEFT: " + msg.getFrom());
+                    if (onMeetingParticipantLeft != null) onMeetingParticipantLeft.accept(msg);
                     if (activeMeetingController != null) {
                         activeMeetingController.syncParticipants(msg.getContent());
-                    }
-
-                }
-                case MEETING_PARTICIPANTS -> {
-                    if (activeMeetingController != null) {
-                        activeMeetingController.syncParticipants(msg.getContent());
-                    }
-                }
-                case MEETING_INFO -> {
-                    if (onMeetingInfo != null) {
-                        onMeetingInfo.accept(msg);
                     }
                 }
                 case MEETING_AUDIO_FRAME -> {
@@ -526,6 +616,23 @@ public class NetworkClient {
                 case MEETING_VIDEO_FRAME -> {
                     if (activeMeetingController != null) {
                         activeMeetingController.updateParticipantFrame(msg.getFrom(), msg.getBinaryData());
+                    }
+                }
+                case MEETING_MIC_STATE -> {
+                    if (activeMeetingController != null) {
+                        int uid = parseIntSafe(msg.getTo(), 0);
+                        boolean micOn = "ON".equalsIgnoreCase(msg.getContent());
+                        if (uid > 0) {
+                            activeMeetingController.updateParticipantMicState(uid, micOn);
+                        }
+                    }
+                }
+                case MEETING_VIDEO_STATE -> {
+                    System.out.println("[NET_CLIENT] MEETING_VIDEO_STATE: " + msg.getFrom() + " -> " + msg.getContent());
+                }
+                case MEETING_NON_PARTICIPANTS, MEETING_NON_PARTICIPANTS_RESPONSE -> {
+                    if (onMeetingNonParticipantsResponse != null) {
+                        onMeetingNonParticipantsResponse.accept(msg);
                     }
                 }
                 case GROUP_CREATED -> {

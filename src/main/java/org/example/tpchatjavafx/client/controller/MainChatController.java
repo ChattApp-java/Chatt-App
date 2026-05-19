@@ -223,15 +223,20 @@ public class MainChatController {
             handleCallRejected(msg);
         });
 
-        networkClient.setOnMeetingStarted(msg -> {
-            Platform.runLater(() -> {
-                try {
-                    MeetingController.openMeetingWindow(networkClient, msg.getMeetingId(), "Ma RÃ©union (" + msg.getMeetingType() + ")");
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            });
-        });
+        networkClient.setOnMeetingStarted(msg -> Platform.runLater(() -> {
+            try {
+                String callType = msg.getMeetingType() != null ? msg.getMeetingType() : "AUDIO";
+                int groupId = msg.getGroupId() > 0 ? msg.getGroupId() : currentGroupId;
+                String title = groupId == currentGroupId && currentGroupName != null && !currentGroupName.isBlank()
+                        ? currentGroupName
+                        : "Ma reunion";
+                MeetingController.openMeetingWindow(networkClient, groupId, callType, msg.getMeetingId(),
+                        title, username, true);
+            } catch (IOException e) {
+                e.printStackTrace();
+                showInfo("Impossible d'ouvrir la reunion: " + e.getMessage());
+            }
+        }));
 
         networkClient.setOnMeetingInvite(msg -> {
             Platform.runLater(() -> {
@@ -240,7 +245,10 @@ public class MainChatController {
                         if (accepted) {
                             networkClient.joinMeeting(msg.getMeetingId());
                             try {
-                                MeetingController.openMeetingWindow(networkClient, msg.getMeetingId(), "RÃƒÂ©union de " + msg.getFrom());
+                                String callType = msg.getMeetingType() != null ? msg.getMeetingType() : "AUDIO";
+                                int groupId = msg.getGroupId() > 0 ? msg.getGroupId() : currentGroupId;
+                                MeetingController.openMeetingWindow(networkClient, groupId, callType, msg.getMeetingId(),
+                                        "Reunion de " + msg.getFrom(), username, false);
                             } catch (IOException e) {
                                 e.printStackTrace();
                             }
@@ -252,17 +260,16 @@ public class MainChatController {
             });
         });
 
-        networkClient.setOnMeetingInfo(msg -> {
+        networkClient.setOnMeetingInfo(msg -> Platform.runLater(() -> {
             try {
-                // Le serveur envoie les infos UDP pour se connecter au relais
                 networkClient.startMeetingAudio(msg.getMeetingId(), 0, msg.getServerUdpAudioPort(), msg.getServerHost());
-                if ("VIDEO".equalsIgnoreCase(msg.getMeetingType())) {
+                if (msg.getMeetingType() != null && msg.getMeetingType().toUpperCase().contains("VIDEO")) {
                     networkClient.startMeetingVideo(msg.getMeetingId(), 0, msg.getServerUdpVideoPort(), msg.getServerHost());
                 }
             } catch (Exception e) {
-                System.err.println("Erreur dÃƒÂ©marrage services UDP rÃƒÂ©union : " + e.getMessage());
+                System.err.println("[MAIN_CHAT] Erreur demarrage relais UDP reunion: " + e.getMessage());
             }
-        });
+        }));
 
         privateListView.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
             if (n != null) openPrivateChat(n);

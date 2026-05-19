@@ -3,6 +3,7 @@ package org.example.tpchatjavafx.client.audio;
 import javax.sound.sampled.LineUnavailableException;
 import java.io.IOException;
 import java.net.*;
+import java.util.function.Consumer;
 
 /**
  * Transmission audio UDP entre 2 clients.
@@ -20,6 +21,7 @@ public class AudioTransmissionService {
     private Thread receiveThread;
     private int meetingId;
     private int userId;
+    private Consumer<byte[]> onAudioReceived;
 
     public void initiate(String remoteHost, int remotePort) throws Exception {
         initiate(remoteHost, remotePort, 0);
@@ -84,7 +86,11 @@ public class AudioTransmissionService {
                     int offset = hasRelayHeader(packet.getData(), length) ? 8 : 0;
                     byte[] audioData = new byte[length - offset];
                     System.arraycopy(packet.getData(), offset, audioData, 0, audioData.length);
-                    playbackService.playAudio(audioData);
+                    if (onAudioReceived != null) {
+                        onAudioReceived.accept(audioData);
+                    } else if (playbackService != null) {
+                        playbackService.playAudio(audioData);
+                    }
                 }
             } catch (SocketTimeoutException ignored) {
                 // Timeout régulier pour vérifier running
@@ -125,6 +131,29 @@ public class AudioTransmissionService {
 
     public boolean isRunning() {
         return running;
+    }
+
+    public void setCaptureEnabled(boolean enabled) {
+        if (captureService == null) return;
+        if (enabled && !captureService.isRunning()) {
+            try {
+                captureService.start();
+            } catch (LineUnavailableException e) {
+                System.err.println("Impossible d'activer le micro: " + e.getMessage());
+            }
+        } else if (!enabled && captureService.isRunning()) {
+            captureService.stop();
+        }
+    }
+
+    public void setPlaybackVolume(double volume) {
+        if (playbackService != null) {
+            playbackService.setVolume(volume);
+        }
+    }
+
+    public void setOnAudioReceived(Consumer<byte[]> callback) {
+        this.onAudioReceived = callback;
     }
 
     private byte[] addRelayHeader(byte[] data) {
