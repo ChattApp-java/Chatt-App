@@ -43,7 +43,7 @@ public class MeetingController implements Initializable {
     @FXML private Label lblTitle;
     @FXML private Label lblSubtitle;
     @FXML private Label lblVideoCaption;
-    @FXML private VBox centerContainer;
+    @FXML private TilePane centerContainer;
     @FXML private GridPane videoGrid;
     @FXML private ListView<String> participantsList;
     @FXML private Button btnMore;
@@ -84,6 +84,13 @@ public class MeetingController implements Initializable {
         System.out.println("[MEETING_UI] MeetingController initialise");
         if (participantsList != null) {
             participantsList.setItems(FXCollections.observableArrayList());
+        }
+        if (centerContainer != null) {
+            centerContainer.setPrefColumns(2);
+            centerContainer.setHgap(18);
+            centerContainer.setVgap(18);
+            centerContainer.setTileAlignment(Pos.CENTER);
+            centerContainer.setAlignment(Pos.TOP_CENTER);
         }
         setupButtonActions();
     }
@@ -131,7 +138,7 @@ public class MeetingController implements Initializable {
         Platform.runLater(() -> {
             boolean isVideo = isVideoMeeting();
             if (lblTitle != null) {
-                lblTitle.setText("Reunion " + (isVideo ? "video" : "audio"));
+                lblTitle.setText(isVideo ? "Appel video de groupe" : "Appel audio de groupe");
             }
             if (btnVideo != null) {
                 btnVideo.setVisible(isVideo);
@@ -154,9 +161,8 @@ public class MeetingController implements Initializable {
                 lblVideoCaption.setManaged(isVideo);
             }
             if (centerContainer != null) {
-                boolean showCenter = !isVideo;
-                centerContainer.setVisible(showCenter);
-                centerContainer.setManaged(showCenter);
+                centerContainer.setVisible(!isVideo);
+                centerContainer.setManaged(!isVideo);
             }
             updateSubtitle();
             if (isVideo && networkClient != null && (webcam == null || !webcam.isOpen())) {
@@ -254,8 +260,8 @@ public class MeetingController implements Initializable {
             icon.setIconColor(micMuted ? Color.web("#ff1744") : Color.WHITE);
             btnMic.setGraphic(icon);
             btnMic.setStyle(micMuted
-                    ? "-fx-background-color: #ffcdd2; -fx-background-radius: 50%;"
-                    : "-fx-background-color: #b0bec5; -fx-background-radius: 50%;");
+                    ? "-fx-background-color: #ff5c73; -fx-background-radius: 28; -fx-cursor: hand;"
+                    : "-fx-background-color: #253239; -fx-background-radius: 28; -fx-cursor: hand;");
         });
     }
 
@@ -275,8 +281,8 @@ public class MeetingController implements Initializable {
             icon.setIconColor(speakerOn ? Color.web("#01579b") : Color.web("#ff1744"));
             btnSpeaker.setGraphic(icon);
             btnSpeaker.setStyle(speakerOn
-                    ? "-fx-background-color: white; -fx-background-radius: 50%;"
-                    : "-fx-background-color: #ffcdd2; -fx-background-radius: 50%;");
+                    ? "-fx-background-color: #ffffff; -fx-background-radius: 32; -fx-cursor: hand;"
+                    : "-fx-background-color: #253239; -fx-background-radius: 32; -fx-cursor: hand;");
         });
     }
 
@@ -302,8 +308,8 @@ public class MeetingController implements Initializable {
             icon.setIconColor(videoOn ? Color.WHITE : Color.web("#ff1744"));
             btnVideo.setGraphic(icon);
             btnVideo.setStyle(videoOn
-                    ? "-fx-background-color: #b0bec5; -fx-background-radius: 50%;"
-                    : "-fx-background-color: #ffcdd2; -fx-background-radius: 50%;");
+                    ? "-fx-background-color: #253239; -fx-background-radius: 28; -fx-cursor: hand;"
+                    : "-fx-background-color: #ff5c73; -fx-background-radius: 28; -fx-cursor: hand;");
         });
     }
 
@@ -522,47 +528,68 @@ public class MeetingController implements Initializable {
     }
 
     private VBox createParticipantContainer(int userId, String name) {
-        VBox container = new VBox(5);
+        boolean videoMeeting = isVideoMeeting();
+        VBox container = new VBox(10);
         container.setAlignment(Pos.CENTER);
-        container.setPadding(new Insets(10));
+        container.setPadding(new Insets(14));
+        container.setPrefWidth(videoMeeting ? 190 : 220);
+        container.setMaxWidth(videoMeeting ? 190 : 220);
+        container.setStyle(videoMeeting
+                ? "-fx-background-color: rgba(17, 27, 33, 0.72); -fx-background-radius: 22;"
+                : "-fx-background-color: linear-gradient(to bottom right, #1f2c34, #111b21); -fx-background-radius: 24;");
 
         StackPane videoPane = new StackPane();
-        videoPane.setPrefSize(140, 140);
-        videoPane.setMaxSize(140, 140);
-        videoPane.setStyle("-fx-background-color: #29b6f6; -fx-background-radius: 16;");
-
-        Label videoPlaceholder = new Label(userId == -1 ? "Camera active" : "Video en attente");
-        videoPlaceholder.setStyle("-fx-text-fill: white; -fx-font-size: 12; -fx-font-weight: bold;");
-        videoPlaceholder.setWrapText(true);
-        videoPlaceholder.setMaxWidth(100);
+        videoPane.setPrefSize(videoMeeting ? 160 : 92, videoMeeting ? 160 : 92);
+        videoPane.setMaxSize(videoMeeting ? 160 : 92, videoMeeting ? 160 : 92);
+        videoPane.setStyle(videoMeeting
+                ? "-fx-background-color: #233138; -fx-background-radius: 20;"
+                : "-fx-background-color: linear-gradient(to bottom right, #25d366, #128c7e); -fx-background-radius: 46;");
 
         ImageView videoView = new ImageView();
-        videoView.setFitWidth(140);
-        videoView.setFitHeight(140);
+        videoView.setFitWidth(videoMeeting ? 160 : 92);
+        videoView.setFitHeight(videoMeeting ? 160 : 92);
         videoView.setPreserveRatio(true);
-        videoPane.getChildren().addAll(videoView, videoPlaceholder);
 
-        Rectangle clip = new Rectangle(140, 140);
-        clip.setArcWidth(16);
-        clip.setArcHeight(16);
+        Label videoPlaceholder = null;
+        if (videoMeeting) {
+            videoPlaceholder = new Label(userId == -1 ? "Camera active" : "Video en attente");
+            videoPlaceholder.setStyle("-fx-text-fill: #dfe7ea; -fx-font-size: 12; -fx-font-weight: bold;");
+            videoPlaceholder.setWrapText(true);
+            videoPlaceholder.setMaxWidth(110);
+            videoPane.getChildren().addAll(videoView, videoPlaceholder);
+        } else {
+            Label initial = new Label(buildParticipantInitial(name));
+            initial.setStyle("-fx-text-fill: white; -fx-font-size: 32; -fx-font-weight: bold;");
+            videoPane.getChildren().add(initial);
+        }
+
+        Rectangle clip = new Rectangle(videoMeeting ? 160 : 92, videoMeeting ? 160 : 92);
+        clip.setArcWidth(videoMeeting ? 20 : 92);
+        clip.setArcHeight(videoMeeting ? 20 : 92);
         videoPane.setClip(clip);
 
-        Label nameLabel = new Label(name);
-        nameLabel.setStyle("-fx-text-fill: #01579b; -fx-font-size: 14; -fx-font-weight: bold;");
+        Label nameLabel = new Label(userId == localParticipantId ? name + " (Vous)" : name);
+        nameLabel.setStyle(videoMeeting
+                ? "-fx-text-fill: white; -fx-font-size: 15; -fx-font-weight: bold;"
+                : "-fx-text-fill: white; -fx-font-size: 16; -fx-font-weight: bold;");
         nameLabel.setWrapText(true);
-        nameLabel.setMaxWidth(140);
+        nameLabel.setMaxWidth(videoMeeting ? 160 : 190);
         nameLabel.setAlignment(Pos.CENTER);
 
         FontIcon micIcon = new FontIcon(FontAwesomeSolid.MICROPHONE);
         micIcon.setIconSize(14);
-        micIcon.setIconColor(Color.web("#4caf50"));
-        HBox micIndicator = new HBox(micIcon);
+        micIcon.setIconColor(Color.web("#25D366"));
+        Label micStatus = new Label(videoMeeting ? "" : "Micro actif");
+        micStatus.setStyle("-fx-text-fill: #9fb3bd; -fx-font-size: 11;");
+        HBox micIndicator = new HBox(6, micIcon, micStatus);
         micIndicator.setAlignment(Pos.CENTER);
 
         container.getChildren().addAll(videoPane, nameLabel, micIndicator);
         participantVideoPanes.put(userId, videoPane);
         participantVideos.put(userId, videoView);
-        participantVideoPlaceholders.put(userId, videoPlaceholder);
+        if (videoPlaceholder != null) {
+            participantVideoPlaceholders.put(userId, videoPlaceholder);
+        }
         participantLabels.put(userId, nameLabel);
         return container;
     }
@@ -586,7 +613,7 @@ public class MeetingController implements Initializable {
                     placeholder.setManaged(false);
                 }
                 if (videoPane != null) {
-                    videoPane.setStyle("-fx-background-color: #102027; -fx-background-radius: 16;");
+                    videoPane.setStyle("-fx-background-color: #102027; -fx-background-radius: 20;");
                 }
                 System.out.println("[MEETING_UI] Frame affichee pour participant=" + userId);
             } else if (frame != null) {
@@ -726,6 +753,13 @@ public class MeetingController implements Initializable {
             return localParticipantId;
         }
         return participantVideos.containsKey(-1) ? -1 : localParticipantId;
+    }
+
+    private String buildParticipantInitial(String name) {
+        if (name == null || name.isBlank()) {
+            return "?";
+        }
+        return name.trim().substring(0, 1).toUpperCase(Locale.ROOT);
     }
 
     private void endCall() {
