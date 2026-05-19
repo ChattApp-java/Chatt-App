@@ -1,15 +1,23 @@
 package org.example.tpchatjavafx.client.controller;
 
+import com.github.sarxos.webcam.Webcam;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.StackPane;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 import org.example.tpchatjavafx.client.util.WindowSizingUtil;
 
+import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.net.URL;
 import java.util.function.Consumer;
@@ -34,11 +42,26 @@ public class IncomingMeetingDialogController {
     @FXML
     private Button rejectButton;
 
+    @FXML
+    private ImageView cameraPreview;
+
+    @FXML
+    private Label previewStatusLabel;
+
+    @FXML
+    private StackPane previewPlaceholder;
+
     private Stage stage;
     private Consumer<Boolean> onDecision;
+    private Webcam webcam;
+    private Timeline previewTimeline;
 
     public void setStage(Stage stage) {
         this.stage = stage;
+        if (stage != null) {
+            stage.setOnShown(event -> startCameraPreview());
+            stage.setOnHidden(event -> stopCameraPreview());
+        }
     }
 
     public void setOnDecision(Consumer<Boolean> onDecision) {
@@ -63,14 +86,77 @@ public class IncomingMeetingDialogController {
 
     @FXML
     private void onJoinMeeting() {
+        stopCameraPreview();
         if (onDecision != null) onDecision.accept(true);
         if (stage != null) stage.close();
     }
 
     @FXML
     private void onRejectMeeting() {
+        stopCameraPreview();
         if (onDecision != null) onDecision.accept(false);
         if (stage != null) stage.close();
+    }
+
+    private void startCameraPreview() {
+        try {
+            webcam = Webcam.getDefault();
+            if (webcam == null) {
+                showPreviewUnavailable("Aucune camera detectee");
+                return;
+            }
+            webcam.open();
+            if (previewStatusLabel != null) {
+                previewStatusLabel.setText("Camera detectee");
+            }
+            previewTimeline = new Timeline(new KeyFrame(Duration.millis(120), event -> refreshPreviewFrame()));
+            previewTimeline.setCycleCount(Timeline.INDEFINITE);
+            previewTimeline.play();
+        } catch (Exception e) {
+            showPreviewUnavailable("Camera indisponible");
+        }
+    }
+
+    private void refreshPreviewFrame() {
+        if (webcam == null || !webcam.isOpen() || cameraPreview == null) {
+            return;
+        }
+        try {
+            BufferedImage frame = webcam.getImage();
+            if (frame == null) {
+                return;
+            }
+            javafx.scene.image.Image fxImage = javafx.embed.swing.SwingFXUtils.toFXImage(frame, null);
+            Platform.runLater(() -> {
+                cameraPreview.setImage(fxImage);
+                if (previewPlaceholder != null) {
+                    previewPlaceholder.setVisible(false);
+                    previewPlaceholder.setManaged(false);
+                }
+            });
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void showPreviewUnavailable(String message) {
+        if (previewStatusLabel != null) {
+            previewStatusLabel.setText(message);
+        }
+        if (previewPlaceholder != null) {
+            previewPlaceholder.setVisible(true);
+            previewPlaceholder.setManaged(true);
+        }
+    }
+
+    private void stopCameraPreview() {
+        if (previewTimeline != null) {
+            previewTimeline.stop();
+            previewTimeline = null;
+        }
+        if (webcam != null && webcam.isOpen()) {
+            webcam.close();
+        }
+        webcam = null;
     }
 
     public static void showInvite(String initiator, String meetingType, Consumer<Boolean> onDecision) throws IOException {
