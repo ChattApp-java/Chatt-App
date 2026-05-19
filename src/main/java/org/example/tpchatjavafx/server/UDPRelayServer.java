@@ -144,8 +144,15 @@ public class UDPRelayServer implements Closeable {
 
         void updateAddress(InetAddress address, int observedPort, MediaKind kind) {
             this.address = address;
-            if (kind == MediaKind.AUDIO && audioPort <= 0) audioPort = observedPort;
-            if (kind == MediaKind.VIDEO && videoPort <= 0) videoPort = observedPort;
+            if (observedPort <= 0) {
+                return;
+            }
+            if (kind == MediaKind.AUDIO) {
+                audioPort = observedPort;
+            }
+            if (kind == MediaKind.VIDEO) {
+                videoPort = observedPort;
+            }
         }
 
         InetSocketAddress socketAddress(MediaKind kind) {
