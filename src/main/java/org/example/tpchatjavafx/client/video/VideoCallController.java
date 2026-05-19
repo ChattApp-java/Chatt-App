@@ -6,6 +6,7 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import org.example.tpchatjavafx.client.NetworkClient;
 import org.example.tpchatjavafx.client.audio.AudioCaptureService;
+import org.example.tpchatjavafx.client.audio.AudioFormatUtil;
 import org.example.tpchatjavafx.client.model.ChatMessage;
 import org.example.tpchatjavafx.common.MessageType;
 import com.github.sarxos.webcam.Webcam;
@@ -37,6 +38,8 @@ public class VideoCallController {
     private SourceDataLine speakers;
     private volatile boolean audioRunning = false;
     private Thread audioCaptureThread;
+    private AudioFormat captureFormat;
+    private AudioFormat playbackFormat;
 
     /**
      * Initialise le contrôleur avec le client réseau et les pseudos des deux utilisateurs
@@ -126,10 +129,12 @@ public class VideoCallController {
         mic = (TargetDataLine) AudioSystem.getLine(micInfo);
         mic.open(format);
         mic.start();
+        captureFormat = format;
 
         speakers = (SourceDataLine) AudioSystem.getLine(spkInfo);
         speakers.open(format);
         speakers.start();
+        playbackFormat = format;
 
         audioRunning = true;
         audioCaptureThread = new Thread(this::audioCaptureLoop, "video-audio-capture");
@@ -145,6 +150,9 @@ public class VideoCallController {
                 if (count > 0) {
                     byte[] frame = new byte[count];
                     System.arraycopy(buffer, 0, frame, 0, count);
+                    if (!AudioFormatUtil.sameFormat(captureFormat, AudioFormatUtil.NETWORK_FORMAT)) {
+                        frame = AudioFormatUtil.convert(frame, captureFormat, AudioFormatUtil.NETWORK_FORMAT);
+                    }
 
                     ChatMessage msg = new ChatMessage(MessageType.VOICE_FRAME, username, otherUser, null, "vframe");
                     msg.setBinaryData(frame);
@@ -156,6 +164,9 @@ public class VideoCallController {
 
     public static void receiveAudio(byte[] data) {
         if (instance != null && instance.speakers != null && instance.audioRunning) {
+            if (!AudioFormatUtil.sameFormat(AudioFormatUtil.NETWORK_FORMAT, instance.playbackFormat)) {
+                data = AudioFormatUtil.convert(data, AudioFormatUtil.NETWORK_FORMAT, instance.playbackFormat);
+            }
             instance.speakers.write(data, 0, data.length);
         }
     }

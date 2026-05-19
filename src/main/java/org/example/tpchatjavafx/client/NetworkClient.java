@@ -11,6 +11,8 @@ import java.io.*;
 import java.net.Socket;
 import java.util.Arrays;
 import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.function.Consumer;
 
 /**
@@ -39,6 +41,13 @@ public class NetworkClient {
     private AudioTransmissionService meetingAudioService;
     private MeetingVideoCapture      meetingVideoCapture;
     private MeetingController        activeMeetingController;
+    private int activeMeetingAudioId = -1;
+    private int activeMeetingVideoId = -1;
+    private String activeMeetingAudioHost;
+    private String activeMeetingVideoHost;
+    private int activeMeetingAudioPort = -1;
+    private int activeMeetingVideoPort = -1;
+    private final Set<Integer> syncedMeetingMediaPorts = new HashSet<>();
 
     public void setActiveMeetingController(MeetingController controller) {
         this.activeMeetingController = controller;
@@ -268,6 +277,8 @@ public class NetworkClient {
 
     public void syncMeetingMediaPorts(int meetingId) {
         if (meetingId <= 0) return;
+        if (syncedMeetingMediaPorts.contains(meetingId)) return;
+        syncedMeetingMediaPorts.add(meetingId);
         joinMeeting(meetingId);
     }
 
@@ -295,11 +306,21 @@ public class NetworkClient {
     }
 
     public void startMeetingAudio(int meetingId, int localPort, int serverPort, String serverHost) throws Exception {
+        if (meetingAudioService != null
+                && activeMeetingAudioId == meetingId
+                && activeMeetingAudioPort == serverPort
+                && java.util.Objects.equals(activeMeetingAudioHost, serverHost)
+                && meetingAudioService.isRunning()) {
+            return;
+        }
         if (meetingAudioService != null) {
             meetingAudioService.stop();
         }
         meetingAudioService = new AudioTransmissionService();
         meetingAudioService.initiate(serverHost, serverPort, localPort, meetingId, userId);
+        activeMeetingAudioId = meetingId;
+        activeMeetingAudioHost = serverHost;
+        activeMeetingAudioPort = serverPort;
     }
 
     public void startMeetingVideo(int localPort, int serverPort, String serverHost) throws Exception {
@@ -307,6 +328,12 @@ public class NetworkClient {
     }
 
     public void startMeetingVideo(int meetingId, int localPort, int serverPort, String serverHost) throws Exception {
+        if (meetingVideoCapture != null
+                && activeMeetingVideoId == meetingId
+                && activeMeetingVideoPort == serverPort
+                && java.util.Objects.equals(activeMeetingVideoHost, serverHost)) {
+            return;
+        }
         if (meetingVideoCapture != null) {
             meetingVideoCapture.stop();
         }
@@ -317,6 +344,9 @@ public class NetworkClient {
             }
         });
         meetingVideoCapture.start(serverHost, serverPort, localPort, meetingId, userId);
+        activeMeetingVideoId = meetingId;
+        activeMeetingVideoHost = serverHost;
+        activeMeetingVideoPort = serverPort;
     }
 
     public void sendMeetingAudioFrame(byte[] frame) {
@@ -340,6 +370,13 @@ public class NetworkClient {
             meetingVideoCapture.stop();
             meetingVideoCapture = null;
         }
+        activeMeetingAudioId = -1;
+        activeMeetingVideoId = -1;
+        activeMeetingAudioHost = null;
+        activeMeetingVideoHost = null;
+        activeMeetingAudioPort = -1;
+        activeMeetingVideoPort = -1;
+        syncedMeetingMediaPorts.clear();
     }
 
     public void setupUdpSockets() {

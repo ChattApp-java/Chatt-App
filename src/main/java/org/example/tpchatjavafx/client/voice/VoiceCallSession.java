@@ -2,6 +2,7 @@ package org.example.tpchatjavafx.client.voice;
 
 import org.example.tpchatjavafx.client.NetworkClient;
 import org.example.tpchatjavafx.client.audio.AudioCaptureService;
+import org.example.tpchatjavafx.client.audio.AudioFormatUtil;
 import org.example.tpchatjavafx.client.model.ChatMessage;
 import org.example.tpchatjavafx.common.MessageType;
 
@@ -15,6 +16,8 @@ public class VoiceCallSession {
 
     private TargetDataLine mic;
     private SourceDataLine speakers;
+    private AudioFormat captureFormat;
+    private AudioFormat playbackFormat;
 
     private Thread captureThread;
     private volatile boolean running = false;
@@ -37,10 +40,12 @@ public class VoiceCallSession {
         mic = (TargetDataLine) AudioSystem.getLine(micInfo);
         mic.open(format);
         mic.start();
+        captureFormat = format;
 
         speakers = (SourceDataLine) AudioSystem.getLine(spkInfo);
         speakers.open(format);
         speakers.start();
+        playbackFormat = format;
 
         running = true;
         captureThread = new Thread(this::captureLoop, "voice-capture-thread");
@@ -57,6 +62,9 @@ public class VoiceCallSession {
                 if (count > 0) {
                     byte[] frame = new byte[count];
                     System.arraycopy(buffer, 0, frame, 0, count);
+                    if (!AudioFormatUtil.sameFormat(captureFormat, AudioFormatUtil.NETWORK_FORMAT)) {
+                        frame = AudioFormatUtil.convert(frame, captureFormat, AudioFormatUtil.NETWORK_FORMAT);
+                    }
 
                     ChatMessage msg = new ChatMessage(
                             MessageType.VOICE_FRAME,
@@ -75,6 +83,9 @@ public class VoiceCallSession {
 
     public void playRemoteAudio(byte[] data) {
         if (speakers == null || data == null) return;
+        if (!AudioFormatUtil.sameFormat(AudioFormatUtil.NETWORK_FORMAT, playbackFormat)) {
+            data = AudioFormatUtil.convert(data, AudioFormatUtil.NETWORK_FORMAT, playbackFormat);
+        }
         speakers.write(data, 0, data.length);
     }
 

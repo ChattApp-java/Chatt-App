@@ -23,6 +23,8 @@ public class AudioTransmissionService {
     private int meetingId;
     private int userId;
     private Consumer<byte[]> onAudioReceived;
+    private AudioFormat captureFormat;
+    private AudioFormat playbackFormat;
 
     public void initiate(String remoteHost, int remotePort) throws Exception {
         initiate(remoteHost, remotePort, 0);
@@ -44,11 +46,13 @@ public class AudioTransmissionService {
 
         captureService = new AudioCaptureService();
         playbackService = new AudioPlaybackService();
-        AudioFormat transportFormat = AudioCaptureService.findBestDuplexFormat();
+        AudioFormat transportFormat = AudioFormatUtil.NETWORK_FORMAT;
 
         captureService.setOnAudioCaptured(this::sendAudio);
         captureService.start(transportFormat, this::sendAudio);
         playbackService.start(transportFormat);
+        captureFormat = captureService.getFormat();
+        playbackFormat = playbackService.getCurrentFormat();
 
         running = true;
         receiveThread = new Thread(this::receiveAudioLoop, "AudioReceive");
@@ -66,6 +70,9 @@ public class AudioTransmissionService {
         }
 
         try {
+            if (captureFormat != null && !AudioFormatUtil.sameFormat(captureFormat, AudioFormatUtil.NETWORK_FORMAT)) {
+                audioData = AudioFormatUtil.convert(audioData, captureFormat, AudioFormatUtil.NETWORK_FORMAT);
+            }
             byte[] payload = addRelayHeader(audioData);
             DatagramPacket packet = new DatagramPacket(payload, payload.length, remoteAddress, remotePort);
             socket.send(packet);
@@ -88,6 +95,9 @@ public class AudioTransmissionService {
                     int offset = hasRelayHeader(packet.getData(), length) ? 8 : 0;
                     byte[] audioData = new byte[length - offset];
                     System.arraycopy(packet.getData(), offset, audioData, 0, audioData.length);
+                    if (playbackFormat != null && !AudioFormatUtil.sameFormat(AudioFormatUtil.NETWORK_FORMAT, playbackFormat)) {
+                        audioData = AudioFormatUtil.convert(audioData, AudioFormatUtil.NETWORK_FORMAT, playbackFormat);
+                    }
                     if (onAudioReceived != null) {
                         onAudioReceived.accept(audioData);
                     } else if (playbackService != null) {
