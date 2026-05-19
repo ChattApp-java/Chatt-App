@@ -20,12 +20,17 @@ import javafx.stage.Modality;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
 import org.example.tpchatjavafx.client.NetworkClient;
-import org.example.tpchatjavafx.client.model.ChatMessage;
 import org.example.tpchatjavafx.common.MessageType;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
 
 import javax.imageio.ImageIO;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.ImageWriter;
+import javax.imageio.stream.MemoryCacheImageOutputStream;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -188,21 +193,22 @@ public class MeetingController implements Initializable {
                 return;
             }
             System.out.println("[MEETING_UI] Webcam: " + webcam.getName());
-            webcam.setViewSize(com.github.sarxos.webcam.WebcamResolution.VGA.getSize());
+            webcam.setViewSize(com.github.sarxos.webcam.WebcamResolution.QVGA.getSize());
             webcam.open();
             videoOn = true;
 
             videoThread = new Thread(() -> {
                 while (videoOn && webcam != null && webcam.isOpen()) {
                     try {
-                        java.awt.image.BufferedImage frame = webcam.getImage();
+                        BufferedImage frame = webcam.getImage();
                         if (frame != null) {
                             Image fxImage = javafx.embed.swing.SwingFXUtils.toFXImage(frame, null);
                             Platform.runLater(() -> updateParticipantVideo(-1, fxImage));
                             if (networkClient != null && meetingId > 0) {
-                                ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                                ImageIO.write(frame, "jpg", baos);
-                                networkClient.sendVideoFrame(baos.toByteArray(), meetingId);
+                                byte[] encodedFrame = encodeMeetingFrame(frame);
+                                if (encodedFrame != null && encodedFrame.length > 0) {
+                                    networkClient.sendVideoFrame(encodedFrame, meetingId);
+                                }
                             }
                         }
                     } catch (Exception e) {
@@ -343,7 +349,7 @@ public class MeetingController implements Initializable {
 
     private void handleAddParticipant() {
         if (networkClient == null || meetingId <= 0) return;
-        ChatMessage req = new ChatMessage();
+        org.example.tpchatjavafx.client.model.ChatMessage req = new org.example.tpchatjavafx.client.model.ChatMessage();
         req.setType(MessageType.MEETING_NON_PARTICIPANTS_REQUEST);
         req.setGroupId(groupId);
         req.setMeetingId(meetingId);
@@ -402,7 +408,7 @@ public class MeetingController implements Initializable {
         Optional<List<String>> res = dialog.showAndWait();
         res.ifPresent(sel -> {
             for (String name : sel) {
-                ChatMessage inv = new ChatMessage();
+                org.example.tpchatjavafx.client.model.ChatMessage inv = new org.example.tpchatjavafx.client.model.ChatMessage();
                 inv.setType(MessageType.MEETING_INVITE_USER);
                 inv.setGroupId(groupId);
                 inv.setMeetingId(meetingId);
@@ -463,6 +469,47 @@ public class MeetingController implements Initializable {
             return "AUDIO";
         }
         return value.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private byte[] encodeMeetingFrame(BufferedImage sourceFrame) throws IOException {
+        if (sourceFrame == null) {
+            return null;
+        }
+
+        BufferedImage frameToSend = sourceFrame;
+        if (sourceFrame.getWidth() > 320 || sourceFrame.getHeight() > 240) {
+            frameToSend = new BufferedImage(320, 240, BufferedImage.TYPE_3BYTE_BGR);
+            Graphics2D graphics = frameToSend.createGraphics();
+            try {
+                graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                graphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+                graphics.drawImage(sourceFrame, 0, 0, 320, 240, null);
+            } finally {
+                graphics.dispose();
+            }
+        }
+
+        Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName("jpg");
+        if (!writers.hasNext()) {
+            ByteArrayOutputStream fallback = new ByteArrayOutputStream();
+            ImageIO.write(frameToSend, "jpg", fallback);
+            return fallback.toByteArray();
+        }
+
+        ImageWriter writer = writers.next();
+        ByteArrayOutputStream outputBytes = new ByteArrayOutputStream();
+        try (MemoryCacheImageOutputStream output = new MemoryCacheImageOutputStream(outputBytes)) {
+            writer.setOutput(output);
+            ImageWriteParam params = writer.getDefaultWriteParam();
+            if (params.canWriteCompressed()) {
+                params.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+                params.setCompressionQuality(0.45f);
+            }
+            writer.write(null, new javax.imageio.IIOImage(frameToSend, null, null), params);
+        } finally {
+            writer.dispose();
+        }
+        return outputBytes.toByteArray();
     }
 
     private VBox createParticipantContainer(int userId, String name) {
