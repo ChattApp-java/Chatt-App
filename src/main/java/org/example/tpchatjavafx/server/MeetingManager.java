@@ -172,7 +172,13 @@ public class MeetingManager {
     }
 
     public ChatMessage buildMeetingInfo(MeetingSession session, String to) {
-        ChatMessage info = new ChatMessage(MessageType.MEETING_INFO, "SERVER", to, null, "UDP relay ready");
+        ChatMessage info = new ChatMessage(
+                MessageType.MEETING_INFO,
+                "SERVER",
+                to,
+                null,
+                serializeParticipants(session.getMeetingId())
+        );
         info.setMeetingId(session.getMeetingId());
         info.setGroupId(session.getGroupeId());
         info.setMeetingType(session.getType());

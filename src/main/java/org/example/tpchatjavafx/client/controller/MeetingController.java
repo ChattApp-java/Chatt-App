@@ -68,6 +68,7 @@ public class MeetingController implements Initializable {
     private final Map<Integer, VBox> participantContainers = new ConcurrentHashMap<>();
     private final Map<Integer, ImageView> participantVideos = new ConcurrentHashMap<>();
     private final Map<Integer, Label> participantLabels = new ConcurrentHashMap<>();
+    private final Map<Integer, Image> pendingParticipantFrames = new ConcurrentHashMap<>();
     private final Set<Integer> participantIds = ConcurrentHashMap.newKeySet();
 
     @Override
@@ -406,7 +407,17 @@ public class MeetingController implements Initializable {
 
     public void addParticipant(int userId, String name, String avatarUrl) {
         if (participantIds.contains(userId)) return;
-        if (name != null && name.equals(username) && participantIds.contains(-1) && userId != -1) return;
+        if (name != null && name.equals(username) && participantIds.contains(-1) && userId != -1) {
+            Image localFrame = null;
+            ImageView localView = participantVideos.get(-1);
+            if (localView != null) {
+                localFrame = localView.getImage();
+            }
+            removeParticipant(-1);
+            if (localFrame != null) {
+                pendingParticipantFrames.put(userId, localFrame);
+            }
+        }
         participantIds.add(userId);
 
         Platform.runLater(() -> {
@@ -415,6 +426,13 @@ public class MeetingController implements Initializable {
             }
             VBox container = createParticipantContainer(userId, name);
             participantContainers.put(userId, container);
+            Image pendingFrame = pendingParticipantFrames.remove(userId);
+            if (pendingFrame != null) {
+                ImageView view = participantVideos.get(userId);
+                if (view != null) {
+                    view.setImage(pendingFrame);
+                }
+            }
 
             if ("VIDEO".equals(callType) && videoGrid != null) {
                 addToVideoGrid(container);
@@ -477,6 +495,8 @@ public class MeetingController implements Initializable {
             ImageView video = participantVideos.get(userId);
             if (video != null && frame != null) {
                 video.setImage(frame);
+            } else if (frame != null) {
+                pendingParticipantFrames.put(userId, frame);
             }
         });
     }
@@ -521,6 +541,7 @@ public class MeetingController implements Initializable {
             }
             participantVideos.remove(userId);
             participantLabels.remove(userId);
+            pendingParticipantFrames.remove(userId);
             updateSubtitle();
             System.out.println("[MEETING_UI] Participant " + userId + " retire");
         });
@@ -626,6 +647,7 @@ public class MeetingController implements Initializable {
             networkClient.setActiveMeetingController(null);
             networkClient.closeUdpSockets();
         }
+        pendingParticipantFrames.clear();
     }
 
     public static void openMeetingWindow(NetworkClient networkClient, int groupId, String callType,

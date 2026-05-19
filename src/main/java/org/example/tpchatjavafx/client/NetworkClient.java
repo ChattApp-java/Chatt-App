@@ -638,6 +638,9 @@ public class NetworkClient {
                 }
                 case MEETING_INFO -> {
                     System.out.println("[NET_CLIENT] MEETING_INFO recu: host=" + msg.getServerHost());
+                    if (activeMeetingController != null && msg.getContent() != null && !msg.getContent().isBlank()) {
+                        activeMeetingController.syncParticipants(msg.getContent());
+                    }
                     if (onMeetingInfo != null) onMeetingInfo.accept(msg);
                 }
                 case MEETING_PARTICIPANTS -> {
