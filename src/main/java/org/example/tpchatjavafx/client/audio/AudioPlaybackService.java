@@ -6,7 +6,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.IntConsumer;
 
 /**
- * Joue l'audio reçu du réseau.
+ * Joue l'audio recu du reseau.
  */
 public class AudioPlaybackService {
 
@@ -23,17 +23,20 @@ public class AudioPlaybackService {
     }
 
     /**
-     * Démarre la lecture audio avec un format supporté par les haut-parleurs.
+     * Demarre la lecture audio avec un format supporte par les haut-parleurs.
      */
     public void start() throws LineUnavailableException {
+        start(null);
+    }
+
+    public void start(AudioFormat preferredFormat) throws LineUnavailableException {
         if (running) return;
 
-        // Essayer plusieurs formats jusqu'à trouver un supporté
-        currentFormat = getSupportedPlaybackFormat();
+        currentFormat = getSupportedPlaybackFormat(preferredFormat);
 
         DataLine.Info info = new DataLine.Info(SourceDataLine.class, currentFormat);
         if (!AudioSystem.isLineSupported(info)) {
-            throw new LineUnavailableException("Aucun format audio supporté par les haut-parleurs");
+            throw new LineUnavailableException("Aucun format audio supporte par les haut-parleurs");
         }
 
         speakers = (SourceDataLine) AudioSystem.getLine(info);
@@ -45,28 +48,30 @@ public class AudioPlaybackService {
         playbackThread.setDaemon(true);
         playbackThread.start();
 
-        System.out.println("[AudioPlayback] Démarré avec format: " + currentFormat);
+        System.out.println("[AudioPlayback] Demarre avec format: " + currentFormat);
     }
 
-    /**
-     * Trouve un format audio supporté par les haut-parleurs.
-     */
-    private AudioFormat getSupportedPlaybackFormat() {
-        float[] sampleRates = {16000f, 8000f, 44100f, 22050f};
-        int[] sampleSizes = {16, 8};
-
-        for (float rate : sampleRates) {
-            for (int size : sampleSizes) {
-                AudioFormat format = new AudioFormat(rate, size, 1, true, false);
-                DataLine.Info info = new DataLine.Info(SourceDataLine.class, format);
-                if (AudioSystem.isLineSupported(info)) {
-                    System.out.println("[AudioPlayback] Format supporté trouvé: " + rate + "Hz, " + size + "bit");
-                    return format;
-                }
+    private AudioFormat getSupportedPlaybackFormat(AudioFormat preferredFormat) {
+        if (preferredFormat != null) {
+            DataLine.Info preferredInfo = new DataLine.Info(SourceDataLine.class, preferredFormat);
+            if (AudioSystem.isLineSupported(preferredInfo)) {
+                return preferredFormat;
             }
         }
 
-        // Fallback ultime
+        AudioFormat duplexFormat = AudioCaptureService.findBestDuplexFormat();
+        if (duplexFormat != null) {
+            return duplexFormat;
+        }
+
+        AudioFormat captureFormat = AudioCaptureService.findSupportedCaptureFormat();
+        if (captureFormat != null) {
+            DataLine.Info captureInfo = new DataLine.Info(SourceDataLine.class, captureFormat);
+            if (AudioSystem.isLineSupported(captureInfo)) {
+                return captureFormat;
+            }
+        }
+
         return new AudioFormat(44100, 16, 1, true, false);
     }
 
@@ -77,15 +82,14 @@ public class AudioPlaybackService {
 
     public void setVolume(double volume) {
         this.volume = Math.max(0.0, Math.min(1.0, volume));
-        // Appliquer le volume au contrôle de gain si disponible
         if (speakers != null && speakers.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
             try {
                 FloatControl gainControl = (FloatControl) speakers.getControl(FloatControl.Type.MASTER_GAIN);
-                float dB = (float) (20.0 * Math.log10(volume));
+                double safeVolume = Math.max(0.0001, this.volume);
+                float dB = (float) (20.0 * Math.log10(safeVolume));
                 dB = Math.max(gainControl.getMinimum(), Math.min(gainControl.getMaximum(), dB));
                 gainControl.setValue(dB);
-            } catch (Exception e) {
-                // Ignorer si le contrôle n'est pas disponible
+            } catch (Exception ignored) {
             }
         }
     }
@@ -119,7 +123,7 @@ public class AudioPlaybackService {
         }
 
         audioQueue.clear();
-        System.out.println("[AudioPlayback] Arrêté");
+        System.out.println("[AudioPlayback] Arrete");
     }
 
     private void playbackLoop() {
@@ -127,7 +131,6 @@ public class AudioPlaybackService {
             try {
                 byte[] audioData = audioQueue.take();
                 if (audioData != null && speakers != null && speakers.isOpen()) {
-                    // Appliquer le volume en modifiant les échantillons si nécessaire
                     if (volume < 1.0) {
                         audioData = applyVolume(audioData);
                     }
@@ -145,9 +148,6 @@ public class AudioPlaybackService {
         }
     }
 
-    /**
-     * Applique le volume aux données audio (16-bit PCM little-endian).
-     */
     private byte[] applyVolume(byte[] audioData) {
         if (volume >= 1.0) return audioData;
 
@@ -162,8 +162,8 @@ public class AudioPlaybackService {
     }
 
     public static AudioFormat getFormat() {
-        // Format par défaut compatible
-        return new AudioFormat(16000, 16, 1, true, false);
+        AudioFormat duplexFormat = AudioCaptureService.findBestDuplexFormat();
+        return duplexFormat != null ? duplexFormat : new AudioFormat(44100, 16, 1, true, false);
     }
 
     public boolean isRunning() {

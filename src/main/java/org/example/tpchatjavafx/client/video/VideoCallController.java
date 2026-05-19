@@ -5,6 +5,7 @@ import javafx.fxml.FXML;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import org.example.tpchatjavafx.client.NetworkClient;
+import org.example.tpchatjavafx.client.audio.AudioCaptureService;
 import org.example.tpchatjavafx.client.model.ChatMessage;
 import org.example.tpchatjavafx.common.MessageType;
 import com.github.sarxos.webcam.Webcam;
@@ -115,7 +116,10 @@ public class VideoCallController {
     }
 
     private void startAudio() throws LineUnavailableException {
-        AudioFormat format = new AudioFormat(16000, 16, 1, true, false);
+        AudioFormat format = AudioCaptureService.findBestDuplexFormat();
+        if (format == null) {
+            format = new AudioFormat(44100, 16, 1, true, false);
+        }
         DataLine.Info micInfo = new DataLine.Info(TargetDataLine.class, format);
         DataLine.Info spkInfo = new DataLine.Info(SourceDataLine.class, format);
 

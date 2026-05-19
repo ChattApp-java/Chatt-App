@@ -1,6 +1,7 @@
 package org.example.tpchatjavafx.client.audio;
 
 import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.AudioFormat;
 import java.io.IOException;
 import java.net.*;
 import java.util.function.Consumer;
@@ -43,10 +44,11 @@ public class AudioTransmissionService {
 
         captureService = new AudioCaptureService();
         playbackService = new AudioPlaybackService();
+        AudioFormat transportFormat = AudioCaptureService.findBestDuplexFormat();
 
         captureService.setOnAudioCaptured(this::sendAudio);
-        captureService.start();
-        playbackService.start();
+        captureService.start(transportFormat, this::sendAudio);
+        playbackService.start(transportFormat);
 
         running = true;
         receiveThread = new Thread(this::receiveAudioLoop, "AudioReceive");

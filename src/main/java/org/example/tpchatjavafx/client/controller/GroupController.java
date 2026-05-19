@@ -658,7 +658,8 @@ public class GroupController extends javafx.scene.control.SplitPane {
             meetingStage.setTitle("Reunion " + callType + " — " + displayName);
             meetingStage.setScene(scene);
             meetingStage.setMinWidth(600);
-            meetingStage.setMinHeight(500);
+            meetingStage.setMinHeight(420);
+            MeetingController.applyResponsiveStageSize(meetingStage);
 
             meetingStage.setOnShown(e -> controller.addParticipant(-1, username, null));
 

@@ -1,6 +1,7 @@
 package org.example.tpchatjavafx.client.voice;
 
 import org.example.tpchatjavafx.client.NetworkClient;
+import org.example.tpchatjavafx.client.audio.AudioCaptureService;
 import org.example.tpchatjavafx.client.model.ChatMessage;
 import org.example.tpchatjavafx.common.MessageType;
 
@@ -25,7 +26,10 @@ public class VoiceCallSession {
     }
 
     public void start() throws LineUnavailableException {
-        AudioFormat format = new AudioFormat(16000, 16, 1, true, false);
+        AudioFormat format = AudioCaptureService.findBestDuplexFormat();
+        if (format == null) {
+            format = new AudioFormat(44100, 16, 1, true, false);
+        }
 
         DataLine.Info micInfo = new DataLine.Info(TargetDataLine.class, format);
         DataLine.Info spkInfo = new DataLine.Info(SourceDataLine.class, format);

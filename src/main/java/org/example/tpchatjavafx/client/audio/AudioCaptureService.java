@@ -10,6 +10,7 @@ import java.util.function.Consumer;
  * Capture audio du microphone et envoie via callback.
  */
 public class AudioCaptureService {
+    private static final float[] SAMPLE_RATES = {44100.0f, 22050.0f, 16000.0f, 8000.0f};
 
     private TargetDataLine microphone;
     private final byte[] buffer = new byte[4096];
@@ -26,16 +27,19 @@ public class AudioCaptureService {
 
     public void start() throws LineUnavailableException {
         if (isRunning) return;
-        start(null);
+        start(null, null);
     }
 
     public void start(Consumer<byte[]> callback) throws LineUnavailableException {
+        start(null, callback);
+    }
+
+    public void start(AudioFormat preferredFormat, Consumer<byte[]> callback) throws LineUnavailableException {
         if (isRunning) return;
 
         this.onAudioCaptured = callback;
 
-        // Try multiple audio formats with fallback
-        AudioFormat format = findSupportedAudioFormat();
+        AudioFormat format = resolveCaptureFormat(preferredFormat);
         if (format == null) {
             throw new LineUnavailableException("Aucun format audio supporte n'a ete trouve");
         }
@@ -53,20 +57,48 @@ public class AudioCaptureService {
         System.out.println("[AUDIO_CAPTURE] Format audio utilise: " + format.getSampleRate() + " Hz");
     }
 
-    private AudioFormat findSupportedAudioFormat() {
-        // Essayer les formats dans cet ordre
-        float[] sampleRates = {8000.0f, 16000.0f, 44100.0f, 22050.0f};
-        
-        for (float sampleRate : sampleRates) {
+    public static AudioFormat findBestDuplexFormat() {
+        for (float sampleRate : SAMPLE_RATES) {
             AudioFormat format = new AudioFormat(sampleRate, 16, 1, true, false);
-            DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
-            
-            if (AudioSystem.isLineSupported(info)) {
-                System.out.println("[AUDIO_CAPTURE] Format audio trouve: " + sampleRate + " Hz");
+            DataLine.Info micInfo = new DataLine.Info(TargetDataLine.class, format);
+            DataLine.Info speakerInfo = new DataLine.Info(SourceDataLine.class, format);
+            if (AudioSystem.isLineSupported(micInfo) && AudioSystem.isLineSupported(speakerInfo)) {
                 return format;
             }
         }
         return null;
+    }
+
+    public static AudioFormat findSupportedCaptureFormat() {
+        for (float sampleRate : SAMPLE_RATES) {
+            AudioFormat format = new AudioFormat(sampleRate, 16, 1, true, false);
+            DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
+            if (AudioSystem.isLineSupported(info)) {
+                return format;
+            }
+        }
+        return null;
+    }
+
+    private AudioFormat resolveCaptureFormat(AudioFormat preferredFormat) {
+        if (preferredFormat != null) {
+            DataLine.Info preferredInfo = new DataLine.Info(TargetDataLine.class, preferredFormat);
+            if (AudioSystem.isLineSupported(preferredInfo)) {
+                return preferredFormat;
+            }
+        }
+
+        AudioFormat duplexFormat = findBestDuplexFormat();
+        if (duplexFormat != null) {
+            System.out.println("[AUDIO_CAPTURE] Format duplex trouve: " + duplexFormat.getSampleRate() + " Hz");
+            return duplexFormat;
+        }
+
+        AudioFormat captureFormat = findSupportedCaptureFormat();
+        if (captureFormat != null) {
+            System.out.println("[AUDIO_CAPTURE] Format capture trouve: " + captureFormat.getSampleRate() + " Hz");
+        }
+        return captureFormat;
     }
 
     private void captureLoop() {

@@ -7,6 +7,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -16,6 +17,7 @@ import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.Modality;
+import javafx.stage.Screen;
 import javafx.stage.Stage;
 import org.example.tpchatjavafx.client.NetworkClient;
 import org.example.tpchatjavafx.client.model.ChatMessage;
@@ -24,7 +26,6 @@ import org.kordamp.ikonli.javafx.FontIcon;
 import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
 
 import javax.imageio.ImageIO;
-import javax.sound.sampled.*;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -60,11 +61,6 @@ public class MeetingController implements Initializable {
     private boolean micMuted = false;
     private boolean speakerOn = true;
     private boolean videoOn = true;
-
-    private TargetDataLine microphone;
-    private SourceDataLine speakers;
-    private Thread captureThread;
-    private volatile boolean audioRunning = false;
 
     private com.github.sarxos.webcam.Webcam webcam;
     private Thread videoThread;
@@ -159,74 +155,8 @@ public class MeetingController implements Initializable {
 
     public void startServices() {
         System.out.println("[MEETING_UI] startServices() callType=" + callType);
-        startAudioCapture();
-        startAudioPlayback();
         if ("VIDEO".equals(callType)) {
             startVideoCapture();
-        }
-    }
-
-    public void startAudioCapture() {
-        try {
-            AudioFormat format = new AudioFormat(8000.0f, 16, 1, true, false);
-            DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
-
-            if (!AudioSystem.isLineSupported(info)) {
-                format = new AudioFormat(44100.0f, 16, 1, true, false);
-                info = new DataLine.Info(TargetDataLine.class, format);
-            }
-
-            microphone = (TargetDataLine) AudioSystem.getLine(info);
-            microphone.open(format);
-            microphone.start();
-            audioRunning = true;
-
-            captureThread = new Thread(() -> {
-                byte[] buffer = new byte[1024];
-                while (audioRunning && microphone != null) {
-                    try {
-                        int count = microphone.read(buffer, 0, buffer.length);
-                        if (count > 0 && !micMuted && networkClient != null && meetingId > 0) {
-                            networkClient.sendAudioData(Arrays.copyOf(buffer, count), meetingId);
-                        }
-                    } catch (Exception ignored) {
-                    }
-                }
-            }, "MeetingAudioCapture");
-            captureThread.setDaemon(true);
-            captureThread.start();
-            System.out.println("[MEETING_UI] Capture audio OK (" + format.getSampleRate() + "Hz)");
-        } catch (Exception e) {
-            System.err.println("[MEETING_UI] ERREUR audio: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
-    public void startAudioPlayback() {
-        try {
-            AudioFormat format = new AudioFormat(8000.0f, 16, 1, true, false);
-            DataLine.Info info = new DataLine.Info(SourceDataLine.class, format);
-
-            if (!AudioSystem.isLineSupported(info)) {
-                format = new AudioFormat(44100.0f, 16, 1, true, false);
-                info = new DataLine.Info(SourceDataLine.class, format);
-            }
-
-            speakers = (SourceDataLine) AudioSystem.getLine(info);
-            speakers.open(format);
-            speakers.start();
-
-            if (networkClient != null) {
-                networkClient.startAudioReceiving(data -> {
-                    if (speakerOn && speakers != null && speakers.isOpen()) {
-                        speakers.write(data, 0, data.length);
-                    }
-                });
-            }
-            System.out.println("[MEETING_UI] Playback audio OK");
-        } catch (Exception e) {
-            System.err.println("[MEETING_UI] ERREUR playback: " + e.getMessage());
-            e.printStackTrace();
         }
     }
 
@@ -468,6 +398,7 @@ public class MeetingController implements Initializable {
 
     public void addParticipant(int userId, String name, String avatarUrl) {
         if (participantIds.contains(userId)) return;
+        if (name != null && name.equals(username) && participantIds.contains(-1) && userId != -1) return;
         participantIds.add(userId);
 
         Platform.runLater(() -> {
@@ -615,7 +546,24 @@ public class MeetingController implements Initializable {
     }
 
     public void syncParticipants(String csv) {
+        Set<Integer> seenIds = new HashSet<>();
+        if (csv != null && !csv.isBlank()) {
+            for (String p : csv.split(",")) {
+                String[] parts = p.split(":");
+                if (parts.length >= 2) {
+                    try {
+                        seenIds.add(Integer.parseInt(parts[0].trim()));
+                    } catch (NumberFormatException ignored) {
+                    }
+                }
+            }
+        }
         updateParticipantsList(csv);
+        for (Integer existingId : new ArrayList<>(participantIds)) {
+            if (existingId != -1 && !seenIds.contains(existingId)) {
+                removeParticipant(existingId);
+            }
+        }
     }
 
     public void addAudioFrame(String participantId, byte[] audioData) {
@@ -655,19 +603,7 @@ public class MeetingController implements Initializable {
     }
 
     public void cleanup() {
-        audioRunning = false;
         videoOn = false;
-        if (microphone != null) {
-            microphone.stop();
-            microphone.close();
-        }
-        if (speakers != null) {
-            speakers.stop();
-            speakers.close();
-        }
-        if (captureThread != null) {
-            captureThread.interrupt();
-        }
         if (videoThread != null) {
             videoThread.interrupt();
         }
@@ -704,7 +640,8 @@ public class MeetingController implements Initializable {
         stage.setTitle("Reunion " + callType + " — " + title);
         stage.initModality(Modality.NONE);
         stage.setMinWidth(600);
-        stage.setMinHeight(500);
+        stage.setMinHeight(420);
+        applyResponsiveStageSize(stage);
 
         stage.setOnShown(e -> controller.addParticipant(-1, username, null));
         stage.setOnCloseRequest(e -> {
@@ -716,5 +653,16 @@ public class MeetingController implements Initializable {
             }
         });
         stage.show();
+    }
+
+    public static void applyResponsiveStageSize(Stage stage) {
+        Rectangle2D bounds = Screen.getPrimary().getVisualBounds();
+        double width = Math.min(900, Math.max(640, bounds.getWidth() * 0.88));
+        double height = Math.min(700, Math.max(420, bounds.getHeight() * 0.84));
+        stage.setWidth(width);
+        stage.setHeight(height);
+        stage.setMaxWidth(bounds.getWidth());
+        stage.setMaxHeight(bounds.getHeight());
+        stage.centerOnScreen();
     }
 }
