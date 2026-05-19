@@ -8,6 +8,7 @@ import org.example.tpchatjavafx.client.video.MeetingVideoCapture;
 import org.example.tpchatjavafx.common.MessageType;
 
 import java.io.*;
+import java.net.InetAddress;
 import java.net.Socket;
 import java.util.Arrays;
 import java.util.List;
@@ -321,6 +322,7 @@ public class NetworkClient {
     }
 
     public void startMeetingAudio(int meetingId, int localPort, int serverPort, String serverHost) throws Exception {
+        serverHost = resolveMeetingRelayHost(serverHost);
         if (meetingAudioService != null
                 && activeMeetingAudioId == meetingId
                 && activeMeetingAudioPort == serverPort
@@ -343,6 +345,7 @@ public class NetworkClient {
     }
 
     public void startMeetingVideo(int meetingId, int localPort, int serverPort, String serverHost) throws Exception {
+        serverHost = resolveMeetingRelayHost(serverHost);
         if (meetingVideoCapture != null
                 && activeMeetingVideoId == meetingId
                 && activeMeetingVideoPort == serverPort
@@ -446,6 +449,25 @@ public class NetworkClient {
         if (meetingAudioService != null) {
             meetingAudioService.setPlaybackVolume(volume);
         }
+    }
+
+    private String resolveMeetingRelayHost(String advertisedHost) {
+        if (advertisedHost == null || advertisedHost.isBlank()) {
+            return serverHost;
+        }
+        String normalized = advertisedHost.trim();
+        if ("localhost".equalsIgnoreCase(normalized)) {
+            return serverHost;
+        }
+        try {
+            InetAddress address = InetAddress.getByName(normalized);
+            if (address.isAnyLocalAddress() || address.isLoopbackAddress()) {
+                return serverHost;
+            }
+        } catch (Exception ignored) {
+            return serverHost;
+        }
+        return normalized;
     }
 
     // ── Envoi ────────────────────────────────────────────────

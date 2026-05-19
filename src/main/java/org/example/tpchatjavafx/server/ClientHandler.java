@@ -637,7 +637,7 @@ public class ClientHandler implements Runnable {
                 started.setMeetingType(existing.getType());
                 send(started);
 
-                send(ChatServer.getMeetingManager().buildMeetingInfo(existing, username));
+                send(buildMeetingInfoForCurrentClient(existing));
 
                 handleMeetingJoin(msg);
                 return;
@@ -654,7 +654,7 @@ public class ClientHandler implements Runnable {
             started.setMeetingType(session.getType());
             send(started);
 
-            ChatMessage info = ChatServer.getMeetingManager().buildMeetingInfo(session, username);
+            ChatMessage info = buildMeetingInfoForCurrentClient(session);
             send(info);
 
             ChatMessage invite = new ChatMessage(MessageType.MEETING_INVITE, username, null, null,
@@ -716,7 +716,7 @@ public class ClientHandler implements Runnable {
                 System.out.println("[SERVER] " + username + " a rejoint la reunion " + mid);
             }
 
-            send(ChatServer.getMeetingManager().buildMeetingInfo(session, username));
+            send(buildMeetingInfoForCurrentClient(session));
 
             ChatMessage participants = new ChatMessage(MessageType.MEETING_PARTICIPANTS, "SERVER", username, null,
                     ChatServer.getMeetingManager().serializeParticipants(mid));
@@ -855,10 +855,27 @@ public class ClientHandler implements Runnable {
             }
             MeetingManager.MeetingSession session = ChatServer.getMeetingManager().getActiveMeeting(mid);
             if (session == null) throw new IllegalArgumentException("Reunion inactive ou introuvable.");
-            send(ChatServer.getMeetingManager().buildMeetingInfo(session, username));
+            send(buildMeetingInfoForCurrentClient(session));
         } catch (Exception e) {
             sendError("Informations reunion indisponibles : " + e.getMessage());
         }
+    }
+
+    private ChatMessage buildMeetingInfoForCurrentClient(MeetingManager.MeetingSession session) {
+        return ChatServer.getMeetingManager().buildMeetingInfo(session, username, resolveMeetingHostForCurrentClient());
+    }
+
+    private String resolveMeetingHostForCurrentClient() {
+        try {
+            if (socket != null && socket.getLocalAddress() != null) {
+                String host = socket.getLocalAddress().getHostAddress();
+                if (host != null && !host.isBlank() && !"0.0.0.0".equals(host)) {
+                    return host;
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return ChatServer.getServerHost();
     }
 
     private String[] splitContent(String content, int expected) {

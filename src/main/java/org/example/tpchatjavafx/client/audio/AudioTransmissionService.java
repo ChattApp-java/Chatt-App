@@ -82,7 +82,7 @@ public class AudioTransmissionService {
     }
 
     private void receiveAudioLoop() {
-        byte[] buffer = new byte[4096];
+        byte[] buffer = new byte[65507];
 
         while (running) {
             try {

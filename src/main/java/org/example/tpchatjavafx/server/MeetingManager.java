@@ -172,6 +172,10 @@ public class MeetingManager {
     }
 
     public ChatMessage buildMeetingInfo(MeetingSession session, String to) {
+        return buildMeetingInfo(session, to, udpRelayServer.getHost());
+    }
+
+    public ChatMessage buildMeetingInfo(MeetingSession session, String to, String serverHost) {
         ChatMessage info = new ChatMessage(
                 MessageType.MEETING_INFO,
                 "SERVER",
@@ -182,7 +186,7 @@ public class MeetingManager {
         info.setMeetingId(session.getMeetingId());
         info.setGroupId(session.getGroupeId());
         info.setMeetingType(session.getType());
-        info.setServerHost(udpRelayServer.getHost());
+        info.setServerHost(serverHost != null && !serverHost.isBlank() ? serverHost : udpRelayServer.getHost());
         info.setServerUdpAudioPort(udpRelayServer.getAudioPort());
         info.setServerUdpVideoPort(udpRelayServer.getVideoPort());
         return info;
