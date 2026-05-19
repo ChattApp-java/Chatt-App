@@ -1,22 +1,27 @@
 package org.example.tpchatjavafx.client.audio;
 
 import javax.sound.sampled.*;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.function.IntConsumer;
 
 /**
  * Joue l'audio recu du reseau.
  */
 public class AudioPlaybackService {
+    private static final int MAX_QUEUE_PACKETS = 24;
+    private static final int PREBUFFER_PACKETS = 3;
+    private static final int PACKET_DURATION_MS = 20;
 
     private SourceDataLine speakers;
     private Thread playbackThread;
     private volatile boolean running = false;
     private volatile double volume = 1.0;
-    private final BlockingQueue<byte[]> audioQueue = new LinkedBlockingQueue<>();
+    private final BlockingQueue<byte[]> audioQueue = new ArrayBlockingQueue<>(MAX_QUEUE_PACKETS);
     private IntConsumer onProgress;
     private AudioFormat currentFormat;
+    private volatile boolean playbackPrimed = false;
 
     public void setOnProgress(IntConsumer onProgress) {
         this.onProgress = onProgress;
@@ -44,6 +49,7 @@ public class AudioPlaybackService {
         speakers.start();
 
         running = true;
+        playbackPrimed = false;
         playbackThread = new Thread(this::playbackLoop, "AudioPlayback");
         playbackThread.setDaemon(true);
         playbackThread.start();
@@ -77,7 +83,7 @@ public class AudioPlaybackService {
 
     public void playAudio(byte[] audioData) {
         if (!running || volume <= 0.0 || audioData == null || audioData.length == 0) return;
-        audioQueue.offer(audioData);
+        offerLatestAudio(audioData);
     }
 
     public void playAudio(byte[] audioData, AudioFormat sourceFormat) {
@@ -85,7 +91,7 @@ public class AudioPlaybackService {
         if (sourceFormat != null && currentFormat != null && !AudioFormatUtil.sameFormat(sourceFormat, currentFormat)) {
             audioData = AudioFormatUtil.convert(audioData, sourceFormat, currentFormat);
         }
-        audioQueue.offer(audioData);
+        offerLatestAudio(audioData);
     }
 
     public void setVolume(double volume) {
@@ -131,18 +137,30 @@ public class AudioPlaybackService {
         }
 
         audioQueue.clear();
+        playbackPrimed = false;
         System.out.println("[AudioPlayback] Arrete");
     }
 
     private void playbackLoop() {
+        byte[] silencePacket = buildSilencePacket();
         while (running) {
             try {
-                byte[] audioData = audioQueue.take();
-                if (audioData != null && speakers != null && speakers.isOpen()) {
-                    if (volume < 1.0) {
-                        audioData = applyVolume(audioData);
+                if (!playbackPrimed) {
+                    if (audioQueue.size() < PREBUFFER_PACKETS) {
+                        Thread.sleep(5);
+                        continue;
                     }
-                    speakers.write(audioData, 0, audioData.length);
+                    playbackPrimed = true;
+                }
+
+                byte[] audioData = audioQueue.poll(PACKET_DURATION_MS, TimeUnit.MILLISECONDS);
+                if (audioData == null) {
+                    audioData = silencePacket;
+                }
+
+                if (audioData != null && speakers != null && speakers.isOpen()) {
+                    byte[] output = volume < 1.0 ? applyVolume(audioData) : audioData;
+                    speakers.write(output, 0, output.length);
                     if (onProgress != null) onProgress.accept(speakers.getFramePosition());
                 }
             } catch (InterruptedException e) {
@@ -154,6 +172,22 @@ public class AudioPlaybackService {
                 }
             }
         }
+    }
+
+    private void offerLatestAudio(byte[] audioData) {
+        if (!audioQueue.offer(audioData)) {
+            audioQueue.poll();
+            audioQueue.offer(audioData);
+        }
+    }
+
+    private byte[] buildSilencePacket() {
+        if (currentFormat == null) {
+            return new byte[640];
+        }
+        int frameSize = Math.max(1, currentFormat.getFrameSize());
+        int framesPerPacket = Math.max(1, Math.round(currentFormat.getFrameRate() * PACKET_DURATION_MS / 1000f));
+        return new byte[framesPerPacket * frameSize];
     }
 
     private byte[] applyVolume(byte[] audioData) {
