@@ -71,7 +71,9 @@ public class MeetingController implements Initializable {
     private Thread videoThread;
 
     private final Map<Integer, VBox> participantContainers = new ConcurrentHashMap<>();
+    private final Map<Integer, StackPane> participantVideoPanes = new ConcurrentHashMap<>();
     private final Map<Integer, ImageView> participantVideos = new ConcurrentHashMap<>();
+    private final Map<Integer, Label> participantVideoPlaceholders = new ConcurrentHashMap<>();
     private final Map<Integer, Label> participantLabels = new ConcurrentHashMap<>();
     private final Map<Integer, Image> pendingParticipantFrames = new ConcurrentHashMap<>();
     private final Set<Integer> participantIds = ConcurrentHashMap.newKeySet();
@@ -207,6 +209,8 @@ public class MeetingController implements Initializable {
                             if (networkClient != null && meetingId > 0) {
                                 byte[] encodedFrame = encodeMeetingFrame(frame);
                                 if (encodedFrame != null && encodedFrame.length > 0) {
+                                    System.out.println("[MEETING_UI] Envoi frame video meeting=" + meetingId
+                                            + " taille=" + encodedFrame.length + " octets");
                                     networkClient.sendVideoFrame(encodedFrame, meetingId);
                                 }
                             }
@@ -522,11 +526,16 @@ public class MeetingController implements Initializable {
         videoPane.setMaxSize(140, 140);
         videoPane.setStyle("-fx-background-color: #29b6f6; -fx-background-radius: 16;");
 
+        Label videoPlaceholder = new Label(userId == -1 ? "Camera active" : "Video en attente");
+        videoPlaceholder.setStyle("-fx-text-fill: white; -fx-font-size: 12; -fx-font-weight: bold;");
+        videoPlaceholder.setWrapText(true);
+        videoPlaceholder.setMaxWidth(100);
+
         ImageView videoView = new ImageView();
         videoView.setFitWidth(140);
         videoView.setFitHeight(140);
         videoView.setPreserveRatio(true);
-        videoPane.getChildren().add(videoView);
+        videoPane.getChildren().addAll(videoView, videoPlaceholder);
 
         Rectangle clip = new Rectangle(140, 140);
         clip.setArcWidth(16);
@@ -535,6 +544,9 @@ public class MeetingController implements Initializable {
 
         Label nameLabel = new Label(name);
         nameLabel.setStyle("-fx-text-fill: #01579b; -fx-font-size: 14; -fx-font-weight: bold;");
+        nameLabel.setWrapText(true);
+        nameLabel.setMaxWidth(140);
+        nameLabel.setAlignment(Pos.CENTER);
 
         FontIcon micIcon = new FontIcon(FontAwesomeSolid.MICROPHONE);
         micIcon.setIconSize(14);
@@ -543,7 +555,9 @@ public class MeetingController implements Initializable {
         micIndicator.setAlignment(Pos.CENTER);
 
         container.getChildren().addAll(videoPane, nameLabel, micIndicator);
+        participantVideoPanes.put(userId, videoPane);
         participantVideos.put(userId, videoView);
+        participantVideoPlaceholders.put(userId, videoPlaceholder);
         participantLabels.put(userId, nameLabel);
         return container;
     }
@@ -558,10 +572,21 @@ public class MeetingController implements Initializable {
     public void updateParticipantVideo(int userId, Image frame) {
         Platform.runLater(() -> {
             ImageView video = participantVideos.get(userId);
+            Label placeholder = participantVideoPlaceholders.get(userId);
+            StackPane videoPane = participantVideoPanes.get(userId);
             if (video != null && frame != null) {
                 video.setImage(frame);
+                if (placeholder != null) {
+                    placeholder.setVisible(false);
+                    placeholder.setManaged(false);
+                }
+                if (videoPane != null) {
+                    videoPane.setStyle("-fx-background-color: #102027; -fx-background-radius: 16;");
+                }
+                System.out.println("[MEETING_UI] Frame affichee pour participant=" + userId);
             } else if (frame != null) {
                 pendingParticipantFrames.put(userId, frame);
+                System.out.println("[MEETING_UI] Frame mise en attente pour participant=" + userId);
             }
         });
     }
@@ -569,7 +594,10 @@ public class MeetingController implements Initializable {
     public void updateParticipantFrame(String participantId, byte[] jpegFrame) {
         if (jpegFrame == null || jpegFrame.length == 0) return;
         try {
-            updateParticipantVideo(Integer.parseInt(participantId), new Image(new ByteArrayInputStream(jpegFrame)));
+            int userId = Integer.parseInt(participantId);
+            System.out.println("[MEETING_UI] Frame recue de participant=" + userId
+                    + " taille=" + jpegFrame.length + " octets");
+            updateParticipantVideo(userId, new Image(new ByteArrayInputStream(jpegFrame)));
         } catch (NumberFormatException ignored) {
         }
     }
@@ -605,6 +633,8 @@ public class MeetingController implements Initializable {
                 }
             }
             participantVideos.remove(userId);
+            participantVideoPanes.remove(userId);
+            participantVideoPlaceholders.remove(userId);
             participantLabels.remove(userId);
             pendingParticipantFrames.remove(userId);
             updateSubtitle();

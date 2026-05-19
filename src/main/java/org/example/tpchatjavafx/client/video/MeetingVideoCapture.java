@@ -57,6 +57,8 @@ public class MeetingVideoCapture {
         DatagramPacket packet = new DatagramPacket(payload, payload.length, remoteAddress, remotePort);
         try {
             socket.send(packet);
+            System.out.println("[MEETING_VIDEO] Frame envoyee meeting=" + meetingId
+                    + " user=" + userId + " taille=" + jpegFrame.length + " octets");
         } catch (IOException e) {
             System.err.println("[MEETING_VIDEO] Erreur envoi: " + e.getMessage());
         }
@@ -73,6 +75,8 @@ public class MeetingVideoCapture {
                 int senderId = readInt(packet.getData(), 4);
                 byte[] frame = new byte[length - 8];
                 System.arraycopy(packet.getData(), 8, frame, 0, frame.length);
+                System.out.println("[MEETING_VIDEO] Frame recue meeting=" + meetingId
+                        + " sender=" + senderId + " taille=" + frame.length + " octets");
                 if (onRemoteFrame != null && senderId > 0) {
                     onRemoteFrame.accept(senderId, frame);
                 }
