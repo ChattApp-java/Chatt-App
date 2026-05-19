@@ -43,9 +43,12 @@ public class MeetingController implements Initializable {
 
     @FXML private Label lblTitle;
     @FXML private Label lblSubtitle;
+    @FXML private Label lblGroupName;
     @FXML private Label lblVideoCaption;
     @FXML private TilePane centerContainer;
     @FXML private GridPane videoGrid;
+    @FXML private VBox inCallMembersBox;
+    @FXML private VBox invitedMembersBox;
     @FXML private ListView<String> participantsList;
     @FXML private Button btnMore;
     @FXML private Button btnVideo;
@@ -68,6 +71,9 @@ public class MeetingController implements Initializable {
     private boolean micMuted = false;
     private boolean speakerOn = true;
     private boolean videoOn = true;
+    private boolean awaitingAddParticipantDialog = false;
+    private String meetingDisplayName = "Groupe";
+    private final List<String> invitedMembers = new ArrayList<>();
 
     private com.github.sarxos.webcam.Webcam webcam;
     private Thread videoThread;
@@ -94,6 +100,7 @@ public class MeetingController implements Initializable {
             centerContainer.setAlignment(Pos.TOP_CENTER);
         }
         setupButtonActions();
+        refreshSidebarLists();
     }
 
     private void setupButtonActions() {
@@ -111,8 +118,14 @@ public class MeetingController implements Initializable {
         this.networkClient = client;
         if (client != null) {
             client.setActiveMeetingController(this);
-            client.setOnMeetingNonParticipantsResponse(msg ->
-                    Platform.runLater(() -> showAddParticipantDialog(msg.getContent())));
+            client.setOnMeetingNonParticipantsResponse(msg -> Platform.runLater(() -> {
+                updateInvitedMembers(msg.getContent());
+                if (awaitingAddParticipantDialog) {
+                    awaitingAddParticipantDialog = false;
+                    showAddParticipantDialog(msg.getContent());
+                }
+            }));
+            refreshSidebarData();
         }
     }
 
@@ -122,15 +135,28 @@ public class MeetingController implements Initializable {
 
     public void setGroupId(int groupId) {
         this.groupId = groupId;
-        Platform.runLater(this::updateSubtitle);
+        Platform.runLater(() -> {
+            updateSubtitle();
+            refreshSidebarData();
+        });
     }
 
     public void setMeetingId(int meetingId) {
         this.meetingId = meetingId;
+        Platform.runLater(this::refreshSidebarData);
     }
 
     public void setInitiator(boolean initiator) {
         this.isInitiator = initiator;
+    }
+
+    public void setMeetingDisplayName(String meetingDisplayName) {
+        this.meetingDisplayName = (meetingDisplayName == null || meetingDisplayName.isBlank()) ? "Groupe" : meetingDisplayName;
+        Platform.runLater(() -> {
+            if (lblGroupName != null) {
+                lblGroupName.setText(this.meetingDisplayName);
+            }
+        });
     }
 
     public void setCallType(String callType) {
@@ -140,6 +166,9 @@ public class MeetingController implements Initializable {
             boolean isVideo = isVideoMeeting();
             if (lblTitle != null) {
                 lblTitle.setText(isVideo ? "Appel video de groupe" : "Appel audio de groupe");
+            }
+            if (lblGroupName != null) {
+                lblGroupName.setText(meetingDisplayName);
             }
             if (btnVideo != null) {
                 btnVideo.setVisible(isVideo);
@@ -362,6 +391,7 @@ public class MeetingController implements Initializable {
 
     private void handleAddParticipant() {
         if (networkClient == null || meetingId <= 0) return;
+        awaitingAddParticipantDialog = true;
         org.example.tpchatjavafx.client.model.ChatMessage req = new org.example.tpchatjavafx.client.model.ChatMessage();
         req.setType(MessageType.MEETING_NON_PARTICIPANTS_REQUEST);
         req.setGroupId(groupId);
@@ -473,6 +503,8 @@ public class MeetingController implements Initializable {
                 centerContainer.getChildren().add(container);
             }
             updateSubtitle();
+            refreshSidebarLists();
+            refreshSidebarData();
         });
     }
 
@@ -531,38 +563,55 @@ public class MeetingController implements Initializable {
     private VBox createParticipantContainer(int userId, String name) {
         boolean videoMeeting = isVideoMeeting();
         boolean localParticipant = userId == localParticipantId || (userId == -1 && localParticipantId <= 0);
-        double tileWidth = videoMeeting ? (localParticipant ? 148 : 248) : 240;
-        double mediaSize = videoMeeting ? (localParticipant ? 120 : 220) : 96;
+        double tileWidth = videoMeeting ? 260 : 240;
+        double mediaSize = videoMeeting ? 220 : 96;
 
         VBox container = new VBox(10);
         container.setAlignment(Pos.CENTER);
         container.setPadding(new Insets(14));
-        container.setPrefWidth(tileWidth);
-        container.setMaxWidth(tileWidth);
+        if (videoMeeting) {
+            container.setMaxWidth(Double.MAX_VALUE);
+            container.setFillWidth(true);
+        } else {
+            container.setPrefWidth(tileWidth);
+            container.setMaxWidth(tileWidth);
+        }
         container.setStyle(videoMeeting
-                ? "-fx-background-color: rgba(16, 43, 84, 0.92); -fx-background-radius: 26; "
-                + "-fx-border-color: rgba(173, 216, 255, 0.20); -fx-border-radius: 26; -fx-border-width: 1;"
+                ? "-fx-background-color: rgba(255,255,255,0.16); -fx-background-radius: 24; "
+                + "-fx-border-color: rgba(255,255,255,0.18); -fx-border-radius: 24; -fx-border-width: 1;"
                 : "-fx-background-color: rgba(245,250,255,0.98); -fx-background-radius: 26; "
                 + "-fx-border-color: rgba(82, 146, 255, 0.18); -fx-border-radius: 26; -fx-border-width: 1;");
 
         StackPane videoPane = new StackPane();
-        videoPane.setPrefSize(mediaSize, mediaSize);
-        videoPane.setMaxSize(mediaSize, mediaSize);
+        if (videoMeeting) {
+            videoPane.setMinSize(180, 140);
+            videoPane.setPrefSize(320, 220);
+            videoPane.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+            VBox.setVgrow(videoPane, Priority.ALWAYS);
+        } else {
+            videoPane.setPrefSize(mediaSize, mediaSize);
+            videoPane.setMaxSize(mediaSize, mediaSize);
+        }
         videoPane.setStyle(videoMeeting
-                ? "-fx-background-color: linear-gradient(to bottom right, #183a6b, #0d223f); -fx-background-radius: 24;"
+                ? "-fx-background-color: linear-gradient(to bottom right, #78bbff, #3b8ff5); -fx-background-radius: 18;"
                 : "-fx-background-color: linear-gradient(to bottom right, #78bdff, #2b79d6); -fx-background-radius: 48;");
 
         ImageView videoView = new ImageView();
-        videoView.setFitWidth(mediaSize);
-        videoView.setFitHeight(mediaSize);
         videoView.setPreserveRatio(true);
+        if (videoMeeting) {
+            videoView.fitWidthProperty().bind(videoPane.widthProperty().subtract(16));
+            videoView.fitHeightProperty().bind(videoPane.heightProperty().subtract(16));
+        } else {
+            videoView.setFitWidth(mediaSize);
+            videoView.setFitHeight(mediaSize);
+        }
 
         Label videoPlaceholder = null;
         if (videoMeeting) {
             videoPlaceholder = new Label(userId == -1 ? "Camera active" : "Video en attente");
-            videoPlaceholder.setStyle("-fx-text-fill: #edf4ff; -fx-font-size: 12; -fx-font-weight: bold;");
+            videoPlaceholder.setStyle("-fx-text-fill: white; -fx-font-size: 15; -fx-font-weight: bold;");
             videoPlaceholder.setWrapText(true);
-            videoPlaceholder.setMaxWidth(110);
+            videoPlaceholder.maxWidthProperty().bind(videoPane.widthProperty().subtract(24));
             videoPane.getChildren().addAll(videoView, videoPlaceholder);
         } else {
             Label initial = new Label(buildParticipantInitial(name));
@@ -570,14 +619,16 @@ public class MeetingController implements Initializable {
             videoPane.getChildren().add(initial);
         }
 
-        Rectangle clip = new Rectangle(mediaSize, mediaSize);
-        clip.setArcWidth(videoMeeting ? 24 : 96);
-        clip.setArcHeight(videoMeeting ? 24 : 96);
+        Rectangle clip = new Rectangle();
+        clip.widthProperty().bind(videoPane.widthProperty());
+        clip.heightProperty().bind(videoPane.heightProperty());
+        clip.setArcWidth(videoMeeting ? 18 : 96);
+        clip.setArcHeight(videoMeeting ? 18 : 96);
         videoPane.setClip(clip);
 
         Label nameLabel = new Label(localParticipant ? name + " (Vous)" : name);
         nameLabel.setStyle(videoMeeting
-                ? "-fx-text-fill: white; -fx-font-size: " + (localParticipant ? "13" : "16") + "; -fx-font-weight: bold;"
+                ? "-fx-text-fill: white; -fx-font-size: 16; -fx-font-weight: bold;"
                 : "-fx-text-fill: #0f3d91; -fx-font-size: 16; -fx-font-weight: bold;");
         nameLabel.setWrapText(true);
         nameLabel.setMaxWidth(tileWidth - 20);
@@ -608,6 +659,8 @@ public class MeetingController implements Initializable {
             return;
         }
         videoGrid.getChildren().clear();
+        videoGrid.getColumnConstraints().clear();
+        videoGrid.getRowConstraints().clear();
 
         List<Integer> orderedIds = new ArrayList<>(participantContainers.keySet());
         orderedIds.sort((a, b) -> {
@@ -618,46 +671,40 @@ public class MeetingController implements Initializable {
             return Integer.compare(a, b);
         });
 
-        List<Integer> remoteIds = new ArrayList<>();
-        Integer localId = null;
-        for (Integer id : orderedIds) {
-            if (id == localParticipantId || (id == -1 && localParticipantId <= 0)) {
-                localId = id;
-            } else {
-                remoteIds.add(id);
-            }
+        int count = orderedIds.size();
+        int columns = count <= 1 ? 1 : count == 2 ? 2 : count <= 4 ? 2 : 3;
+        int rows = Math.max(1, (int) Math.ceil(count / (double) columns));
+
+        for (int col = 0; col < columns; col++) {
+            ColumnConstraints cc = new ColumnConstraints();
+            cc.setPercentWidth(100.0 / columns);
+            cc.setHgrow(Priority.ALWAYS);
+            cc.setHalignment(HPos.CENTER);
+            cc.setFillWidth(true);
+            videoGrid.getColumnConstraints().add(cc);
+        }
+        for (int row = 0; row < rows; row++) {
+            RowConstraints rc = new RowConstraints();
+            rc.setPercentHeight(100.0 / rows);
+            rc.setVgrow(Priority.ALWAYS);
+            rc.setFillHeight(true);
+            videoGrid.getRowConstraints().add(rc);
         }
 
-        int count = remoteIds.size();
-        for (int index = 0; index < remoteIds.size(); index++) {
-            VBox container = participantContainers.get(remoteIds.get(index));
+        for (int index = 0; index < orderedIds.size(); index++) {
+            VBox container = participantContainers.get(orderedIds.get(index));
             if (container == null) {
                 continue;
             }
-
-            int col;
-            int row;
-            if (count == 3 && index == 2) {
-                col = 0;
-                row = 1;
-                videoGrid.add(container, col, row, 2, 1);
-                GridPane.setHalignment(container, HPos.CENTER);
-            } else {
-                col = index % 2;
-                row = index / 2;
-                videoGrid.add(container, col, row);
-                GridPane.setHalignment(container, HPos.CENTER);
-            }
-        }
-
-        if (localId != null) {
-            VBox localContainer = participantContainers.get(localId);
-            if (localContainer != null) {
-                int localRow = Math.max(0, (count + 1) / 2);
-                videoGrid.add(localContainer, 1, localRow);
-                GridPane.setHalignment(localContainer, HPos.RIGHT);
-                GridPane.setMargin(localContainer, new Insets(8, 0, 0, 0));
-            }
+            int col = index % columns;
+            int row = index / columns;
+            videoGrid.add(container, col, row);
+            GridPane.setHgrow(container, Priority.ALWAYS);
+            GridPane.setVgrow(container, Priority.ALWAYS);
+            GridPane.setFillWidth(container, true);
+            GridPane.setFillHeight(container, true);
+            GridPane.setHalignment(container, HPos.CENTER);
+            GridPane.setMargin(container, new Insets(10));
         }
     }
 
@@ -673,7 +720,7 @@ public class MeetingController implements Initializable {
                     placeholder.setManaged(false);
                 }
                 if (videoPane != null) {
-                    videoPane.setStyle("-fx-background-color: #0d223f; -fx-background-radius: 20;");
+                    videoPane.setStyle("-fx-background-color: #dcecff; -fx-background-radius: 18;");
                 }
                 System.out.println("[MEETING_UI] Frame affichee pour participant=" + userId);
             } else if (frame != null) {
@@ -733,6 +780,8 @@ public class MeetingController implements Initializable {
             participantLabels.remove(userId);
             pendingParticipantFrames.remove(userId);
             updateSubtitle();
+            refreshSidebarLists();
+            refreshSidebarData();
             System.out.println("[MEETING_UI] Participant " + userId + " retire");
         });
     }
@@ -787,6 +836,8 @@ public class MeetingController implements Initializable {
                 removeParticipant(existingId);
             }
         }
+        Platform.runLater(this::refreshSidebarLists);
+        refreshSidebarData();
     }
 
     public void addAudioFrame(String participantId, byte[] audioData) {
@@ -805,7 +856,7 @@ public class MeetingController implements Initializable {
     private void updateSubtitle() {
         if (lblSubtitle == null) return;
         int count = participantsList != null ? participantsList.getItems().size() : participantIds.size();
-        lblSubtitle.setText(count + " participant(s)");
+        lblSubtitle.setText(count + " participant(s) connectes");
     }
 
     private int resolveLocalVideoTargetId() {
@@ -820,6 +871,87 @@ public class MeetingController implements Initializable {
             return "?";
         }
         return name.trim().substring(0, 1).toUpperCase(Locale.ROOT);
+    }
+
+    private void refreshSidebarData() {
+        if (networkClient != null && groupId > 0 && meetingId > 0) {
+            networkClient.requestNonMeetingParticipants(groupId, meetingId);
+        }
+    }
+
+    private void updateInvitedMembers(String csv) {
+        invitedMembers.clear();
+        if (csv != null && !csv.isBlank()) {
+            for (String token : csv.split(",")) {
+                String name = token.trim();
+                if (!name.isEmpty()) {
+                    invitedMembers.add(name);
+                }
+            }
+        }
+        refreshSidebarLists();
+    }
+
+    private void refreshSidebarLists() {
+        if (inCallMembersBox != null) {
+            rebuildSidebarBox(inCallMembersBox, participantsList == null ? List.of() : participantsList.getItems(), true);
+        }
+        if (invitedMembersBox != null) {
+            rebuildSidebarBox(invitedMembersBox, invitedMembers, false);
+        }
+    }
+
+    private void rebuildSidebarBox(VBox container, List<String> names, boolean inCall) {
+        if (container == null) {
+            return;
+        }
+        container.getChildren().clear();
+        if (names == null || names.isEmpty()) {
+            Label empty = new Label(inCall ? "Aucun participant actif" : "Aucun invite en attente");
+            empty.setStyle("-fx-text-fill: #6b8fc0; -fx-font-size: 12;");
+            container.getChildren().add(empty);
+            return;
+        }
+        for (String name : names) {
+            HBox row = new HBox(10);
+            row.setAlignment(Pos.CENTER_LEFT);
+            row.setStyle("-fx-padding: 8 0 8 0;");
+
+            StackPane avatar = new StackPane();
+            avatar.setMinSize(34, 34);
+            avatar.setPrefSize(34, 34);
+            avatar.setMaxSize(34, 34);
+            avatar.setStyle(inCall
+                    ? "-fx-background-color: linear-gradient(to bottom right, #95cbff, #4c94ff); -fx-background-radius: 17;"
+                    : "-fx-background-color: linear-gradient(to bottom right, #dfeeff, #a9cfff); -fx-background-radius: 17;");
+
+            Label initial = new Label(buildParticipantInitial(name));
+            initial.setStyle(inCall
+                    ? "-fx-text-fill: white; -fx-font-size: 13; -fx-font-weight: bold;"
+                    : "-fx-text-fill: #315f9e; -fx-font-size: 13; -fx-font-weight: bold;");
+            avatar.getChildren().add(initial);
+
+            VBox texts = new VBox(2);
+            Label nameLabel = new Label(name);
+            nameLabel.setStyle("-fx-text-fill: #10386d; -fx-font-size: 14; -fx-font-weight: bold;");
+            Label stateLabel = new Label(inCall ? "Dans l'appel" : "Invite");
+            stateLabel.setStyle("-fx-text-fill: #6b8fc0; -fx-font-size: 11;");
+            texts.getChildren().addAll(nameLabel, stateLabel);
+
+            Region spacer = new Region();
+            HBox.setHgrow(spacer, Priority.ALWAYS);
+
+            StackPane dot = new StackPane();
+            dot.setMinSize(9, 9);
+            dot.setPrefSize(9, 9);
+            dot.setMaxSize(9, 9);
+            dot.setStyle(inCall
+                    ? "-fx-background-color: #22c55e; -fx-background-radius: 4.5;"
+                    : "-fx-background-color: #9db6d4; -fx-background-radius: 4.5;");
+
+            row.getChildren().addAll(avatar, texts, spacer, dot);
+            container.getChildren().add(row);
+        }
     }
 
     private void endCall() {
