@@ -1,40 +1,80 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
-<?import javafx.scene.text.Font?>
+<?import javafx.scene.shape.Circle?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
 
-<VBox alignment="CENTER" spacing="20.0" style="-fx-background-color: #1e1e2e; -fx-border-color: #313244; -fx-border-width: 2; -fx-border-radius: 15; -fx-background-radius: 15;" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.tpchatjavafx.client.controller.IncomingMeetingDialogController">
-    <padding>
-        <Insets bottom="25.0" left="25.0" right="25.0" top="25.0" />
-    </padding>
-    <children>
-        <Label text="Invitation à une réunion" textFill="#cba6f7">
-            <font>
-                <Font name="System Bold" size="20.0" />
-            </font>
-        </Label>
-        <VBox alignment="CENTER" spacing="10.0">
-            <children>
-                <Label fx:id="initiatorLabel" text="Invité par : ..." textFill="#cdd6f4">
-                    <font>
-                        <Font size="16.0" />
-                    </font>
-                </Label>
-                <Label fx:id="meetingTypeLabel" text="Type : ..." textFill="#a6adc8">
-                    <font>
-                        <Font size="14.0" />
-                    </font>
-                </Label>
-            </children>
-        </VBox>
-        <HBox alignment="CENTER" spacing="20.0">
-            <children>
-                <Button fx:id="rejectButton" onAction="#onRejectMeeting" minWidth="96.0" maxWidth="140.0" HBox.hgrow="ALWAYS" style="-fx-background-color: #f38ba8; -fx-text-fill: #1e1e2e; -fx-font-weight: bold; -fx-background-radius: 10;" text="Refuser" />
-                <Button fx:id="joinButton" onAction="#onJoinMeeting" minWidth="96.0" maxWidth="140.0" HBox.hgrow="ALWAYS" style="-fx-background-color: #a6e3a1; -fx-text-fill: #1e1e2e; -fx-font-weight: bold; -fx-background-radius: 10;" text="Rejoindre" />
-            </children>
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="org.example.tpchatjavafx.client.controller.IncomingMeetingDialogController"
+            prefWidth="1020" prefHeight="620"
+            style="-fx-background-color: linear-gradient(to bottom, #10233d, #081521);">
+    <center>
+        <HBox spacing="14" BorderPane.alignment="CENTER" style="-fx-padding: 18;">
+            <StackPane HBox.hgrow="ALWAYS" style="-fx-background-color: #131d24; -fx-background-radius: 22;">
+                <VBox alignment="CENTER" spacing="18">
+                    <StackPane prefWidth="620" prefHeight="320" maxWidth="620" maxHeight="320"
+                               style="-fx-background-color: linear-gradient(to bottom right, #7f120f, #d92e21, #ff7166); -fx-background-radius: 12;">
+                        <Label text="Aperçu de l'appel"
+                               style="-fx-text-fill: rgba(255,255,255,0.86); -fx-font-size: 22; -fx-font-weight: bold;"/>
+                    </StackPane>
+                    <HBox alignment="CENTER" spacing="12">
+                        <Button style="-fx-background-color: #263038; -fx-background-radius: 24; -fx-min-width: 88; -fx-min-height: 56; -fx-cursor: hand;">
+                            <graphic><FontIcon iconLiteral="fas-video" iconSize="20" iconColor="white"/></graphic>
+                        </Button>
+                        <Button style="-fx-background-color: #263038; -fx-background-radius: 24; -fx-min-width: 88; -fx-min-height: 56; -fx-cursor: hand;">
+                            <graphic><FontIcon iconLiteral="fas-microphone" iconSize="20" iconColor="white"/></graphic>
+                        </Button>
+                    </HBox>
+                </VBox>
+            </StackPane>
+
+            <VBox prefWidth="300" spacing="18" style="-fx-background-color: #131d24; -fx-background-radius: 22; -fx-padding: 28;">
+                <VBox alignment="CENTER" spacing="14">
+                    <StackPane prefWidth="92" prefHeight="92" maxWidth="92" maxHeight="92"
+                               style="-fx-background-color: #7a7a7a; -fx-background-radius: 46;">
+                        <Circle radius="34" fill="#8c8c8c" />
+                        <FontIcon iconLiteral="fas-users" iconSize="30" iconColor="#5b5b5b"/>
+                    </StackPane>
+                    <Label fx:id="titleLabel" text="Invitation de Contact"
+                           style="-fx-text-fill: white; -fx-font-size: 20; -fx-font-weight: bold;"/>
+                </VBox>
+
+                <Region minHeight="1" prefHeight="1" style="-fx-background-color: rgba(255,255,255,0.08);" />
+
+                <VBox spacing="12">
+                    <Label fx:id="sectionStatusLabel" text="En attente de votre reponse"
+                           style="-fx-text-fill: #8f9aa3; -fx-font-size: 14;"/>
+                    <HBox alignment="CENTER_LEFT" spacing="12">
+                        <StackPane minWidth="48" minHeight="48" maxWidth="48" maxHeight="48"
+                                   style="-fx-background-color: radial-gradient(radius 100%, #1b2f69, #0e1631); -fx-background-radius: 24;"/>
+                        <VBox spacing="2">
+                            <Label fx:id="initiatorLabel" text="Contact"
+                                   style="-fx-text-fill: white; -fx-font-size: 16; -fx-font-weight: bold;"/>
+                            <Label fx:id="meetingTypeLabel" text="Appel video"
+                                   style="-fx-text-fill: #a8b3bc; -fx-font-size: 12;"/>
+                        </VBox>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <StackPane minWidth="10" minHeight="10" maxWidth="10" maxHeight="10"
+                                   style="-fx-background-color: #20c463; -fx-background-radius: 5;"/>
+                    </HBox>
+                </VBox>
+            </VBox>
         </HBox>
-    </children>
-</VBox>
+    </center>
+
+    <bottom>
+        <HBox alignment="CENTER" spacing="14" style="-fx-background-color: #0b1218; -fx-padding: 18 24 18 24;">
+            <Button fx:id="rejectButton" onAction="#onRejectMeeting"
+                    text="Ignorer"
+                    style="-fx-background-color: #242f36; -fx-text-fill: white; -fx-font-size: 16; -fx-font-weight: bold; -fx-background-radius: 22; -fx-min-width: 190; -fx-min-height: 54; -fx-cursor: hand;" />
+            <Button fx:id="joinButton" onAction="#onJoinMeeting"
+                    text="Rejoindre"
+                    style="-fx-background-color: #25d366; -fx-text-fill: #0b1218; -fx-font-size: 16; -fx-font-weight: bold; -fx-background-radius: 22; -fx-min-width: 190; -fx-min-height: 54; -fx-cursor: hand;" />
+        </HBox>
+    </bottom>
+</BorderPane>

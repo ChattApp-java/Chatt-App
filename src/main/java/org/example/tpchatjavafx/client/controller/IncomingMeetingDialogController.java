@@ -23,6 +23,12 @@ public class IncomingMeetingDialogController {
     private Label meetingTypeLabel;
 
     @FXML
+    private Label titleLabel;
+
+    @FXML
+    private Label sectionStatusLabel;
+
+    @FXML
     private Button joinButton;
 
     @FXML
@@ -40,11 +46,19 @@ public class IncomingMeetingDialogController {
     }
 
     public void setInitiator(String initiator) {
-        initiatorLabel.setText("Invite par : " + initiator);
+        String safeInitiator = (initiator == null || initiator.isBlank()) ? "Contact" : initiator;
+        initiatorLabel.setText(safeInitiator);
+        if (titleLabel != null) {
+            titleLabel.setText("Invitation de " + safeInitiator);
+        }
     }
 
     public void setMeetingType(String meetingType) {
-        meetingTypeLabel.setText("Type : " + meetingType);
+        String safeType = (meetingType == null || meetingType.isBlank()) ? "AUDIO" : meetingType.toUpperCase();
+        meetingTypeLabel.setText("Appel " + safeType.toLowerCase());
+        if (sectionStatusLabel != null) {
+            sectionStatusLabel.setText("En attente de votre reponse");
+        }
     }
 
     @FXML
@@ -79,7 +93,7 @@ public class IncomingMeetingDialogController {
         stage.setTitle("Invitation reunion");
         stage.initModality(Modality.APPLICATION_MODAL);
         stage.setResizable(true);
-        WindowSizingUtil.applyResponsiveStageSize(stage, 430, 260, 360, 220);
+        WindowSizingUtil.applyResponsiveStageSize(stage, 1020, 620, 860, 520);
         stage.showAndWait();
     }
 }
