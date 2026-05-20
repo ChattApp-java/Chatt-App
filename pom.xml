@@ -33,6 +33,12 @@
             <artifactId>javafx-swing</artifactId>
             <version>${javafx.version}</version>
         </dependency>
+        <!-- JavaFX Media (pour audio/vidéo) -->
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-media</artifactId>
+            <version>${javafx.version}</version>
+        </dependency>
 
         <!-- MySQL -->
         <dependency>
@@ -55,12 +61,7 @@
             <version>0.4</version>
         </dependency>
 
-        <!-- Webcam capture for video calls -->
-        <dependency>
-            <groupId>com.github.sarxos</groupId>
-            <artifactId>webcam-capture</artifactId>
-            <version>0.3.12</version>
-        </dependency>
+
 
         <!-- JavaCV / OpenCV pour capture vidéo et traitement image -->
         <dependency>

@@ -20,6 +20,10 @@ import javafx.geometry.HPos;
 import javafx.stage.Modality;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
+import org.bytedeco.opencv.opencv_videoio.VideoCapture;
+import org.bytedeco.opencv.opencv_core.Mat;
+import static org.bytedeco.opencv.global.opencv_imgproc.cvtColor;
+import static org.bytedeco.opencv.global.opencv_imgproc.COLOR_BGR2RGB;
 import org.example.tpchatjavafx.client.NetworkClient;
 import org.example.tpchatjavafx.common.MessageType;
 import org.kordamp.ikonli.javafx.FontIcon;
@@ -32,6 +36,7 @@ import javax.imageio.stream.MemoryCacheImageOutputStream;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferByte;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -75,7 +80,8 @@ public class MeetingController implements Initializable {
     private String meetingDisplayName = "Groupe";
     private final List<String> invitedMembers = new ArrayList<>();
 
-    private com.github.sarxos.webcam.Webcam webcam;
+    // ========== JAVACV - Remplacement de webcam-capture ==========
+    private VideoCapture videoCapture;
     private Thread videoThread;
 
     private final Map<Integer, VBox> participantContainers = new ConcurrentHashMap<>();
@@ -195,7 +201,7 @@ public class MeetingController implements Initializable {
                 centerContainer.setManaged(!isVideo);
             }
             updateSubtitle();
-            if (isVideo && networkClient != null && (webcam == null || !webcam.isOpen())) {
+            if (isVideo && networkClient != null && (videoCapture == null || !videoCapture.isOpened())) {
                 startVideoCapture();
             }
         });
@@ -208,50 +214,69 @@ public class MeetingController implements Initializable {
         }
     }
 
+    // ========== JAVACV - NOUVELLE IMPLEMENTATION ==========
+
     public void startVideoCapture() {
         if (!isVideoMeeting()) {
             System.out.println("[MEETING_UI] Pas VIDEO, pas de webcam");
             return;
         }
-        if (videoThread != null && videoThread.isAlive() && webcam != null && webcam.isOpen()) {
+        if (videoThread != null && videoThread.isAlive() && videoCapture != null && videoCapture.isOpened()) {
             System.out.println("[MEETING_UI] Webcam deja active");
             return;
         }
         try {
-            if (webcam != null && webcam.isOpen()) {
-                webcam.close();
+            if (videoCapture != null && videoCapture.isOpened()) {
+                videoCapture.release();
                 try {
                     Thread.sleep(300);
                 } catch (InterruptedException interruptedException) {
                     Thread.currentThread().interrupt();
                 }
             }
-            webcam = com.github.sarxos.webcam.Webcam.getDefault();
-            if (webcam == null) {
+
+            videoCapture = new VideoCapture(0);
+            if (!videoCapture.isOpened()) {
                 System.err.println("[MEETING_UI] AUCUNE WEBCAM TROUVEE");
                 return;
             }
-            System.out.println("[MEETING_UI] Webcam: " + webcam.getName());
-            webcam.setViewSize(com.github.sarxos.webcam.WebcamResolution.QVGA.getSize());
-            webcam.open();
+
+            System.out.println("[MEETING_UI] Webcam ouverte avec JavaCV");
             videoOn = true;
 
             videoThread = new Thread(() -> {
-                while (videoOn && webcam != null && webcam.isOpen()) {
+                Mat frame = new Mat();
+                Mat rgbFrame = new Mat();
+
+                while (videoOn && videoCapture != null && videoCapture.isOpened()) {
                     try {
-                        BufferedImage frame = webcam.getImage();
-                        if (frame != null) {
-                            Image fxImage = javafx.embed.swing.SwingFXUtils.toFXImage(frame, null);
-                            int localVideoTargetId = resolveLocalVideoTargetId();
-                            Platform.runLater(() -> updateParticipantVideo(localVideoTargetId, fxImage));
-                            if (networkClient != null && meetingId > 0) {
-                                byte[] encodedFrame = encodeMeetingFrame(frame);
-                                if (encodedFrame != null && encodedFrame.length > 0) {
-                                    System.out.println("[MEETING_UI] Envoi frame video meeting=" + meetingId
-                                            + " taille=" + encodedFrame.length + " octets");
-                                    networkClient.sendVideoFrame(encodedFrame, meetingId);
+                        if (videoCapture.read(frame)) {
+                            Mat resizedFrame = new Mat();
+                            org.bytedeco.opencv.global.opencv_imgproc.resize(
+                                    frame, resizedFrame,
+                                    new org.bytedeco.opencv.opencv_core.Size(320, 240)
+                            );
+
+                            cvtColor(resizedFrame, rgbFrame, COLOR_BGR2RGB);
+
+                            BufferedImage bufferedImage = matToBufferedImage(rgbFrame);
+
+                            if (bufferedImage != null) {
+                                Image fxImage = javafx.embed.swing.SwingFXUtils.toFXImage(bufferedImage, null);
+                                int localVideoTargetId = resolveLocalVideoTargetId();
+                                Platform.runLater(() -> updateParticipantVideo(localVideoTargetId, fxImage));
+
+                                if (networkClient != null && meetingId > 0) {
+                                    byte[] encodedFrame = encodeMeetingFrame(bufferedImage);
+                                    if (encodedFrame != null && encodedFrame.length > 0) {
+                                        System.out.println("[MEETING_UI] Envoi frame video meeting=" + meetingId
+                                                + " taille=" + encodedFrame.length + " octets");
+                                        networkClient.sendVideoFrame(encodedFrame, meetingId);
+                                    }
                                 }
                             }
+
+                            resizedFrame.release();
                         }
                     } catch (Exception e) {
                         System.err.println("[MEETING_UI] Erreur frame: " + e.getMessage());
@@ -263,15 +288,35 @@ public class MeetingController implements Initializable {
                         break;
                     }
                 }
-            }, "MeetingWebcam");
+
+                frame.release();
+                rgbFrame.release();
+            }, "MeetingWebcamJavaCV");
             videoThread.setDaemon(true);
             videoThread.start();
-            System.out.println("[MEETING_UI] Capture video demarree");
+            System.out.println("[MEETING_UI] Capture video demarree avec JavaCV");
         } catch (Exception e) {
             System.err.println("[MEETING_UI] ERREUR webcam: " + e.getMessage());
             e.printStackTrace();
         }
     }
+
+    private BufferedImage matToBufferedImage(Mat mat) {
+        int width = mat.cols();
+        int height = mat.rows();
+        int channels = mat.channels();
+
+        byte[] sourcePixels = new byte[width * height * channels];
+        mat.data().get(sourcePixels);
+
+        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_3BYTE_BGR);
+        final byte[] targetPixels = ((DataBufferByte) image.getRaster().getDataBuffer()).getData();
+        System.arraycopy(sourcePixels, 0, targetPixels, 0, sourcePixels.length);
+
+        return image;
+    }
+
+    // ========== FIN JAVACV ==========
 
     private void toggleMic() {
         micMuted = !micMuted;
@@ -320,9 +365,9 @@ public class MeetingController implements Initializable {
         if (!isVideoMeeting()) return;
         videoOn = !videoOn;
         updateVideoButton();
-        if (!videoOn && webcam != null && webcam.isOpen()) {
-            webcam.close();
-        } else if (videoOn && (webcam == null || !webcam.isOpen())) {
+        if (!videoOn && videoCapture != null && videoCapture.isOpened()) {
+            videoCapture.release();
+        } else if (videoOn && (videoCapture == null || !videoCapture.isOpened())) {
             startVideoCapture();
         }
         if (networkClient != null && meetingId > 0) {
@@ -971,13 +1016,19 @@ public class MeetingController implements Initializable {
         });
     }
 
+    // ========== JAVACV - NOUVEAU cleanup() ==========
     public void cleanup() {
         videoOn = false;
         if (videoThread != null) {
             videoThread.interrupt();
+            try {
+                videoThread.join(1000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
-        if (webcam != null && webcam.isOpen()) {
-            webcam.close();
+        if (videoCapture != null && videoCapture.isOpened()) {
+            videoCapture.release();
         }
         if (networkClient != null) {
             networkClient.setActiveMeetingController(null);

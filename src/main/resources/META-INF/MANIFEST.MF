@@ -1,0 +1,98 @@
+Manifest-Version: 1.0
+Main-Class: org.example.tpchatjavafx.AppLauncher
+Class-Path: librealsense-1.12.4-1.5.9-linux-arm64.jar ffmpeg-6.0-1.5.9-l
+ inux-x86.jar flycapture-2.13.3.31-1.5.9-linux-armhf.jar javacpp-1.5.9-l
+ inux-arm64.jar javacpp-1.5.9-android-x86.jar libdc1394-2.2.6-1.5.9-wind
+ ows-x86.jar openblas-0.3.23-1.5.9-windows-x86_64.jar opencv-4.7.0-1.5.9
+ -android-arm.jar librealsense2-platform-2.53.1-1.5.9.jar javafx-control
+ s-21-win.jar opencv-4.7.0-1.5.9-windows-x86_64.jar librealsense2-2.53.1
+ -1.5.9-linux-x86_64.jar flycapture-2.13.3.31-1.5.9-windows-x86.jar libd
+ c1394-2.2.6-1.5.9-windows-x86_64.jar javacpp-1.5.9-windows-x86_64.jar l
+ eptonica-1.83.0-1.5.9-android-x86_64.jar librealsense2-2.53.1-1.5.9-lin
+ ux-armhf.jar leptonica-1.83.0-1.5.9-linux-x86_64.jar javafx-fxml-21-win
+ .jar ffmpeg-6.0-1.5.9-linux-x86_64.jar librealsense2-2.53.1-1.5.9-windo
+ ws-x86_64.jar leptonica-1.83.0-1.5.9-android-arm64.jar artoolkitplus-2.
+ 3.1-1.5.9-android-x86.jar openblas-0.3.23-1.5.9-linux-x86.jar flycaptur
+ e-2.13.3.31-1.5.9-windows-x86_64.jar leptonica-1.83.0-1.5.9-linux-armhf
+ .jar libfreenect2-0.2.0-1.5.9.jar javacpp-1.5.9-ios-arm64.jar logback-c
+ ore-1.5.6.jar openblas-0.3.23-1.5.9-linux-arm64.jar ffmpeg-6.0-1.5.9-an
+ droid-x86.jar librealsense-1.12.4-1.5.9-windows-x86.jar artoolkitplus-2
+ .3.1-1.5.9-linux-ppc64le.jar opencv-4.7.0-1.5.9-linux-x86.jar libdc1394
+ -2.2.6-1.5.9-linux-x86.jar libdc1394-2.2.6-1.5.9-linux-armhf.jar javacv
+ -1.5.9.jar ffmpeg-6.0-1.5.9-linux-armhf.jar libfreenect-0.5.7-1.5.9-lin
+ ux-arm64.jar librealsense-1.12.4-1.5.9-linux-x86.jar opencv-4.7.0-1.5.9
+ -linux-x86_64.jar openblas-0.3.23-1.5.9-linux-ppc64le.jar libfreenect-0
+ .5.7-1.5.9-linux-x86.jar openblas-0.3.23-1.5.9-linux-armhf.jar tesserac
+ t-5.3.1-1.5.9-linux-arm64.jar tesseract-5.3.1-1.5.9-linux-ppc64le.jar j
+ avacpp-1.5.9-linux-ppc64le.jar javacpp-1.5.9-linux-x86.jar leptonica-1.
+ 83.0-1.5.9-macosx-x86_64.jar leptonica-1.83.0-1.5.9.jar leptonica-1.83.
+ 0-1.5.9-linux-ppc64le.jar javafx-swing-21.jar tesseract-5.3.1-1.5.9-win
+ dows-x86_64.jar opencv-4.7.0-1.5.9-ios-x86_64.jar flycapture-2.13.3.31-
+ 1.5.9-linux-x86.jar javafx-fxml-21.jar tesseract-5.3.1-1.5.9-android-x8
+ 6_64.jar librealsense-1.12.4-1.5.9-macosx-x86_64.jar opencv-4.7.0-1.5.9
+ -windows-x86.jar leptonica-1.83.0-1.5.9-android-arm.jar ffmpeg-6.0-1.5.
+ 9-android-x86_64.jar opencv-4.7.0-1.5.9.jar tesseract-5.3.1-1.5.9-andro
+ id-arm.jar opencv-4.7.0-1.5.9-android-arm64.jar javafx-base-21-win.jar 
+ opencv-platform-4.7.0-1.5.9.jar ffmpeg-6.0-1.5.9-windows-x86_64.jar lib
+ dc1394-platform-2.2.6-1.5.9.jar javafx-swing-21-win.jar javacpp-1.5.9-a
+ ndroid-x86_64.jar libfreenect-0.5.7-1.5.9-macosx-x86_64.jar flycapture-
+ 2.13.3.31-1.5.9-linux-x86_64.jar ffmpeg-6.0-1.5.9-linux-arm64.jar libfr
+ eenect2-0.2.0-1.5.9-linux-x86_64.jar libfreenect-0.5.7-1.5.9-linux-ppc6
+ 4le.jar javacpp-1.5.9-linux-x86_64.jar leptonica-1.83.0-1.5.9-android-x
+ 86.jar artoolkitplus-2.3.1-1.5.9-windows-x86_64.jar librealsense-platfo
+ rm-1.12.4-1.5.9.jar artoolkitplus-2.3.1-1.5.9-linux-x86.jar ffmpeg-6.0-
+ 1.5.9-macosx-arm64.jar leptonica-1.83.0-1.5.9-windows-x86.jar openblas-
+ 0.3.23-1.5.9-windows-x86.jar librealsense2-2.53.1-1.5.9.jar javacpp-1.5
+ .9-android-arm64.jar artoolkitplus-2.3.1-1.5.9-android-arm64.jar tesser
+ act-5.3.1-1.5.9-linux-armhf.jar mysql-connector-j-9.2.0.jar opencv-4.7.
+ 0-1.5.9-android-x86_64.jar opencv-4.7.0-1.5.9-linux-ppc64le.jar logback
+ -classic-1.5.6.jar openblas-0.3.23-1.5.9-ios-arm64.jar tesseract-5.3.1-
+ 1.5.9-macosx-arm64.jar opencv-4.7.0-1.5.9-ios-arm64.jar tesseract-platf
+ orm-5.3.1-1.5.9.jar leptonica-platform-1.83.0-1.5.9.jar javafx-base-21.
+ jar javacpp-1.5.9-ios-x86_64.jar ffmpeg-6.0-1.5.9-macosx-x86_64.jar jav
+ acv-platform-1.5.9.jar artoolkitplus-2.3.1-1.5.9-android-arm.jar tesser
+ act-5.3.1-1.5.9-android-arm64.jar libdc1394-2.2.6-1.5.9.jar libfreenect
+ 2-0.2.0-1.5.9-macosx-x86_64.jar videoinput-0.200-1.5.9.jar javafx-graph
+ ics-21.jar tesseract-5.3.1-1.5.9.jar openblas-0.3.23-1.5.9-android-arm.
+ jar artoolkitplus-2.3.1-1.5.9-windows-x86.jar libfreenect-0.5.7-1.5.9-w
+ indows-x86_64.jar libfreenect2-0.2.0-1.5.9-windows-x86_64.jar openblas-
+ 0.3.23-1.5.9-ios-x86_64.jar ikonli-fontawesome5-pack-12.3.1.jar protobu
+ f-java-4.29.0.jar libdc1394-2.2.6-1.5.9-linux-ppc64le.jar tesseract-5.3
+ .1-1.5.9-windows-x86.jar jbcrypt-0.4.jar librealsense2-2.53.1-1.5.9-win
+ dows-x86.jar libfreenect-platform-0.5.7-1.5.9.jar librealsense2-2.53.1-
+ 1.5.9-macosx-x86_64.jar libdc1394-2.2.6-1.5.9-macosx-x86_64.jar libfree
+ nect2-0.2.0-1.5.9-linux-x86.jar artoolkitplus-2.3.1-1.5.9-linux-armhf.j
+ ar ffmpeg-6.0-1.5.9-linux-ppc64le.jar openblas-0.3.23-1.5.9-linux-x86_6
+ 4.jar flycapture-platform-2.13.3.31-1.5.9.jar libfreenect-0.5.7-1.5.9-l
+ inux-x86_64.jar librealsense2-2.53.1-1.5.9-linux-x86.jar ffmpeg-6.0-1.5
+ .9-android-arm.jar artoolkitplus-platform-2.3.1-1.5.9.jar openblas-0.3.
+ 23-1.5.9-android-x86_64.jar openblas-0.3.23-1.5.9.jar librealsense-1.12
+ .4-1.5.9-windows-x86_64.jar videoinput-0.200-1.5.9-windows-x86_64.jar a
+ rtoolkitplus-2.3.1-1.5.9-android-x86_64.jar librealsense-1.12.4-1.5.9-l
+ inux-x86_64.jar webcam-capture-0.3.12.jar openblas-0.3.23-1.5.9-macosx-
+ x86_64.jar ffmpeg-6.0-1.5.9-android-arm64.jar libfreenect-0.5.7-1.5.9.j
+ ar videoinput-0.200-1.5.9-windows-x86.jar libfreenect-0.5.7-1.5.9-windo
+ ws-x86.jar HikariCP-5.1.0.jar opencv-4.7.0-1.5.9-linux-armhf.jar lepton
+ ica-1.83.0-1.5.9-linux-arm64.jar opencv-4.7.0-1.5.9-macosx-arm64.jar li
+ brealsense2-2.53.1-1.5.9-linux-arm64.jar openblas-0.3.23-1.5.9-android-
+ arm64.jar libdc1394-2.2.6-1.5.9-linux-x86_64.jar libfreenect-0.5.7-1.5.
+ 9-linux-armhf.jar videoinput-platform-0.200-1.5.9.jar libfreenect2-plat
+ form-0.2.0-1.5.9.jar leptonica-1.83.0-1.5.9-windows-x86_64.jar javacpp-
+ 1.5.9-macosx-x86_64.jar javafx-graphics-21-win.jar opencv-4.7.0-1.5.9-m
+ acosx-x86_64.jar artoolkitplus-2.3.1-1.5.9-linux-x86_64.jar ikonli-core
+ -12.3.1.jar ffmpeg-6.0-1.5.9.jar libdc1394-2.2.6-1.5.9-linux-arm64.jar 
+ artoolkitplus-2.3.1-1.5.9-macosx-x86_64.jar librealsense-1.12.4-1.5.9-l
+ inux-armhf.jar openblas-platform-0.3.23-1.5.9.jar flycapture-2.13.3.31-
+ 1.5.9-linux-arm64.jar tesseract-5.3.1-1.5.9-linux-x86_64.jar javacpp-1.
+ 5.9.jar librealsense-1.12.4-1.5.9.jar javacpp-platform-1.5.9.jar artool
+ kitplus-2.3.1-1.5.9-linux-arm64.jar javacpp-1.5.9-android-arm.jar lepto
+ nica-1.83.0-1.5.9-linux-x86.jar flycapture-2.13.3.31-1.5.9.jar slf4j-ap
+ i-2.0.13.jar bridj-0.7.0.jar tesseract-5.3.1-1.5.9-android-x86.jar arto
+ olkitplus-2.3.1-1.5.9.jar javacpp-1.5.9-linux-armhf.jar javacpp-1.5.9-m
+ acosx-arm64.jar opencv-4.7.0-1.5.9-android-x86.jar leptonica-1.83.0-1.5
+ .9-macosx-arm64.jar ikonli-javafx-12.3.1.jar javafx-controls-21.jar ope
+ nblas-0.3.23-1.5.9-android-x86.jar ffmpeg-platform-6.0-1.5.9.jar javacp
+ p-1.5.9-windows-x86.jar ffmpeg-6.0-1.5.9-windows-x86.jar openblas-0.3.2
+ 3-1.5.9-macosx-arm64.jar opencv-4.7.0-1.5.9-linux-arm64.jar tesseract-5
+ .3.1-1.5.9-linux-x86.jar tesseract-5.3.1-1.5.9-macosx-x86_64.jar
+

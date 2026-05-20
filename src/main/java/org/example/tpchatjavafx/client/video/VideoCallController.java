@@ -1,6 +1,5 @@
 package org.example.tpchatjavafx.client.video;
 
-import com.github.sarxos.webcam.Webcam;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
@@ -11,6 +10,8 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
 import javafx.util.Duration;
+import org.bytedeco.opencv.opencv_core.Mat;
+import org.bytedeco.opencv.opencv_videoio.VideoCapture;
 import org.example.tpchatjavafx.client.NetworkClient;
 import org.example.tpchatjavafx.client.audio.AudioCaptureService;
 import org.example.tpchatjavafx.client.audio.AudioFormatUtil;
@@ -25,10 +26,14 @@ import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
 import javax.sound.sampled.TargetDataLine;
 import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferByte;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.Timer;
 import java.util.TimerTask;
+
+import static org.bytedeco.opencv.global.opencv_imgproc.COLOR_BGR2RGB;
+import static org.bytedeco.opencv.global.opencv_imgproc.cvtColor;
 
 public class VideoCallController {
 
@@ -52,7 +57,9 @@ public class VideoCallController {
     private String username;
     private String otherUser;
     private Timer cameraTimer;
-    private Webcam webcam;
+
+    // ========== JAVACV - Remplacement de Webcam ==========
+    private VideoCapture videoCapture;
 
     private TargetDataLine mic;
     private SourceDataLine speakers;
@@ -93,9 +100,10 @@ public class VideoCallController {
         updateVideoButton();
         startTimer();
 
-        webcam = Webcam.getDefault();
-        if (webcam != null) {
-            webcam.open();
+        // ========== JAVACV - Ouverture webcam ==========
+        videoCapture = new VideoCapture(0);
+        if (videoCapture.isOpened()) {
+            System.out.println("[VIDEO_CALL] Webcam ouverte avec JavaCV");
         } else {
             videoEnabled = false;
             localPlaceholder.setVisible(true);
@@ -113,18 +121,31 @@ public class VideoCallController {
         }
     }
 
+    // ========== JAVACV - Capture et envoi ==========
     private void startSendingCameraFrames() {
         cameraTimer = new Timer(true);
         cameraTimer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
-                if (!videoEnabled || webcam == null || !webcam.isOpen()) {
+                if (!videoEnabled || videoCapture == null || !videoCapture.isOpened()) {
                     return;
                 }
 
                 try {
-                    BufferedImage img = webcam.getImage();
+                    Mat frame = new Mat();
+                    if (!videoCapture.read(frame)) {
+                        return;
+                    }
+
+                    // Convertir BGR -> RGB
+                    Mat rgbFrame = new Mat();
+                    cvtColor(frame, rgbFrame, COLOR_BGR2RGB);
+
+                    // Mat -> BufferedImage
+                    BufferedImage img = matToBufferedImage(rgbFrame);
                     if (img == null) {
+                        rgbFrame.release();
+                        frame.release();
                         return;
                     }
 
@@ -139,6 +160,7 @@ public class VideoCallController {
                     ImageIO.write(img, "jpg", baos);
                     byte[] data = baos.toByteArray();
 
+                    // ENVOI TCP (inchangé)
                     ChatMessage msg = new ChatMessage(
                             MessageType.VIDEO_FRAME,
                             username,
@@ -148,10 +170,30 @@ public class VideoCallController {
                     );
                     msg.setBinaryData(data);
                     networkClient.send(msg);
+
+                    rgbFrame.release();
+                    frame.release();
+
                 } catch (Exception ignored) {
                 }
             }
         }, 0, 100);
+    }
+
+    // ========== JAVACV - Conversion Mat -> BufferedImage ==========
+    private BufferedImage matToBufferedImage(Mat mat) {
+        int width = mat.cols();
+        int height = mat.rows();
+        int channels = mat.channels();
+
+        byte[] sourcePixels = new byte[width * height * channels];
+        mat.data().get(sourcePixels);
+
+        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_3BYTE_BGR);
+        final byte[] targetPixels = ((DataBufferByte) image.getRaster().getDataBuffer()).getData();
+        System.arraycopy(sourcePixels, 0, targetPixels, 0, sourcePixels.length);
+
+        return image;
     }
 
     public static void receiveFrame(byte[] data) {
@@ -261,7 +303,7 @@ public class VideoCallController {
             localVideo.setImage(null);
             localPlaceholder.setVisible(true);
             localPlaceholder.setManaged(true);
-        } else if (webcam == null) {
+        } else if (videoCapture == null || !videoCapture.isOpened()) {
             statusLabel.setText("Aucune camera detectee");
         }
         updateVideoButton();
@@ -291,10 +333,11 @@ public class VideoCallController {
             cameraTimer = null;
         }
 
-        if (webcam != null && webcam.isOpen()) {
-            webcam.close();
+        // ========== JAVACV - Fermeture ==========
+        if (videoCapture != null && videoCapture.isOpened()) {
+            videoCapture.release();
         }
-        webcam = null;
+        videoCapture = null;
 
         audioRunning = false;
         if (audioCaptureThread != null) {

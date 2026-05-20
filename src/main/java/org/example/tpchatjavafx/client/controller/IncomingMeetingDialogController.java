@@ -1,6 +1,8 @@
 package org.example.tpchatjavafx.client.controller;
 
-import com.github.sarxos.webcam.Webcam;
+import org.bytedeco.javacv.OpenCVFrameGrabber;
+import org.bytedeco.javacv.Frame;
+import org.bytedeco.javacv.Java2DFrameConverter;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
@@ -53,7 +55,8 @@ public class IncomingMeetingDialogController {
 
     private Stage stage;
     private Consumer<Boolean> onDecision;
-    private Webcam webcam;
+    private OpenCVFrameGrabber grabber;
+    private Java2DFrameConverter converter;
     private Timeline previewTimeline;
 
     public void setStage(Stage stage) {
@@ -100,12 +103,9 @@ public class IncomingMeetingDialogController {
 
     private void startCameraPreview() {
         try {
-            webcam = Webcam.getDefault();
-            if (webcam == null) {
-                showPreviewUnavailable("Aucune camera detectee");
-                return;
-            }
-            webcam.open();
+            grabber = new OpenCVFrameGrabber(0);
+            grabber.start();
+            converter = new Java2DFrameConverter();
             if (previewStatusLabel != null) {
                 previewStatusLabel.setText("Camera detectee");
             }
@@ -118,15 +118,19 @@ public class IncomingMeetingDialogController {
     }
 
     private void refreshPreviewFrame() {
-        if (webcam == null || !webcam.isOpen() || cameraPreview == null) {
+        if (grabber == null || cameraPreview == null || converter == null) {
             return;
         }
         try {
-            BufferedImage frame = webcam.getImage();
-            if (frame == null) {
+            Frame cvFrame = grabber.grab();
+            if (cvFrame == null || cvFrame.image == null) {
                 return;
             }
-            javafx.scene.image.Image fxImage = javafx.embed.swing.SwingFXUtils.toFXImage(frame, null);
+            BufferedImage bufferedImage = converter.convert(cvFrame);
+            if (bufferedImage == null) {
+                return;
+            }
+            javafx.scene.image.Image fxImage = javafx.embed.swing.SwingFXUtils.toFXImage(bufferedImage, null);
             Platform.runLater(() -> {
                 cameraPreview.setImage(fxImage);
                 if (previewPlaceholder != null) {
@@ -153,10 +157,14 @@ public class IncomingMeetingDialogController {
             previewTimeline.stop();
             previewTimeline = null;
         }
-        if (webcam != null && webcam.isOpen()) {
-            webcam.close();
+        if (grabber != null) {
+            try {
+                grabber.stop();
+            } catch (Exception ignored) {
+            }
         }
-        webcam = null;
+        grabber = null;
+        converter = null;
     }
 
     public static void showInvite(String initiator, String meetingType, Consumer<Boolean> onDecision) throws IOException {
