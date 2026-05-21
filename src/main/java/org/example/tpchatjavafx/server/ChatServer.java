@@ -175,6 +175,11 @@ public class ChatServer {
 
     private static void forwardToTarget(ChatMessage msg) {
         Set<ClientHandler> targets = clients.get(msg.getTo());
+        if (msg.getType() == MessageType.VIDEO_FRAME || msg.getType() == MessageType.VOICE_FRAME) {
+            System.out.println("[SERVER] Relais " + msg.getType() + " de " + msg.getFrom()
+                    + " vers " + msg.getTo()
+                    + " (" + (msg.getBinaryData() == null ? 0 : msg.getBinaryData().length) + " octets)");
+        }
         if (targets != null) targets.forEach(target -> target.send(msg));
     }
 

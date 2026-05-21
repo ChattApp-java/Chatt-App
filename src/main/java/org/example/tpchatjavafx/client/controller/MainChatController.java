@@ -166,6 +166,7 @@ public class MainChatController {
         updateRecordButtonState();
         setupMessageBubbles();
         setupContactCellFactory();
+        updateCallButtonsVisibility();
         if (messagesListView != null) {
             messagesListView.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
         }
@@ -885,11 +886,20 @@ public class MainChatController {
     }
 
     private void openPrivateChat(String other) {
+        if (other == null || other.isBlank()) {
+            return;
+        }
         currentPrivateTarget = other;
         currentGroupId = -1;
         currentGroupName = null;
         if (chatTitleLabel  != null) chatTitleLabel.setText(other);
         if (chatAvatarLabel != null) chatAvatarLabel.setText(other.substring(0,1).toUpperCase());
+        if (privateListView != null) {
+            privateListView.getSelectionModel().select(other);
+        }
+        if (contactsTabListView != null) {
+            contactsTabListView.getSelectionModel().select(other);
+        }
 
         String status = userStatuses.getOrDefault(other, "NON_CONNECTE");
         updateChatHeaderStatus(status);
@@ -1016,7 +1026,7 @@ public class MainChatController {
             case VIDEO_CALL_ACCEPT  -> Platform.runLater(() -> startVideoWindow(msg.getFrom(), true));
             case VIDEO_CALL_REJECT  -> Platform.runLater(() -> showInfo("Appel refusÃƒÆ’Ã‚Â© par " + msg.getFrom()));
             case VIDEO_CALL_END     -> Platform.runLater(this::endVideo);
-            case VIDEO_FRAME        -> Platform.runLater(() -> VideoCallController.receiveFrame(msg.getBinaryData()));
+            case VIDEO_FRAME        -> { }
             // Appel vocal
             case VOICE_CALL_REQUEST -> Platform.runLater(() -> handleVoiceCallRequest(msg));
             case VOICE_CALL_ACCEPT  -> Platform.runLater(() -> startVoiceSession(msg.getFrom()));
@@ -1042,15 +1052,15 @@ public class MainChatController {
             });
             case VOICE_CALL_REJECT  -> Platform.runLater(() -> showInfo("Appel vocal refusÃƒÆ’Ã‚Â© par " + msg.getFrom()));
             case VOICE_CALL_END     -> Platform.runLater(this::endVoiceCall);
-            case VOICE_FRAME        -> Platform.runLater(() -> {
-                if (currentVoiceCall != null) currentVoiceCall.playRemoteAudio(msg.getBinaryData());
-                else org.example.tpchatjavafx.client.video.VideoCallController.receiveAudio(msg.getBinaryData());
-            });
+            case VOICE_FRAME        -> { }
             default -> {}
         }
 
         // Increment unread count if not in current chat
-        if (!msg.getType().name().contains("CALL") && msg.getType() != MessageType.SYSTEM) {
+        if (msg.getType() != MessageType.VIDEO_FRAME
+                && msg.getType() != MessageType.VOICE_FRAME
+                && !msg.getType().name().contains("CALL")
+                && msg.getType() != MessageType.SYSTEM) {
             String sender = msg.getFrom();
             if (!sender.equals(username) && !sender.equals(currentPrivateTarget)) {
                 unreadCounts.put(sender, unreadCounts.getOrDefault(sender, 0) + 1);
@@ -1414,11 +1424,13 @@ public class MainChatController {
             startCurrentGroupCall("VIDEO");
             return;
         }
-        if (currentPrivateTarget == null) {
+        String target = resolveSelectedPrivateTarget();
+        if (target == null) {
             showInfo("Selectionnez un contact prive d'abord.");
             return;
         }
-        if (!userStatuses.getOrDefault(currentPrivateTarget, "NON_CONNECTE").equals("EN_LIGNE")) {
+        currentPrivateTarget = target;
+        if (!userStatuses.getOrDefault(target, "NON_CONNECTE").equals("EN_LIGNE")) {
             showInfo("Utilisateur hors ligne");
             return;
         }
@@ -1427,10 +1439,10 @@ public class MainChatController {
             return;
         }
 
-        ChatMessage callRequest = new ChatMessage(MessageType.CALL_REQUEST, username, currentPrivateTarget, null, "Demande d'appel video");
+        ChatMessage callRequest = new ChatMessage(MessageType.CALL_REQUEST, username, target, null, "Demande d'appel video");
         callRequest.setCallType("VIDEO");
         networkClient.send(callRequest);
-        showCallPending(currentPrivateTarget, "Appel video en cours...");
+        showCallPending(target, "Appel video en cours...");
     }
 
     @FXML
@@ -1439,18 +1451,20 @@ public class MainChatController {
             startCurrentGroupCall("AUDIO");
             return;
         }
-        if (currentPrivateTarget == null) {
-            showInfo("SÃƒÆ’Ã‚Â©lectionnez un contact privÃƒÆ’Ã‚Â© d'abord.");
+        String target = resolveSelectedPrivateTarget();
+        if (target == null) {
+            showInfo("Selectionnez un contact prive d'abord.");
             return;
         }
+        currentPrivateTarget = target;
         if (currentVoiceCall != null || currentCallType != null) {
-            showInfo("Un appel est dÃƒÆ’Ã‚Â©jÃƒÆ’Ã‚Â  en cours.");
+            showInfo("Un appel est deja en cours.");
             return;
         }
 
-        networkClient.send(new ChatMessage(MessageType.VOICE_CALL_REQUEST, username, currentPrivateTarget, null, "Demande d'appel audio"));
+        networkClient.send(new ChatMessage(MessageType.VOICE_CALL_REQUEST, username, target, null, "Demande d'appel audio"));
 
-        showInfo("Appel audio demandÃƒÆ’Ã‚Â© ÃƒÆ’Ã‚Â  " + currentPrivateTarget);
+        showInfo("Appel audio demande a " + target);
     }
     private Window getWindow() {
         return messageField != null && messageField.getScene() != null ? messageField.getScene().getWindow() : null;
@@ -1829,7 +1843,7 @@ public class MainChatController {
     }
 
     private void updateCallButtonsVisibility() {
-        boolean canCall = currentPrivateTarget != null || currentGroupId != -1;
+        boolean canCall = resolveSelectedPrivateTarget() != null || currentGroupId != -1;
         if (voiceCallButton != null) {
             voiceCallButton.setVisible(canCall);
             voiceCallButton.setManaged(canCall);
@@ -1840,6 +1854,27 @@ public class MainChatController {
             videoCallButton.setManaged(canCall);
             videoCallButton.setDisable(!canCall);
         }
+    }
+
+    private String resolveSelectedPrivateTarget() {
+        if (currentPrivateTarget != null && !currentPrivateTarget.isBlank()) {
+            return currentPrivateTarget;
+        }
+        if (privateListView != null) {
+            String selected = privateListView.getSelectionModel().getSelectedItem();
+            if (selected != null && !selected.isBlank()) {
+                currentPrivateTarget = selected;
+                return selected;
+            }
+        }
+        if (contactsTabListView != null) {
+            String selected = contactsTabListView.getSelectionModel().getSelectedItem();
+            if (selected != null && !selected.isBlank()) {
+                currentPrivateTarget = selected;
+                return selected;
+            }
+        }
+        return null;
     }
 
     private String saveTempFile(String prefix, String extension, byte[] data) throws IOException {

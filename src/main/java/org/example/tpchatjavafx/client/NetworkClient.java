@@ -4,6 +4,7 @@ import javafx.application.Platform;
 import org.example.tpchatjavafx.client.audio.AudioTransmissionService;
 import org.example.tpchatjavafx.client.controller.MeetingController;
 import org.example.tpchatjavafx.client.model.ChatMessage;
+import org.example.tpchatjavafx.client.video.VideoCallController;
 import org.example.tpchatjavafx.client.video.MeetingVideoCapture;
 import org.example.tpchatjavafx.common.MessageType;
 
@@ -648,6 +649,16 @@ public class NetworkClient {
                     if (onCallRejected != null) {
                         onCallRejected.accept(msg);
                     }
+                }
+                case VIDEO_FRAME -> {
+                    System.out.println("[NET_CLIENT] VIDEO_FRAME recu de " + msg.getFrom()
+                            + " (" + (msg.getBinaryData() == null ? 0 : msg.getBinaryData().length) + " octets)");
+                    VideoCallController.receiveFrame(msg.getBinaryData());
+                }
+                case VOICE_FRAME -> {
+                    System.out.println("[NET_CLIENT] VOICE_FRAME recu de " + msg.getFrom()
+                            + " (" + (msg.getBinaryData() == null ? 0 : msg.getBinaryData().length) + " octets)");
+                    VideoCallController.receiveAudio(msg.getBinaryData());
                 }
                 case MEETING_STARTED -> {
                     System.out.println("[NET_CLIENT] MEETING_STARTED recu: meeting=" + msg.getMeetingId());

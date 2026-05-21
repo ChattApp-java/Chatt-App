@@ -3,6 +3,7 @@ package org.example.tpchatjavafx.client.video;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
+import java.net.URL;
 import org.example.tpchatjavafx.client.NetworkClient;
 import org.example.tpchatjavafx.client.util.WindowSizingUtil;
 
@@ -14,7 +15,11 @@ public class VideoCallWindow {
 
     public static void open(NetworkClient client, String me, String other, boolean caller) {
         try {
-            FXMLLoader loader = new FXMLLoader(VideoCallWindow.class.getResource("/fxml/video-call.fxml"));
+            URL fxml = VideoCallWindow.class.getResource("/fxml/video-call.fxml");
+            if (fxml == null) {
+                throw new IllegalStateException("video-call.fxml introuvable");
+            }
+            FXMLLoader loader = new FXMLLoader(fxml);
             Scene scene = new Scene(loader.load());
 
             controller = loader.getController();

@@ -38,10 +38,10 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 public class VideoCallController {
-    private static final int CAMERA_WIDTH = 640;
-    private static final int CAMERA_HEIGHT = 480;
-    private static final int FRAME_INTERVAL_MS = 100;
-    private static final float JPEG_QUALITY = 0.82f;
+    private static final int CAMERA_WIDTH = 480;
+    private static final int CAMERA_HEIGHT = 360;
+    private static final int FRAME_INTERVAL_MS = 120;
+    private static final float JPEG_QUALITY = 0.70f;
 
     @FXML private ImageView localVideo;
     @FXML private ImageView remoteVideo;
@@ -79,6 +79,8 @@ public class VideoCallController {
     private volatile boolean microphoneMuted;
     private volatile boolean speakerEnabled = true;
     private volatile boolean videoEnabled = true;
+    private int sentFrames;
+    private int receivedFrames;
 
     public void init(NetworkClient client, String me, String other) {
         instance = this;
@@ -174,10 +176,16 @@ public class VideoCallController {
                     );
                     msg.setBinaryData(data);
                     networkClient.send(msg);
+                    sentFrames++;
+                    if (sentFrames % 30 == 0) {
+                        System.out.println("[VIDEO_CALL] " + username + " a envoye " + sentFrames
+                                + " frames vers " + otherUser + " (dernier=" + data.length + " octets)");
+                    }
 
                     frame.release();
 
-                } catch (Exception ignored) {
+                } catch (Exception e) {
+                    System.err.println("[VIDEO_CALL] Erreur envoi frame: " + e.getMessage());
                 }
             }
         }, 0, FRAME_INTERVAL_MS);
@@ -233,7 +241,11 @@ public class VideoCallController {
     }
 
     public static void receiveFrame(byte[] data) {
-        if (instance == null || data == null) {
+        if (data == null || data.length == 0) {
+            return;
+        }
+        if (instance == null) {
+            System.out.println("[VIDEO_CALL] Frame distante recue mais aucune fenetre video n'est active");
             return;
         }
 
@@ -243,6 +255,11 @@ public class VideoCallController {
                 if (instance == null) {
                     return;
                 }
+                if (fxImage.isError()) {
+                    System.err.println("[VIDEO_CALL] Image distante invalide");
+                    return;
+                }
+                instance.receivedFrames++;
                 instance.remoteVideo.setImage(fxImage);
                 instance.remotePlaceholder.setVisible(false);
                 instance.remotePlaceholder.setManaged(false);
@@ -251,8 +268,13 @@ public class VideoCallController {
                 } else {
                     instance.statusLabel.setText("Video en direct");
                 }
+                if (instance.receivedFrames % 30 == 0) {
+                    System.out.println("[VIDEO_CALL] " + instance.username + " a affiche "
+                            + instance.receivedFrames + " frames distantes");
+                }
             });
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            System.err.println("[VIDEO_CALL] Erreur reception frame: " + e.getMessage());
         }
     }
 
