@@ -22,8 +22,6 @@ import javafx.stage.Screen;
 import javafx.stage.Stage;
 import org.bytedeco.opencv.opencv_videoio.VideoCapture;
 import org.bytedeco.opencv.opencv_core.Mat;
-import static org.bytedeco.opencv.global.opencv_imgproc.cvtColor;
-import static org.bytedeco.opencv.global.opencv_imgproc.COLOR_BGR2RGB;
 import org.example.tpchatjavafx.client.NetworkClient;
 import org.example.tpchatjavafx.common.MessageType;
 import org.kordamp.ikonli.javafx.FontIcon;
@@ -45,6 +43,12 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class MeetingController implements Initializable {
+    private static final int CAMERA_WIDTH = 640;
+    private static final int CAMERA_HEIGHT = 480;
+    private static final int ENCODED_WIDTH = 640;
+    private static final int ENCODED_HEIGHT = 480;
+    private static final int VIDEO_FRAME_DELAY_MS = 100;
+    private static final float MEETING_JPEG_QUALITY = 0.82f;
 
     @FXML private Label lblTitle;
     @FXML private Label lblSubtitle;
@@ -240,13 +244,13 @@ public class MeetingController implements Initializable {
                 System.err.println("[MEETING_UI] AUCUNE WEBCAM TROUVEE");
                 return;
             }
+            configureCamera(videoCapture);
 
             System.out.println("[MEETING_UI] Webcam ouverte avec JavaCV");
             videoOn = true;
 
             videoThread = new Thread(() -> {
                 Mat frame = new Mat();
-                Mat rgbFrame = new Mat();
 
                 while (videoOn && videoCapture != null && videoCapture.isOpened()) {
                     try {
@@ -254,12 +258,11 @@ public class MeetingController implements Initializable {
                             Mat resizedFrame = new Mat();
                             org.bytedeco.opencv.global.opencv_imgproc.resize(
                                     frame, resizedFrame,
-                                    new org.bytedeco.opencv.opencv_core.Size(320, 240)
+                                    new org.bytedeco.opencv.opencv_core.Size(ENCODED_WIDTH, ENCODED_HEIGHT)
                             );
 
-                            cvtColor(resizedFrame, rgbFrame, COLOR_BGR2RGB);
-
-                            BufferedImage bufferedImage = matToBufferedImage(rgbFrame);
+                            // Garder le format BGR d'OpenCV pour eviter l'inversion rouge/bleu.
+                            BufferedImage bufferedImage = matToBufferedImage(resizedFrame);
 
                             if (bufferedImage != null) {
                                 Image fxImage = javafx.embed.swing.SwingFXUtils.toFXImage(bufferedImage, null);
@@ -282,7 +285,7 @@ public class MeetingController implements Initializable {
                         System.err.println("[MEETING_UI] Erreur frame: " + e.getMessage());
                     }
                     try {
-                        Thread.sleep(100);
+                        Thread.sleep(VIDEO_FRAME_DELAY_MS);
                     } catch (InterruptedException ignored) {
                         Thread.currentThread().interrupt();
                         break;
@@ -290,7 +293,6 @@ public class MeetingController implements Initializable {
                 }
 
                 frame.release();
-                rgbFrame.release();
             }, "MeetingWebcamJavaCV");
             videoThread.setDaemon(true);
             videoThread.start();
@@ -299,6 +301,15 @@ public class MeetingController implements Initializable {
             System.err.println("[MEETING_UI] ERREUR webcam: " + e.getMessage());
             e.printStackTrace();
         }
+    }
+
+    private void configureCamera(VideoCapture capture) {
+        if (capture == null || !capture.isOpened()) {
+            return;
+        }
+        capture.set(org.bytedeco.opencv.global.opencv_videoio.CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH);
+        capture.set(org.bytedeco.opencv.global.opencv_videoio.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT);
+        capture.set(org.bytedeco.opencv.global.opencv_videoio.CAP_PROP_FPS, 15);
     }
 
     private BufferedImage matToBufferedImage(Mat mat) {
@@ -570,13 +581,13 @@ public class MeetingController implements Initializable {
         }
 
         BufferedImage frameToSend = sourceFrame;
-        if (sourceFrame.getWidth() > 320 || sourceFrame.getHeight() > 240) {
-            frameToSend = new BufferedImage(320, 240, BufferedImage.TYPE_3BYTE_BGR);
+        if (sourceFrame.getWidth() != ENCODED_WIDTH || sourceFrame.getHeight() != ENCODED_HEIGHT) {
+            frameToSend = new BufferedImage(ENCODED_WIDTH, ENCODED_HEIGHT, BufferedImage.TYPE_3BYTE_BGR);
             Graphics2D graphics = frameToSend.createGraphics();
             try {
                 graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
                 graphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-                graphics.drawImage(sourceFrame, 0, 0, 320, 240, null);
+                graphics.drawImage(sourceFrame, 0, 0, ENCODED_WIDTH, ENCODED_HEIGHT, null);
             } finally {
                 graphics.dispose();
             }
@@ -596,7 +607,7 @@ public class MeetingController implements Initializable {
             ImageWriteParam params = writer.getDefaultWriteParam();
             if (params.canWriteCompressed()) {
                 params.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
-                params.setCompressionQuality(0.45f);
+                params.setCompressionQuality(MEETING_JPEG_QUALITY);
             }
             writer.write(null, new javax.imageio.IIOImage(frameToSend, null, null), params);
         } finally {

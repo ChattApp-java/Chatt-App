@@ -785,6 +785,16 @@
     -fx-background-color: transparent;
 }
 
+.login-form-scroll,
+.login-form-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+.login-form-scroll {
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+}
+
 .field-label {
     -fx-text-fill: #334155;
     -fx-font-size: 12px;

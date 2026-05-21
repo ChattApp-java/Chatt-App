@@ -19,6 +19,9 @@ import org.example.tpchatjavafx.client.model.ChatMessage;
 import org.example.tpchatjavafx.common.MessageType;
 
 import javax.imageio.ImageIO;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.ImageWriter;
+import javax.imageio.stream.MemoryCacheImageOutputStream;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.DataLine;
@@ -29,13 +32,16 @@ import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.Iterator;
 import java.util.Timer;
 import java.util.TimerTask;
 
-import static org.bytedeco.opencv.global.opencv_imgproc.COLOR_BGR2RGB;
-import static org.bytedeco.opencv.global.opencv_imgproc.cvtColor;
-
 public class VideoCallController {
+    private static final int CAMERA_WIDTH = 640;
+    private static final int CAMERA_HEIGHT = 480;
+    private static final int FRAME_INTERVAL_MS = 100;
+    private static final float JPEG_QUALITY = 0.82f;
 
     @FXML private ImageView localVideo;
     @FXML private ImageView remoteVideo;
@@ -103,6 +109,7 @@ public class VideoCallController {
         // ========== JAVACV - Ouverture webcam ==========
         videoCapture = new VideoCapture(0);
         if (videoCapture.isOpened()) {
+            configureCamera(videoCapture);
             System.out.println("[VIDEO_CALL] Webcam ouverte avec JavaCV");
         } else {
             videoEnabled = false;
@@ -137,14 +144,9 @@ public class VideoCallController {
                         return;
                     }
 
-                    // Convertir BGR -> RGB
-                    Mat rgbFrame = new Mat();
-                    cvtColor(frame, rgbFrame, COLOR_BGR2RGB);
-
-                    // Mat -> BufferedImage
-                    BufferedImage img = matToBufferedImage(rgbFrame);
+                    // OpenCV fournit deja les pixels en BGR, ce format est attendu par TYPE_3BYTE_BGR.
+                    BufferedImage img = matToBufferedImage(frame);
                     if (img == null) {
-                        rgbFrame.release();
                         frame.release();
                         return;
                     }
@@ -156,9 +158,11 @@ public class VideoCallController {
                         localVideo.setImage(fxImage);
                     });
 
-                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                    ImageIO.write(img, "jpg", baos);
-                    byte[] data = baos.toByteArray();
+                    byte[] data = encodeJpeg(img);
+                    if (data == null || data.length == 0) {
+                        frame.release();
+                        return;
+                    }
 
                     // ENVOI TCP (inchangé)
                     ChatMessage msg = new ChatMessage(
@@ -171,13 +175,21 @@ public class VideoCallController {
                     msg.setBinaryData(data);
                     networkClient.send(msg);
 
-                    rgbFrame.release();
                     frame.release();
 
                 } catch (Exception ignored) {
                 }
             }
-        }, 0, 100);
+        }, 0, FRAME_INTERVAL_MS);
+    }
+
+    private void configureCamera(VideoCapture capture) {
+        if (capture == null || !capture.isOpened()) {
+            return;
+        }
+        capture.set(org.bytedeco.opencv.global.opencv_videoio.CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH);
+        capture.set(org.bytedeco.opencv.global.opencv_videoio.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT);
+        capture.set(org.bytedeco.opencv.global.opencv_videoio.CAP_PROP_FPS, 15);
     }
 
     // ========== JAVACV - Conversion Mat -> BufferedImage ==========
@@ -194,6 +206,30 @@ public class VideoCallController {
         System.arraycopy(sourcePixels, 0, targetPixels, 0, sourcePixels.length);
 
         return image;
+    }
+
+    private byte[] encodeJpeg(BufferedImage image) throws IOException {
+        Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName("jpg");
+        if (!writers.hasNext()) {
+            ByteArrayOutputStream fallback = new ByteArrayOutputStream();
+            ImageIO.write(image, "jpg", fallback);
+            return fallback.toByteArray();
+        }
+
+        ImageWriter writer = writers.next();
+        ByteArrayOutputStream outputBytes = new ByteArrayOutputStream();
+        try (MemoryCacheImageOutputStream output = new MemoryCacheImageOutputStream(outputBytes)) {
+            writer.setOutput(output);
+            ImageWriteParam params = writer.getDefaultWriteParam();
+            if (params.canWriteCompressed()) {
+                params.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+                params.setCompressionQuality(JPEG_QUALITY);
+            }
+            writer.write(null, new javax.imageio.IIOImage(image, null, null), params);
+        } finally {
+            writer.dispose();
+        }
+        return outputBytes.toByteArray();
     }
 
     public static void receiveFrame(byte[] data) {

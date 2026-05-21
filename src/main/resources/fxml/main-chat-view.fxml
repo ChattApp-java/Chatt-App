@@ -72,7 +72,7 @@
 
                 <HBox spacing="8" alignment="CENTER_RIGHT">
                     <Button fx:id="voiceCallButton"
-                            onAction="#onStartVoiceCall" managed="false" visible="false">
+                            onAction="#onStartVoiceCall" disable="true">
                         <styleClass>
                             <String fx:value="call-action-btn"/>
                             <String fx:value="icon-only-btn"/>
@@ -84,7 +84,7 @@
                         <tooltip><Tooltip text="Appel audio"/></tooltip>
                     </Button>
                     <Button fx:id="videoCallButton"
-                            onAction="#onStartVideoCall" managed="false" visible="false">
+                            onAction="#onStartVideoCall" disable="true">
                         <styleClass>
                             <String fx:value="call-action-btn"/>
                             <String fx:value="icon-only-btn"/>

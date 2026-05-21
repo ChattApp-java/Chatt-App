@@ -428,6 +428,7 @@ public class MainChatController {
         if (rootPane != null && privateChatPane != null) {
             rootPane.setCenter(privateChatPane);
         }
+        updateCallButtonsVisibility();
     }
 
     private void registerGroupCallbacks() {
@@ -549,6 +550,7 @@ public class MainChatController {
             chatTitleLabel.setText("Selectionnez une conversation");
             chatStatusLabel.setText("");
             chatAvatarLabel.setText("?");
+            updateCallButtonsVisibility();
         }
     }
 
@@ -851,7 +853,7 @@ public class MainChatController {
         confirm.setTitle("Deconnexion");
         confirm.setHeaderText("Se deconnecter ?");
         confirm.setContentText("Vous devrez vous reconnecter pour acceder a vos messages.");
-        confirm.getDialogPane().setStyle("-fx-background-color: #121b22;");
+        confirm.getDialogPane().setStyle("-fx-background-color: #9dd1f9;");
 
         Node contentLabel = confirm.getDialogPane().lookup(".content.label");
         if (contentLabel != null) {
@@ -1816,10 +1818,12 @@ public class MainChatController {
         if (voiceCallButton != null) {
             voiceCallButton.setVisible(canCall);
             voiceCallButton.setManaged(canCall);
+            voiceCallButton.setDisable(!canCall);
         }
         if (videoCallButton != null) {
             videoCallButton.setVisible(canCall);
             videoCallButton.setManaged(canCall);
+            videoCallButton.setDisable(!canCall);
         }
     }
 
@@ -2183,6 +2187,7 @@ public class MainChatController {
             chatTitleLabel.setText("Selectionnez une conversation");
             chatStatusLabel.setText("");
             chatAvatarLabel.setText("?");
+            updateCallButtonsVisibility();
         }
         privateListView.refresh();
         if (contactsTabListView != null) contactsTabListView.refresh();
@@ -3000,7 +3005,3 @@ public class MainChatController {
     }
 
 }
-
-
-
-

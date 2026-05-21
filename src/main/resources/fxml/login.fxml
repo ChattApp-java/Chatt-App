@@ -32,8 +32,9 @@
                 
                 <!-- ── Tab: Login ── -->
                 <Tab text="  Connexion  ">
+                    <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="login-form-scroll">
                     <VBox spacing="15" styleClass="login-form">
-                        <padding><Insets top="24" right="32" bottom="24" left="32"/></padding>
+                        <padding><Insets top="18" right="32" bottom="18" left="32"/></padding>
 
                         <VBox spacing="6">
                             <Label text="Serveur" styleClass="field-label"/>
@@ -61,12 +62,14 @@
 
                         <Button fx:id="loginBtn" text="Se connecter" styleClass="btn-login" onAction="#onLogin" maxWidth="Infinity" defaultButton="true"/>
                     </VBox>
+                    </ScrollPane>
                 </Tab>
 
                 <!-- ── Tab: Register ── -->
                 <Tab text="  Inscription  ">
-                    <VBox spacing="15" styleClass="login-form">
-                        <padding><Insets top="24" right="32" bottom="24" left="32"/></padding>
+                    <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="login-form-scroll">
+                    <VBox spacing="13" styleClass="login-form">
+                        <padding><Insets top="18" right="32" bottom="18" left="32"/></padding>
 
                         <VBox spacing="6">
                             <Label text="Serveur" styleClass="field-label"/>
@@ -99,6 +102,7 @@
 
                         <Button fx:id="registerBtn" text="Créer un compte" styleClass="btn-register" onAction="#onRegister" maxWidth="Infinity"/>
                     </VBox>
+                    </ScrollPane>
                 </Tab>
 
             </TabPane>
