@@ -1174,6 +1174,9 @@ public class MainChatController {
                 ChatMessage answerMsg = new ChatMessage(MessageType.CALL_ANSWER, username, msg.getFrom(), null, "Appel accepte");
                 answerMsg.setCallType(msg.getCallType());
                 networkClient.send(answerMsg);
+                if ("VIDEO".equalsIgnoreCase(msg.getCallType())) {
+                    startVideoWindow(msg.getFrom(), false);
+                }
             } else {
                 ChatMessage rejectMsg = new ChatMessage(MessageType.CALL_REJECT, username, msg.getFrom(), null, "Appel refuse");
                 rejectMsg.setCallType(msg.getCallType());
@@ -1412,10 +1415,22 @@ public class MainChatController {
             return;
         }
         if (currentPrivateTarget == null) {
-            showInfo("Select a private contact first.");
+            showInfo("Selectionnez un contact prive d'abord.");
             return;
         }
-        networkClient.send(new ChatMessage(MessageType.VIDEO_CALL_REQUEST, username, currentPrivateTarget, null, "call_request"));
+        if (!userStatuses.getOrDefault(currentPrivateTarget, "NON_CONNECTE").equals("EN_LIGNE")) {
+            showInfo("Utilisateur hors ligne");
+            return;
+        }
+        if (currentCallType != null) {
+            showInfo("Un appel est deja en cours.");
+            return;
+        }
+
+        ChatMessage callRequest = new ChatMessage(MessageType.CALL_REQUEST, username, currentPrivateTarget, null, "Demande d'appel video");
+        callRequest.setCallType("VIDEO");
+        networkClient.send(callRequest);
+        showCallPending(currentPrivateTarget, "Appel video en cours...");
     }
 
     @FXML
