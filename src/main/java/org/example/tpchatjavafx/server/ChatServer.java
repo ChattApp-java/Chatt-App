@@ -242,9 +242,8 @@ public class ChatServer {
 
 
         forwardToTarget(infoMsg);
-        ChatMessage answered = new ChatMessage(MessageType.CALL_ANSWER, msg.getTo(), msg.getFrom(), msg.getConversationId(), "Appel accepte");
-        answered.setCallType(msg.getCallType());
-        from.send(answered);
+        // La confirmation doit etre envoyee a l'appelant, pas renvoyee au client qui vient d'accepter.
+        forwardToTarget(msg);
 
     }
 
