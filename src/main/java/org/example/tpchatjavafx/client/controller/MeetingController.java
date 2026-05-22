@@ -43,12 +43,12 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class MeetingController implements Initializable {
-    private static final int CAMERA_WIDTH = 640;
-    private static final int CAMERA_HEIGHT = 480;
-    private static final int ENCODED_WIDTH = 640;
-    private static final int ENCODED_HEIGHT = 480;
-    private static final int VIDEO_FRAME_DELAY_MS = 100;
-    private static final float MEETING_JPEG_QUALITY = 0.82f;
+    private static final int CAMERA_WIDTH = 480;
+    private static final int CAMERA_HEIGHT = 360;
+    private static final int ENCODED_WIDTH = 480;
+    private static final int ENCODED_HEIGHT = 360;
+    private static final int VIDEO_FRAME_DELAY_MS = 140;
+    private static final float MEETING_JPEG_QUALITY = 0.70f;
 
     @FXML private Label lblTitle;
     @FXML private Label lblSubtitle;
@@ -278,13 +278,11 @@ public class MeetingController implements Initializable {
                             if (bufferedImage != null) {
                                 Image fxImage = javafx.embed.swing.SwingFXUtils.toFXImage(bufferedImage, null);
                                 int localVideoTargetId = resolveLocalVideoTargetId();
-                                Platform.runLater(() -> updateParticipantVideo(localVideoTargetId, fxImage));
+                                updateParticipantVideo(localVideoTargetId, fxImage);
 
                                 if (networkClient != null && meetingId > 0) {
                                     byte[] encodedFrame = encodeMeetingFrame(bufferedImage);
                                     if (encodedFrame != null && encodedFrame.length > 0) {
-                                        System.out.println("[MEETING_UI] Envoi frame video meeting=" + meetingId
-                                                + " taille=" + encodedFrame.length + " octets");
                                         networkClient.sendVideoFrame(encodedFrame, meetingId);
                                     }
                                 }
@@ -806,10 +804,8 @@ public class MeetingController implements Initializable {
                 if (videoPane != null) {
                     videoPane.setStyle("-fx-background-color: #dcecff; -fx-background-radius: 18;");
                 }
-                System.out.println("[MEETING_UI] Frame affichee pour participant=" + userId);
             } else if (frame != null) {
                 pendingParticipantFrames.put(userId, frame);
-                System.out.println("[MEETING_UI] Frame mise en attente pour participant=" + userId);
             }
         });
     }
@@ -818,8 +814,6 @@ public class MeetingController implements Initializable {
         if (jpegFrame == null || jpegFrame.length == 0) return;
         try {
             int userId = Integer.parseInt(participantId);
-            System.out.println("[MEETING_UI] Frame recue de participant=" + userId
-                    + " taille=" + jpegFrame.length + " octets");
             updateParticipantVideo(userId, new Image(new ByteArrayInputStream(jpegFrame)));
         } catch (NumberFormatException ignored) {
         }
