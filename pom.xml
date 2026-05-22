@@ -81,6 +81,12 @@
             <version>1.5.9</version>
             <classifier>windows-x86_64</classifier>
         </dependency>
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>openblas</artifactId>
+            <version>0.3.23-1.5.9</version>
+            <classifier>windows-x86_64</classifier>
+        </dependency>
 
         <!-- SLF4J + Logback -->
         <dependency>
