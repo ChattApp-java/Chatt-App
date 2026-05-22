@@ -81,6 +81,7 @@ public class VideoCallController {
     private volatile boolean videoEnabled = true;
     private int sentFrames;
     private int receivedFrames;
+    private volatile boolean mediaCleaned;
 
     public void init(NetworkClient client, String me, String other) {
         instance = this;
@@ -90,6 +91,7 @@ public class VideoCallController {
         this.microphoneMuted = false;
         this.speakerEnabled = true;
         this.videoEnabled = true;
+        this.mediaCleaned = false;
 
         remoteNameLabel.setText(other != null && !other.isBlank() ? other : "Contact");
         if (remoteNameOverlayLabel != null) {
@@ -386,6 +388,11 @@ public class VideoCallController {
     }
 
     private void cleanupMedia() {
+        if (mediaCleaned) {
+            return;
+        }
+        mediaCleaned = true;
+
         if (cameraTimer != null) {
             cameraTimer.cancel();
             cameraTimer = null;
@@ -413,6 +420,7 @@ public class VideoCallController {
         }
 
         if (speakers != null) {
+            speakers.drain();
             speakers.stop();
             speakers.close();
             speakers = null;
@@ -424,6 +432,10 @@ public class VideoCallController {
         }
 
         instance = null;
+    }
+
+    public void closeWithoutNotification() {
+        cleanupMedia();
     }
 
     private void startTimer() {

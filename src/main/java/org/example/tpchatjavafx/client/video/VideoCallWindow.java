@@ -46,6 +46,9 @@ public class VideoCallWindow {
     }
 
     public static void closeCurrent() {
+        if (controller != null) {
+            controller.closeWithoutNotification();
+        }
         if (window != null) {
             closingFromCode = true;
             window.close();

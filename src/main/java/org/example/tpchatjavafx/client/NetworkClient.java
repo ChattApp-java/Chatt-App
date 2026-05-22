@@ -150,6 +150,13 @@ public class NetworkClient {
         send(msg);
     }
 
+    public void requestMeetingInfo(int meetingId, int groupId) {
+        ChatMessage msg = new ChatMessage(MessageType.MEETING_INFO, username, "SERVER", null, "");
+        msg.setMeetingId(meetingId);
+        msg.setGroupId(groupId);
+        send(msg);
+    }
+
     public void inviteUserToMeeting(int groupId, int meetingId, String memberName) {
         ChatMessage msg = new ChatMessage(MessageType.MEETING_INVITE_USER, username, "SERVER", null, memberName);
         msg.setGroupId(groupId);
@@ -671,6 +678,15 @@ public class NetworkClient {
                 }
                 case MEETING_INFO -> {
                     System.out.println("[NET_CLIENT] MEETING_INFO recu: host=" + msg.getServerHost());
+                    try {
+                        startMeetingAudio(msg.getMeetingId(), 0, msg.getServerUdpAudioPort(), msg.getServerHost());
+                        if (msg.getMeetingType() != null && msg.getMeetingType().toUpperCase().contains("VIDEO")) {
+                            startMeetingVideo(msg.getMeetingId(), 0, msg.getServerUdpVideoPort(), msg.getServerHost());
+                        }
+                        syncMeetingMediaPorts(msg.getMeetingId());
+                    } catch (Exception e) {
+                        System.err.println("[NET_CLIENT] Erreur demarrage media reunion: " + e.getMessage());
+                    }
                     if (activeMeetingController != null && msg.getContent() != null && !msg.getContent().isBlank()) {
                         activeMeetingController.syncParticipants(msg.getContent());
                     }

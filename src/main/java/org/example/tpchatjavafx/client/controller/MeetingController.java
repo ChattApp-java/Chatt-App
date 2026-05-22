@@ -87,6 +87,7 @@ public class MeetingController implements Initializable {
     // ========== JAVACV - Remplacement de webcam-capture ==========
     private VideoCapture videoCapture;
     private Thread videoThread;
+    private volatile boolean cleanedUp;
 
     private final Map<Integer, VBox> participantContainers = new ConcurrentHashMap<>();
     private final Map<Integer, StackPane> participantVideoPanes = new ConcurrentHashMap<>();
@@ -213,6 +214,10 @@ public class MeetingController implements Initializable {
 
     public void startServices() {
         System.out.println("[MEETING_UI] startServices() callType=" + callType);
+        cleanedUp = false;
+        if (networkClient != null && meetingId > 0) {
+            networkClient.requestMeetingInfo(meetingId, groupId);
+        }
         if (isVideoMeeting()) {
             startVideoCapture();
         }
@@ -901,6 +906,7 @@ public class MeetingController implements Initializable {
     }
 
     public void handleMeetingEnded() {
+        cleanup();
         Platform.runLater(() -> {
             if (btnEndCall != null && btnEndCall.getScene() != null) {
                 Stage stage = (Stage) btnEndCall.getScene().getWindow();
@@ -1029,6 +1035,10 @@ public class MeetingController implements Initializable {
 
     // ========== JAVACV - NOUVEAU cleanup() ==========
     public void cleanup() {
+        if (cleanedUp) {
+            return;
+        }
+        cleanedUp = true;
         videoOn = false;
         if (videoThread != null) {
             videoThread.interrupt();
@@ -1038,9 +1048,11 @@ public class MeetingController implements Initializable {
                 Thread.currentThread().interrupt();
             }
         }
+        videoThread = null;
         if (videoCapture != null && videoCapture.isOpened()) {
             videoCapture.release();
         }
+        videoCapture = null;
         if (networkClient != null) {
             networkClient.setActiveMeetingController(null);
             networkClient.closeUdpSockets();
