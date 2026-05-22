@@ -58,11 +58,19 @@ public class IncomingMeetingDialogController {
     private OpenCVFrameGrabber grabber;
     private Java2DFrameConverter converter;
     private Timeline previewTimeline;
+    private String normalizedMeetingType = "AUDIO";
 
     public void setStage(Stage stage) {
         this.stage = stage;
         if (stage != null) {
-            stage.setOnShown(event -> startCameraPreview());
+            stage.setOnShown(event -> {
+                if (isVideoMeeting()) {
+                    startCameraPreview();
+                } else {
+                    stopCameraPreview();
+                    showPreviewUnavailable("Apercu camera desactive pour l'appel audio");
+                }
+            });
             stage.setOnHidden(event -> stopCameraPreview());
         }
     }
@@ -80,10 +88,15 @@ public class IncomingMeetingDialogController {
     }
 
     public void setMeetingType(String meetingType) {
-        String safeType = (meetingType == null || meetingType.isBlank()) ? "AUDIO" : meetingType.toUpperCase();
+        String safeType = normalizeMeetingType(meetingType);
+        normalizedMeetingType = safeType;
         meetingTypeLabel.setText("Appel " + safeType.toLowerCase());
         if (sectionStatusLabel != null) {
             sectionStatusLabel.setText("En attente de votre reponse");
+        }
+        if (!isVideoMeeting()) {
+            stopCameraPreview();
+            showPreviewUnavailable("Apercu camera desactive pour l'appel audio");
         }
     }
 
@@ -165,6 +178,17 @@ public class IncomingMeetingDialogController {
         }
         grabber = null;
         converter = null;
+    }
+
+    private boolean isVideoMeeting() {
+        return "VIDEO".equals(normalizedMeetingType);
+    }
+
+    private String normalizeMeetingType(String meetingType) {
+        if (meetingType == null || meetingType.isBlank()) {
+            return "AUDIO";
+        }
+        return meetingType.trim().toUpperCase();
     }
 
     public static void showInvite(String initiator, String meetingType, Consumer<Boolean> onDecision) throws IOException {
