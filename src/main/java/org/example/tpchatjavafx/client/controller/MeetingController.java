@@ -173,6 +173,9 @@ public class MeetingController implements Initializable {
     public void setCallType(String callType) {
         this.callType = normalizeCallType(callType);
         System.out.println("[MEETING_UI] setCallType: " + this.callType);
+        if (!isVideoMeeting()) {
+            stopVideoCapture();
+        }
         Platform.runLater(() -> {
             boolean isVideo = isVideoMeeting();
             if (lblTitle != null) {
@@ -215,6 +218,9 @@ public class MeetingController implements Initializable {
     public void startServices() {
         System.out.println("[MEETING_UI] startServices() callType=" + callType);
         cleanedUp = false;
+        if (!isVideoMeeting()) {
+            stopVideoCapture();
+        }
         if (networkClient != null && meetingId > 0) {
             networkClient.requestMeetingInfo(meetingId, groupId);
         }
@@ -306,6 +312,23 @@ public class MeetingController implements Initializable {
             System.err.println("[MEETING_UI] ERREUR webcam: " + e.getMessage());
             e.printStackTrace();
         }
+    }
+
+    private void stopVideoCapture() {
+        videoOn = false;
+        if (videoThread != null) {
+            videoThread.interrupt();
+            try {
+                videoThread.join(1000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            videoThread = null;
+        }
+        if (videoCapture != null && videoCapture.isOpened()) {
+            videoCapture.release();
+        }
+        videoCapture = null;
     }
 
     private void configureCamera(VideoCapture capture) {
@@ -1039,20 +1062,7 @@ public class MeetingController implements Initializable {
             return;
         }
         cleanedUp = true;
-        videoOn = false;
-        if (videoThread != null) {
-            videoThread.interrupt();
-            try {
-                videoThread.join(1000);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }
-        videoThread = null;
-        if (videoCapture != null && videoCapture.isOpened()) {
-            videoCapture.release();
-        }
-        videoCapture = null;
+        stopVideoCapture();
         if (networkClient != null) {
             networkClient.setActiveMeetingController(null);
             networkClient.closeUdpSockets();
