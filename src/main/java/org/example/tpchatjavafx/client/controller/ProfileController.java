@@ -7,9 +7,6 @@ import javafx.scene.control.TextField;
 import org.example.tpchatjavafx.client.ChatClientApp;
 import org.example.tpchatjavafx.client.NetworkClient;
 
-/**
- * Legacy Profile Controller — synchronized with unified architecture.
- */
 public class ProfileController {
 
     @FXML private TextField usernameField;
@@ -21,7 +18,7 @@ public class ProfileController {
 
     @FXML
     private void initialize() {
-        // Default values (local dev)
+
         if (userHostField != null) userHostField.setText("127.0.0.1");
         if (userPortField != null) userPortField.setText("6000");
         if (serverHostField != null) serverHostField.setText("127.0.0.1");

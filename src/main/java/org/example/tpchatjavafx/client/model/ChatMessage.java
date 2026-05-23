@@ -16,7 +16,6 @@ public class ChatMessage {
     private boolean read;
     private boolean selected;
 
-    // Appels / réunions
     private String callType;
     private String remoteHost;
     private int remotePort;
@@ -31,7 +30,7 @@ public class ChatMessage {
     private int serverUdpVideoPort;
 
     public ChatMessage() {
-        // Constructeur vide pour désérialisation
+
     }
 
     public ChatMessage(MessageType type, String from, String to, String conversationId, String content) {
@@ -134,11 +133,11 @@ public class ChatMessage {
     }
 
     private String safe(String value) {
-        return value == null ? "" : value.replace("|", "␟");
+        return value == null ? "" : value.replace("|", "Ã¢ÂÅ¸");
     }
 
     private String unsafe(String value) {
-        return value == null ? "" : value.replace("␟", "|");
+        return value == null ? "" : value.replace("Ã¢ÂÅ¸", "|");
     }
 
     public static ChatMessage deserialize(String line) {
@@ -191,4 +190,3 @@ public class ChatMessage {
         }
     }
 }
-

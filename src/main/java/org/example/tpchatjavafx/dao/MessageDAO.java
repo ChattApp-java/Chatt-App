@@ -350,7 +350,7 @@ public class MessageDAO {
             if (deletedAt != null) m.setDeletedAt(deletedAt.toLocalDateTime());
             m.setDeletedBy(readNullableInt(rs, "deleted_by"));
         } catch (SQLException ignored) {
-            // Colonnes de migration absentes dans une ancienne BD.
+
         }
 
         Utilisateur expediteur = new Utilisateur();

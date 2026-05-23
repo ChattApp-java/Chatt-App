@@ -1,4 +1,4 @@
-package org.example.tpchatjavafx.service;//position
+package org.example.tpchatjavafx.service;
 
 import org.example.tpchatjavafx.dao.UtilisateurDAO;
 import org.example.tpchatjavafx.model.Utilisateur;
@@ -6,49 +6,38 @@ import org.mindrot.jbcrypt.BCrypt;
 
 import java.sql.SQLException;
 
-
- // Service d'authentification : login et inscription.
-
 public class AuthService {
 
     private final UtilisateurDAO utilisateurDAO = new UtilisateurDAO();
 
-    //  Résultat d'inscription
     public record RegisterResult(boolean success, String reason) {}
 
-    /*
-     Authentifie un utilisateur existant
-     return Utilisateur si OK, null si identifiants invalides
-     */
     public Utilisateur login(String username, String password) {
         if (username == null || username.isBlank()) return null;
         if (password == null || password.isBlank()) return null;
-        
+
         try {
             Utilisateur u = utilisateurDAO.findByUsername(username.trim());
             if (u == null) return null;
             if (!BCrypt.checkpw(password, u.getPassword())) return null;
-            return u;//return utilisateur avec tout ces informations
+            return u;
         } catch (SQLException e) {
             e.printStackTrace();
             return null;
         }
     }
 
-
-    // Inscrit un nouvel utilisateur
-
     public RegisterResult register(String username, String password, String email) {
         if (username == null || username.isBlank())
             return new RegisterResult(false, "Nom d'utilisateur requis");
         if (password == null || password.length() < 4)
-            return new RegisterResult(false, "Mot de passe trop court (min 4 caractères)");
+            return new RegisterResult(false, "Mot de passe trop court (min 4 caractÃƒÂ¨res)");
 
         username = username.trim();
 
         try {
             if (utilisateurDAO.findByUsername(username) != null)
-                return new RegisterResult(false, "Nom d'utilisateur déjà pris");
+                return new RegisterResult(false, "Nom d'utilisateur dÃƒÂ©jÃƒÂ  pris");
 
             String hash = BCrypt.hashpw(password, BCrypt.gensalt(12));
 
@@ -65,7 +54,6 @@ public class AuthService {
             u.setPassword(hash);
             u.setEmail(finalEmail);
 
-            
             Utilisateur created = utilisateurDAO.create(u);
             if (created != null && created.getId() > 0) {
                 return new RegisterResult(true, "");
@@ -74,6 +62,6 @@ public class AuthService {
             e.printStackTrace();
             return new RegisterResult(false, "Erreur serveur : " + e.getMessage());
         }
-        return new RegisterResult(false, "Erreur lors de la création du compte");
+        return new RegisterResult(false, "Erreur lors de la crÃƒÂ©ation du compte");
     }
 }

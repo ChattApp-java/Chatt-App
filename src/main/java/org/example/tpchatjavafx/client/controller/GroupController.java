@@ -151,12 +151,12 @@ public class GroupController extends javafx.scene.control.SplitPane {
 
                 Label name = new Label(item);
                 name.getStyleClass().add("group-cell-name");
-                
+
                 int gid = -1;
                 int idx = getIndex();
                 if (idx >= 0 && idx < groupIds.size()) gid = groupIds.get(idx)[0];
-                
-                Label detail = new Label(activeMeetingGroupIds.contains(gid) ? "● Reunion en cours" : "Groupe de discussion");
+
+                Label detail = new Label(activeMeetingGroupIds.contains(gid) ? "Ã¢â€”Â Reunion en cours" : "Groupe de discussion");
                 detail.getStyleClass().add("group-cell-detail");
                 if (activeMeetingGroupIds.contains(gid)) detail.setStyle("-fx-text-fill: #25D366; -fx-font-weight: bold;");
 
@@ -350,10 +350,9 @@ public class GroupController extends javafx.scene.control.SplitPane {
             if (msg.getGroupId() == selectedGroupId) {
                 afficherSysteme(msg.getContent() + " a rejoint le groupe.");
             }
-            // Après ajout, forcer l'actualisation de la liste des groupes côté client.
+
             networkClient.requestGroupList();
         }));
-
 
         networkClient.setOnGroupMemberRemoved(msg -> Platform.runLater(() -> {
             if (msg.getGroupId() != selectedGroupId) return;
@@ -616,7 +615,7 @@ public class GroupController extends javafx.scene.control.SplitPane {
 
     private void demarrerReunion(String type) {
         if (selectedGroupId == -1 || networkClient == null) return;
-        System.out.println("[GROUP_UI] Clic bouton appel " + type + " — groupeId=" + selectedGroupId);
+        System.out.println("[GROUP_UI] Clic bouton appel " + type + " Ã¢â‚¬â€ groupeId=" + selectedGroupId);
         if (activeMeetingGroupIds.contains(selectedGroupId)) {
             networkClient.joinMeetingByGroup(selectedGroupId);
         } else {
@@ -656,7 +655,7 @@ public class GroupController extends javafx.scene.control.SplitPane {
 
             Scene scene = new Scene(root, 900, 700);
             meetingStage = new Stage();
-            meetingStage.setTitle("Reunion " + callType + " — " + displayName);
+            meetingStage.setTitle("Reunion " + callType + " Ã¢â‚¬â€ " + displayName);
             meetingStage.setScene(scene);
             meetingStage.setMinWidth(600);
             meetingStage.setMinHeight(420);
@@ -778,7 +777,7 @@ public class GroupController extends javafx.scene.control.SplitPane {
     }
 
     private void playNotificationSound() {
-        // Son optionnel — ignoré si indisponible
+
     }
 
     @FXML

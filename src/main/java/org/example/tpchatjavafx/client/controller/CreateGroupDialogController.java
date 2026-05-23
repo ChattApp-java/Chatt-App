@@ -27,7 +27,6 @@ public class CreateGroupDialogController {
         contactsListView.setItems(items);
     }
 
-    /** Appelé par GroupController pour récupérer le résultat */
     public String getGroupName() {
         return groupNameField != null ? groupNameField.getText().trim() : "";
     }

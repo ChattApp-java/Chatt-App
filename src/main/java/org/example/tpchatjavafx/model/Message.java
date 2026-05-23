@@ -7,9 +7,9 @@ public class Message {
     private int id;
     private String contenu;
     private LocalDateTime dateEnvoi;
-    private String type; // TEXTE, AUDIO, VIDEO, SYSTEME
+    private String type; 
     private int expediteurId;
-    private Integer destinataireId; // Peut être null si groupe
+    private Integer destinataireId; 
     private int conversationId;
     private Integer groupeId;
     private Integer reunionId;
@@ -18,7 +18,6 @@ public class Message {
     private LocalDateTime deletedAt;
     private Integer deletedBy;
 
-    // Champs transient (non persistés) pour l'affichage
     private transient Utilisateur expediteur;
 
     public Message() {}

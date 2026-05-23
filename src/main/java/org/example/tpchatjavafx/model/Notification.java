@@ -6,7 +6,7 @@ public class Notification {
     private int id;
     private int utilisateurId;
     private String contenu;
-    private String type; // NOUVEAU_MESSAGE, APPEL_MANQUE, DEMANDE_CONTACT
+    private String type; 
     private boolean estLue;
     private Date dateCreation;
 

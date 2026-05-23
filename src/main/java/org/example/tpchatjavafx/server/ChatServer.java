@@ -14,9 +14,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Serveur TCP du chat. Gere les connexions et le routage multi-fenetres.
- */
 public class ChatServer {
 
     static final int PORT = 5555;
@@ -236,13 +233,10 @@ public class ChatServer {
         infoMsg.setCallType(msg.getCallType());
         infoMsg.setRemoteHost(from.getSocket().getInetAddress().getHostAddress());
 
-        // Le code actuel ne permet pas de récupérer un port UDP P2P fiable côté appelant.
-        // Pour éviter un échec (port -1), on conserve un port non nul.
         infoMsg.setRemotePort(10000);
 
-
         forwardToTarget(infoMsg);
-        // La confirmation doit etre envoyee a l'appelant, pas renvoyee au client qui vient d'accepter.
+
         forwardToTarget(msg);
 
     }

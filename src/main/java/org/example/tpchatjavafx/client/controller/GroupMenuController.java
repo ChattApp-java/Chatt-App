@@ -29,38 +29,36 @@ public class GroupMenuController {
             this.groupNameLabel.setText(groupName);
             this.groupAvatarLabel.setText(groupName.substring(0, 1).toUpperCase());
         }
-        
-        // Request current options state from server (Tache 6/3) if needed,
-        // for now just placeholder logic
+
     }
 
     @FXML
     private void onToggleMute() {
         boolean isMuted = !muteCheckBox.isSelected();
         muteCheckBox.setSelected(isMuted);
-        // networkClient.sendGroupUpdateOption(groupId, "MUTE", isMuted);
+
     }
 
     @FXML
     private void onToggleFavorite() {
         boolean isFav = !favoriteCheckBox.isSelected();
         favoriteCheckBox.setSelected(isFav);
-        // networkClient.sendGroupUpdateOption(groupId, "FAVORITE", isFav);
+
     }
 
     @FXML
     private void onSetupEphemeral() {
-        // Tache 3: open dialog to select ephemeral timer
+
     }
 
     @FXML
     private void onScheduleCall() {
-        // Tache 4: open dialog to schedule call
+
     }
 
     @FXML
     private void onGenerateCallLink() {
-        // Tache 5: show call link
+
     }
 
     @FXML

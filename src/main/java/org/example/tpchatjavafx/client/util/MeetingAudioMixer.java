@@ -5,10 +5,6 @@ import javax.sound.sampled.LineUnavailableException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Mixeur audio pour les réunions multi-utilisateurs.
- * Reçoit les flux audio de N participants et les mixe en un seul flux de sortie.
- */
 public class MeetingAudioMixer {
     private final Map<String, byte[]> participantFrames = new ConcurrentHashMap<>();
     private final AudioPlaybackService playbackService = new AudioPlaybackService();
@@ -57,7 +53,7 @@ public class MeetingAudioMixer {
                 if (mixed != null) {
                     playbackService.playAudio(mixed);
                 }
-                // Attente courte pour laisser les frames s'accumuler
+
                 Thread.sleep(20); 
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -75,35 +71,33 @@ public class MeetingAudioMixer {
         if (maxLength == 0) return null;
 
         byte[] mixed = new byte[maxLength];
-        
-        // Mixage PCM 16-bit (2 octets par sample)
+
         for (int i = 0; i < maxLength; i += 2) {
             int sum = 0;
             int count = 0;
-            
+
             for (byte[] frame : participantFrames.values()) {
                 if (i + 1 < frame.length) {
-                    // Little-endian 16-bit signed PCM
+
                     short sample = (short) ((frame[i + 1] << 8) | (frame[i] & 0xFF));
                     sum += sample;
                     count++;
                 }
             }
-            
+
             if (count > 0) {
-                // Mixage simple avec clipping (écrêtage)
+
                 int result = sum; 
                 if (result > 32767) result = 32767;
                 else if (result < -32768) result = -32768;
-                
+
                 mixed[i] = (byte) (result & 0xFF);
                 mixed[i + 1] = (byte) ((result >> 8) & 0xFF);
             }
         }
-        
-        // On vide pour éviter de rejouer les mêmes frames au prochain tour
+
         participantFrames.clear(); 
-        
+
         return mixed;
     }
 }

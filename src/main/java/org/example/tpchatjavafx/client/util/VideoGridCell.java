@@ -31,7 +31,7 @@ public class VideoGridCell {
         nameLabel = new Label(displayName);
         nameLabel.getStyleClass().add("video-label");
 
-        micLabel = new Label("🎤");
+        micLabel = new Label("Ã°Å¸Å½Â¤");
         micLabel.getStyleClass().add("mic-indicator");
 
         root.getStyleClass().add("video-grid-cell");
@@ -57,8 +57,7 @@ public class VideoGridCell {
     }
 
     public void setMuted(boolean muted) {
-        micLabel.setText(muted ? "🔇" : "🎤");
+        micLabel.setText(muted ? "Ã°Å¸â€â€¡" : "Ã°Å¸Å½Â¤");
         micLabel.setStyle(muted ? "-fx-text-fill: #ff4444;" : "-fx-text-fill: #00ff00;");
     }
 }
-

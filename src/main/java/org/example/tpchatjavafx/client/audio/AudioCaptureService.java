@@ -6,14 +6,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
 
-/**
- * Capture audio du microphone et envoie via callback.
- */
 public class AudioCaptureService {
     private static final float[] SAMPLE_RATES = {44100.0f, 22050.0f, 16000.0f, 8000.0f};
 
     private TargetDataLine microphone;
-    // 20 ms en PCM 16 kHz / 16-bit mono ~= 640 octets, plus stable pour la voix temps reel.
+
     private final byte[] buffer = new byte[640];
     private volatile boolean isRunning = false;
     private Consumer<byte[]> onAudioCaptured;

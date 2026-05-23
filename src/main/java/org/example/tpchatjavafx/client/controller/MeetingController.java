@@ -84,7 +84,6 @@ public class MeetingController implements Initializable {
     private String meetingDisplayName = "Groupe";
     private final List<String> invitedMembers = new ArrayList<>();
 
-    // ========== JAVACV - Remplacement de webcam-capture ==========
     private VideoCapture videoCapture;
     private Thread videoThread;
     private volatile boolean cleanedUp;
@@ -229,8 +228,6 @@ public class MeetingController implements Initializable {
         }
     }
 
-    // ========== JAVACV - NOUVELLE IMPLEMENTATION ==========
-
     public void startVideoCapture() {
         if (!isVideoMeeting()) {
             System.out.println("[MEETING_UI] Pas VIDEO, pas de webcam");
@@ -272,7 +269,6 @@ public class MeetingController implements Initializable {
                                     new org.bytedeco.opencv.opencv_core.Size(ENCODED_WIDTH, ENCODED_HEIGHT)
                             );
 
-                            // Garder le format BGR d'OpenCV pour eviter l'inversion rouge/bleu.
                             BufferedImage bufferedImage = matToBufferedImage(resizedFrame);
 
                             if (bufferedImage != null) {
@@ -352,8 +348,6 @@ public class MeetingController implements Initializable {
 
         return image;
     }
-
-    // ========== FIN JAVACV ==========
 
     private void toggleMic() {
         micMuted = !micMuted;
@@ -919,7 +913,7 @@ public class MeetingController implements Initializable {
     }
 
     public void addAudioFrame(String participantId, byte[] audioData) {
-        // Audio via relais UDP
+
     }
 
     public void handleMeetingEnded() {
@@ -1050,7 +1044,6 @@ public class MeetingController implements Initializable {
         });
     }
 
-    // ========== JAVACV - NOUVEAU cleanup() ==========
     public void cleanup() {
         if (cleanedUp) {
             return;
@@ -1085,7 +1078,7 @@ public class MeetingController implements Initializable {
 
         Stage stage = new Stage();
         stage.setScene(new Scene(root, 900, 700));
-        stage.setTitle("Reunion " + callType + " — " + title);
+        stage.setTitle("Reunion " + callType + " Ã¢â‚¬â€ " + title);
         stage.initModality(Modality.NONE);
         stage.setMinWidth(600);
         stage.setMinHeight(420);

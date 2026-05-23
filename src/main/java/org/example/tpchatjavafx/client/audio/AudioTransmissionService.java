@@ -6,11 +6,6 @@ import java.io.IOException;
 import java.net.*;
 import java.util.function.Consumer;
 
-/**
- * Transmission audio UDP entre 2 clients.
- * - Capture audio et envoie via UDP
- * - Reçoit audio UDP et joue
- */
 public class AudioTransmissionService {
 
     private DatagramSocket socket;
@@ -105,10 +100,10 @@ public class AudioTransmissionService {
                     }
                 }
             } catch (SocketTimeoutException ignored) {
-                // Timeout régulier pour vérifier running
+
             } catch (IOException e) {
                 if (running) {
-                    System.err.println("Erreur réception audio: " + e.getMessage());
+                    System.err.println("Erreur rÃƒÂ©ception audio: " + e.getMessage());
                 }
             }
         }

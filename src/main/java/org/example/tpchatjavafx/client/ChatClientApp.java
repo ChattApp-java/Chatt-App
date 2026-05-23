@@ -8,9 +8,6 @@ import org.example.tpchatjavafx.client.util.WindowSizingUtil;
 
 import java.net.URL;
 
-/**
- * Point d'entree JavaFX - demarre sur l'ecran de login.
- */
 public class ChatClientApp extends Application {
 
     private static Stage primaryStage;

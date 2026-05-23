@@ -1,8 +1,5 @@
 package org.example.tpchatjavafx.common;
 
-/**
- * Tous les types de messages echanges entre client et serveur.
- */
 public enum MessageType {
     LOGIN,
     REGISTER,
