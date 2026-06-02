@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="org.example.tpchatjavafx.client.controller.AddMemberDialogController"
+      spacing="12" minWidth="340" maxWidth="520"
+      styleClass="group-dialog-content">
+    <padding><Insets top="18" right="18" bottom="18" left="18"/></padding>
+
+    <Label text="Ajouter des membres" styleClass="group-dialog-title"/>
+    <Label text="Selectionnez les contacts a ajouter" styleClass="field-label"/>
+    <ListView fx:id="availableContactsList" minHeight="180" maxHeight="300"
+              styleClass="contact-list group-dialog-list"/>
+</VBox>

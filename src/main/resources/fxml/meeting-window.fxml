@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.*?>
+
+<StackPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+           fx:controller="org.example.tpchatjavafx.client.controller.MeetingController"
+           style="-fx-background-color: linear-gradient(to bottom, #79beff, #ddecff);"
+           prefWidth="1180" prefHeight="760" minWidth="860" minHeight="560">
+
+    <VBox spacing="0" alignment="TOP_CENTER">
+
+        <HBox alignment="CENTER_LEFT" spacing="15"
+              style="-fx-background-color: rgba(15, 58, 109, 0.94); -fx-padding: 14 20;
+                     -fx-border-color: rgba(255,255,255,0.15); -fx-border-width: 0 0 1 0;">
+            <Button style="-fx-background-color: transparent; -fx-cursor: hand;">
+                <graphic>
+                    <FontIcon iconLiteral="fas-chevron-down" iconSize="20" iconColor="#dcecff"/>
+                </graphic>
+            </Button>
+            <VBox spacing="2" HBox.hgrow="ALWAYS">
+                <Label fx:id="lblTitle" text="Appel audio de groupe"
+                       style="-fx-font-size: 21; -fx-font-weight: bold; -fx-text-fill: #f4f8ff;"/>
+                <Label fx:id="lblGroupName" text="Groupe"
+                       style="-fx-font-size: 13; -fx-text-fill: #d9ebff; -fx-font-weight: bold;"/>
+                <Label fx:id="lblSubtitle" text="En attente..."
+                       style="-fx-font-size: 12; -fx-text-fill: #b7cde6;"/>
+            </VBox>
+            <Button fx:id="btnAddParticipant" style="-fx-background-color: transparent; -fx-cursor: hand;">
+                <graphic>
+                    <FontIcon iconLiteral="fas-user-plus" iconSize="20" iconColor="#dcecff"/>
+                </graphic>
+            </Button>
+        </HBox>
+
+        <HBox VBox.vgrow="ALWAYS" spacing="18"
+              style="-fx-background-color: linear-gradient(to bottom, #79beff, #ddecff); -fx-padding: 18;">
+            <StackPane HBox.hgrow="ALWAYS"
+                       style="-fx-background-color: rgba(255,255,255,0.24); -fx-background-radius: 24; -fx-padding: 14;">
+                <GridPane fx:id="videoGrid" hgap="10" vgap="10" alignment="CENTER"
+                          style="-fx-padding: 8;" visible="false" managed="false"/>
+
+                <TilePane fx:id="centerContainer" alignment="TOP_CENTER" prefColumns="2" hgap="18" vgap="18"
+                          style="-fx-padding: 28;"/>
+            </StackPane>
+
+            <VBox prefWidth="280" spacing="16"
+                  style="-fx-background-color: rgba(248,252,255,0.92); -fx-background-radius: 24; -fx-padding: 22;">
+                <VBox alignment="CENTER" spacing="8">
+                    <StackPane prefWidth="74" prefHeight="74" maxWidth="74" maxHeight="74"
+                               style="-fx-background-color: rgba(15,58,109,0.12); -fx-background-radius: 37;">
+                        <FontIcon iconLiteral="fas-users" iconSize="28" iconColor="#4d82c9"/>
+                    </StackPane>
+                    <Label text="Participants"
+                           style="-fx-text-fill: #10386d; -fx-font-size: 22; -fx-font-weight: bold;"/>
+                </VBox>
+
+                <Region minHeight="1" prefHeight="1" style="-fx-background-color: rgba(16,56,109,0.10);" />
+
+                <VBox spacing="10">
+                    <Label text="Dans l'appel"
+                           style="-fx-text-fill: #5d7ea9; -fx-font-size: 14; -fx-font-weight: bold;"/>
+                    <VBox fx:id="inCallMembersBox" spacing="2"/>
+                </VBox>
+
+                <VBox spacing="10">
+                    <Label text="Invites"
+                           style="-fx-text-fill: #5d7ea9; -fx-font-size: 14; -fx-font-weight: bold;"/>
+                    <VBox fx:id="invitedMembersBox" spacing="2"/>
+                </VBox>
+            </VBox>
+        </HBox>
+
+        <VBox fx:id="bottomControls" alignment="CENTER" spacing="15"
+              style="-fx-background-color: rgba(15, 58, 109, 0.95); -fx-padding: 22;
+                     -fx-border-color: rgba(255,255,255,0.15); -fx-border-width: 1 0 0 0;">
+
+            <HBox alignment="CENTER" spacing="20">
+                <Button fx:id="btnMore" prefWidth="56" prefHeight="56"
+                        style="-fx-background-color: #253239; -fx-background-radius: 28; -fx-cursor: hand;">
+                    <graphic>
+                        <FontIcon iconLiteral="fas-ellipsis-h" iconSize="24" iconColor="white"/>
+                    </graphic>
+                </Button>
+
+                <Button fx:id="btnVideo" prefWidth="56" prefHeight="56"
+                        style="-fx-background-color: #253239; -fx-background-radius: 28; -fx-cursor: hand;"
+                        visible="false" managed="false">
+                    <graphic>
+                        <FontIcon iconLiteral="fas-video" iconSize="24" iconColor="white"/>
+                    </graphic>
+                </Button>
+
+                <Button fx:id="btnSpeaker" prefWidth="64" prefHeight="64"
+                        style="-fx-background-color: white; -fx-background-radius: 32; -fx-cursor: hand;">
+                    <graphic>
+                        <FontIcon iconLiteral="fas-volume-up" iconSize="28" iconColor="#01579b"/>
+                    </graphic>
+                </Button>
+
+                <Button fx:id="btnMic" prefWidth="56" prefHeight="56"
+                        style="-fx-background-color: #253239; -fx-background-radius: 28; -fx-cursor: hand;">
+                    <graphic>
+                        <FontIcon iconLiteral="fas-microphone" iconSize="24" iconColor="white"/>
+                    </graphic>
+                </Button>
+
+                <Button fx:id="btnEndCall" prefWidth="56" prefHeight="56"
+                        style="-fx-background-color: #ff3b5c; -fx-background-radius: 28; -fx-cursor: hand;">
+                    <graphic>
+                        <FontIcon iconLiteral="fas-phone-slash" iconSize="24" iconColor="white"/>
+                    </graphic>
+                </Button>
+            </HBox>
+
+            <HBox alignment="CENTER" spacing="20" style="-fx-padding: 0 0 5 0;">
+                <Label text="Plus" prefWidth="56" alignment="CENTER"
+                       style="-fx-font-size: 10; -fx-text-fill: #b7cde6;"/>
+                <Label fx:id="lblVideoCaption" text="Video" prefWidth="56" alignment="CENTER"
+                       style="-fx-font-size: 10; -fx-text-fill: #b7cde6;" visible="false" managed="false"/>
+                <Label text="Haut-parleur" prefWidth="64" alignment="CENTER"
+                       style="-fx-font-size: 10; -fx-text-fill: #b7cde6;"/>
+                <Label text="Micro" prefWidth="56" alignment="CENTER"
+                       style="-fx-font-size: 10; -fx-text-fill: #b7cde6;"/>
+                <Label text="Raccrocher" prefWidth="56" alignment="CENTER"
+                       style="-fx-font-size: 10; -fx-text-fill: #b7cde6;"/>
+            </HBox>
+
+        </VBox>
+    </VBox>
+
+    <ListView fx:id="participantsList" visible="false" managed="false" prefHeight="0" maxHeight="0"/>
+
+</StackPane>

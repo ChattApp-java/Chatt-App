@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.paint.Color?>
+<?import javafx.scene.paint.LinearGradient?>
+<?import javafx.scene.paint.Stop?>
+<?import javafx.scene.text.Font?>
+
+<BorderPane styleClass="app-background" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.tpchatjavafx.client.controller.ProfileController">
+
+    <center>
+        <VBox alignment="CENTER" minWidth="360.0" maxWidth="720.0" spacing="15" BorderPane.alignment="CENTER">
+            <Label styleClass="app-title" text="amal &amp; chaymae AppChat">
+            <font>
+               <Font name="Arial Narrow Bold" size="30.0" />
+            </font></Label>
+
+            <VBox alignment="TOP_CENTER" minWidth="320.0" maxWidth="420.0" spacing="8" styleClass="card">
+
+                <Label styleClass="form-label" text="Username" />
+                <TextField fx:id="usernameField" promptText="entrez votre nom" styleClass="form-control" />
+
+                <Label styleClass="form-label" text="Your Host" />
+                <TextField fx:id="userHostField" promptText="ex: 127.0.0.1" styleClass="form-control" />
+
+                <Label styleClass="form-label" text="Your Port" />
+                <TextField fx:id="userPortField" promptText="ex: 6000" styleClass="form-control" />
+
+                <Separator />
+
+                <Label styleClass="form-label" text="Server Host" />
+                <TextField fx:id="serverHostField" promptText="ex: 127.0.0.1" styleClass="form-control" />
+
+                <Label styleClass="form-label" text="Server Port" />
+                <TextField fx:id="serverPortField" promptText="ex: 5555" styleClass="form-control" />
+                <Label fx:id="errorLabel" styleClass="text-danger" />
+   
+                <Button alignment="CENTER" onAction="#onConnect" maxWidth="Infinity" styleClass="btn-primary" text="Connect" textAlignment="CENTER" textOverrun="CENTER_ELLIPSIS" underline="true">
+               <textFill>
+                  <LinearGradient endX="1.0" endY="1.0" startX="0.261363633202784">
+                     <stops>
+                        <Stop>
+                           <color>
+                              <Color green="1.0" blue="0.12055837363004684" />
+                           </color>
+                        </Stop>
+                        <Stop offset="0.006729475100942127">
+                           <color>
+                              <Color green="1.0" blue="0.12055837363004684" />
+                           </color>
+                        </Stop>
+                        <Stop offset="0.5338082263729772">
+                           <color>
+                              <Color red="1.0" opacity="0.1899999976158142" />
+                           </color>
+                        </Stop>
+                        <Stop offset="1.0">
+                           <color>
+                              <Color red="1.0" />
+                           </color>
+                        </Stop>
+                     </stops>
+                  </LinearGradient>
+               </textFill>
+            </Button>
+            </VBox>
+        </VBox>
+    </center>
+</BorderPane>

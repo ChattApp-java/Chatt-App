@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.String?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.SVGPath?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="org.example.tpchatjavafx.client.controller.MainChatController"
+            fx:id="rootPane"
+            styleClass="root-pane"
+            minWidth="800" minHeight="600">
+
+    <left>
+        <VBox styleClass="sidebar" minWidth="280" maxWidth="400">
+            <VBox styleClass="sidebar-header" spacing="14">
+                <HBox alignment="CENTER_LEFT" spacing="12">
+                    <StackPane styleClass="profile-avatar" fx:id="userAvatar">
+                        <Label fx:id="userAvatarLabel" text="ME" styleClass="avatar-letter-large"/>
+                    </StackPane>
+                    <VBox spacing="2" HBox.hgrow="ALWAYS">
+                        <Label fx:id="usernameLabel" text="Mon Compte" styleClass="sidebar-username"/>
+                        <HBox alignment="CENTER_LEFT" spacing="6">
+                            <Region styleClass="status-dot"/>
+                            <Label text="En ligne" styleClass="sidebar-status"/>
+                        </HBox>
+                    </VBox>
+                    <Button text="+" onAction="#onAddContact" styleClass="header-icon-btn"/>
+                    <Button text="🚪" onAction="#onLogout" styleClass="header-icon-btn" style="-fx-font-size: 16px;"/>
+                </HBox>
+
+                <HBox styleClass="search-pill" alignment="CENTER_LEFT" spacing="8">
+                    <SVGPath styleClass="search-field-icon"
+                             content="M9.5 3 C5.91 3 3 5.91 3 9.5 C3 13.09 5.91 16 9.5 16 C11.11 16 12.59 15.41 13.73 14.43 L18.29 18.99 L19.7 17.58 L15.14 13.02 C15.68 12.01 16 10.79 16 9.5 C16 5.91 13.09 3 9.5 3 Z M9.5 5 C11.99 5 14 7.01 14 9.5 C14 11.99 11.99 14 9.5 14 C7.01 14 5 11.99 5 9.5 C5 7.01 7.01 5 9.5 5 Z"/>
+                    <TextField fx:id="searchContactField"
+                               promptText="Rechercher..."
+                               styleClass="search-field"
+                               HBox.hgrow="ALWAYS"/>
+                </HBox>
+            </VBox>
+
+            <TabPane fx:id="tabPane" styleClass="sidebar-tabs" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
+                <Tab fx:id="privateTab" text="Messages">
+                    <VBox>
+                        <Label text="RECENTS" styleClass="section-label"/>
+                        <ListView fx:id="privateListView" styleClass="contact-list" VBox.vgrow="ALWAYS"/>
+                    </VBox>
+                </Tab>
+            </TabPane>
+
+            <HBox styleClass="bottom-nav" alignment="CENTER" spacing="12">
+                <Button text="Chats" styleClass="bottom-nav-btn active-nav" onAction="#onShowChats"/>
+                <Button text="Appel" styleClass="bottom-nav-btn" onAction="#onShowCalls"/>
+            </HBox>
+        </VBox>
+    </left>
+
+    <center>
+        <VBox fx:id="privateChatPane" styleClass="chat-area" minWidth="400">
+            <HBox fx:id="chatTopBar" styleClass="chat-top-bar" alignment="CENTER_LEFT" spacing="14">
+                <StackPane styleClass="chat-avatar" fx:id="chatAvatar">
+                    <Label fx:id="chatAvatarLabel" text="?" styleClass="avatar-letter"/>
+                </StackPane>
+
+                <VBox spacing="3" HBox.hgrow="ALWAYS">
+                    <Label fx:id="chatTitleLabel" text="Selectionnez une conversation"
+                           styleClass="chat-contact-name"/>
+                    <Label fx:id="chatStatusLabel" text="" styleClass="chat-contact-status"/>
+                </VBox>
+
+                <HBox spacing="8" alignment="CENTER_RIGHT">
+                    <Button fx:id="voiceCallButton"
+                            onAction="#onStartVoiceCall" disable="true">
+                        <styleClass>
+                            <String fx:value="call-action-btn"/>
+                            <String fx:value="icon-only-btn"/>
+                        </styleClass>
+                        <graphic>
+                            <SVGPath styleClass="whatsapp-action-icon"
+                                     content="M6.62 10.79 C8.06 13.62 10.38 15.93 13.21 17.38 L15.41 15.18 C15.68 14.91 16.08 14.82 16.43 14.94 C17.55 15.31 18.76 15.51 20 15.51 C20.55 15.51 21 15.96 21 16.51 V20 C21 20.55 20.55 21 20 21 C10.61 21 3 13.39 3 4 C3 3.45 3.45 3 4 3 H7.5 C8.05 3 8.5 3.45 8.5 4 C8.5 5.24 8.7 6.45 9.07 7.57 C9.18 7.92 9.1 8.31 8.82 8.59 L6.62 10.79 Z"/>
+                        </graphic>
+                        <tooltip><Tooltip text="Appel audio"/></tooltip>
+                    </Button>
+                    <Button fx:id="videoCallButton"
+                            onAction="#onStartVideoCall" disable="true">
+                        <styleClass>
+                            <String fx:value="call-action-btn"/>
+                            <String fx:value="icon-only-btn"/>
+                        </styleClass>
+                        <graphic>
+                            <SVGPath styleClass="whatsapp-action-icon"
+                                     content="M17 10.5 V6 C17 5.45 16.55 5 16 5 H4 C3.45 5 3 5.45 3 6 V18 C3 18.55 3.45 19 4 19 H16 C16.55 19 17 18.55 17 18 V13.5 L21 17.5 V6.5 L17 10.5 Z"/>
+                        </graphic>
+                        <tooltip><Tooltip text="Appel video"/></tooltip>
+                    </Button>
+                    <Button fx:id="searchConversationButton"
+                            onAction="#searchInCurrentConversation">
+                        <styleClass>
+                            <String fx:value="call-action-btn"/>
+                            <String fx:value="icon-only-btn"/>
+                        </styleClass>
+                        <graphic>
+                            <SVGPath styleClass="whatsapp-action-icon"
+                                     content="M9.5 3 C5.91 3 3 5.91 3 9.5 C3 13.09 5.91 16 9.5 16 C11.11 16 12.59 15.41 13.73 14.43 L18.29 18.99 L19.7 17.58 L15.14 13.02 C15.68 12.01 16 10.79 16 9.5 C16 5.91 13.09 3 9.5 3 Z M9.5 5 C11.99 5 14 7.01 14 9.5 C14 11.99 11.99 14 9.5 14 C7.01 14 5 11.99 5 9.5 C5 7.01 7.01 5 9.5 5 Z"/>
+                        </graphic>
+                        <tooltip><Tooltip text="Rechercher"/></tooltip>
+                    </Button>
+                    <Button fx:id="moreOptionsButton" text="..." styleClass="call-action-btn" onAction="#onMoreOptions"/>
+                </HBox>
+            </HBox>
+
+            <ListView fx:id="messagesListView" styleClass="messages-list" VBox.vgrow="ALWAYS"/>
+
+            <fx:include fx:id="selectionBar" source="message-selection-bar.fxml"/>
+
+            <VBox styleClass="input-bar">
+                <HBox fx:id="recordingWaveformBar" styleClass="recording-waveform-bar" managed="false" visible="false"/>
+                <HBox alignment="CENTER" spacing="8">
+                    <MenuButton fx:id="attachMenu" styleClass="input-icon-btn" mnemonicParsing="false">
+                        <graphic><Label text="+" styleClass="input-menu-label"/></graphic>
+                        <items>
+                            <MenuItem text="Photo / Video" onAction="#onUploadImage"/>
+                            <MenuItem text="Document" onAction="#onUploadFile"/>
+                            <MenuItem text="Contact" onAction="#onShareContact"/>
+                        </items>
+                    </MenuButton>
+
+                    <Button fx:id="emojiButton" text=":)" styleClass="input-icon-btn" onAction="#onToggleEmojiPicker"/>
+
+                    <TextField fx:id="messageField"
+                               promptText="Ecrire un message..."
+                               styleClass="message-input"
+                               HBox.hgrow="ALWAYS"
+                               onAction="#onSend"/>
+
+                    <Button fx:id="recordAudioButton"
+                            onAction="#onRecordAudio">
+                        <styleClass>
+                            <String fx:value="input-icon-btn"/>
+                            <String fx:value="icon-only-btn"/>
+                        </styleClass>
+                        <graphic>
+                            <SVGPath styleClass="whatsapp-action-icon"
+                                     content="M12 14 C13.66 14 15 12.66 15 11 V5 C15 3.34 13.66 2 12 2 C10.34 2 9 3.34 9 5 V11 C9 12.66 10.34 14 12 14 Z M17.3 11 C17.3 14 14.76 16.1 12 16.1 C9.24 16.1 6.7 14 6.7 11 H5 C5 14.41 7.72 17.23 11 17.72 V21 H13 V17.72 C16.28 17.24 19 14.42 19 11 H17.3 Z"/>
+                        </graphic>
+                        <tooltip><Tooltip text="Message audio"/></tooltip>
+                    </Button>
+
+                    <Button text=">" styleClass="send-btn-primary" onAction="#onSend"/>
+                </HBox>
+
+                <HBox fx:id="emojiBar" styleClass="emoji-bar" managed="false" visible="false">
+                    <ScrollPane styleClass="emoji-scroll" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED" HBox.hgrow="ALWAYS">
+                        <FlowPane fx:id="emojiGrid" styleClass="emoji-grid" prefWrapLength="440"/>
+                    </ScrollPane>
+                </HBox>
+            </VBox>
+        </VBox>
+    </center>
+
+</BorderPane>

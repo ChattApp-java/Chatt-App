@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="org.example.tpchatjavafx.client.controller.CreateGroupDialogController"
+      spacing="12" minWidth="360" maxWidth="520"
+      styleClass="group-dialog-content">
+    <padding><Insets top="18" right="18" bottom="18" left="18"/></padding>
+
+    <Label text="Nouveau groupe" styleClass="group-dialog-title"/>
+
+    <Label text="Nom du groupe *" styleClass="field-label"/>
+    <TextField fx:id="groupNameField" promptText="Ex: Projet Java 2026"
+               styleClass="message-input"/>
+
+    <Label text="Description" styleClass="field-label"/>
+    <TextArea fx:id="groupDescField"
+              promptText="Description du groupe (optionnel)"
+              prefRowCount="3" wrapText="true"
+              styleClass="message-input"/>
+
+    <Label text="Membres a ajouter" styleClass="field-label"/>
+    <ListView fx:id="contactsListView" minHeight="160" maxHeight="260"
+              styleClass="contact-list group-dialog-list"/>
+</VBox>

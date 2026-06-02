@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="org.example.tpchatjavafx.client.controller.GroupInfoDialogController"
+      spacing="16" style="-fx-background-color: #ffffff; -fx-padding: 24; -fx-background-radius: 12;"
+      prefWidth="400" prefHeight="500">
+
+    <VBox alignment="CENTER" spacing="8">
+        <StackPane styleClass="avatar-circle" style="-fx-background-color:#38bdf8; -fx-background-radius:50%; -fx-min-width:72px; -fx-min-height:72px; -fx-max-width:72px; -fx-max-height:72px;">
+            <Label fx:id="groupAvatarLabel" text="G" styleClass="avatar-letter" style="-fx-font-size: 32px;"/>
+        </StackPane>
+        <Label fx:id="groupNameLabel" text="Nom du Groupe" style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #0f172a;"/>
+        <Label fx:id="groupDescLabel" text="Description" style="-fx-font-size: 14px; -fx-text-fill: #64748b;" wrapText="true" textAlignment="CENTER"/>
+        <Label fx:id="groupStatsLabel" text="Créé le ... par ..." style="-fx-font-size: 11px; -fx-text-fill: #94a3b8;"/>
+    </VBox>
+
+    <Separator/>
+
+    <Label text="MEMBRES" style="-fx-font-size: 12px; -fx-text-fill: #64748b; -fx-font-weight: bold;"/>
+    
+    <ListView fx:id="membersListView" VBox.vgrow="ALWAYS" styleClass="contact-list"/>
+
+    <HBox alignment="CENTER_RIGHT" spacing="10">
+        <Button text="Fermer" onAction="#onClose" styleClass="group-create-btn" style="-fx-background-color: #f1f5f9; -fx-text-fill: #475569; -fx-border-color: #cbd5e1;"/>
+    </HBox>
+
+</VBox>

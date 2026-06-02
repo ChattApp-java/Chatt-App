@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<SplitPane xmlns="http://javafx.com/javafx"
+           xmlns:fx="http://javafx.com/fxml"
+           fx:controller="org.example.tpchatjavafx.client.controller.GroupController"
+           dividerPositions="0.28"
+           minWidth="800" minHeight="600"
+           VBox.vgrow="ALWAYS" HBox.hgrow="ALWAYS">
+
+    <!-- ── Panneau gauche : liste des groupes ── -->
+    <VBox styleClass="sidebar" minWidth="260" maxWidth="380" SplitPane.resizableWithParent="false">
+        <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
+
+        <Label text="👥 Groupes" styleClass="group-panel-title"/>
+
+        <Button fx:id="btnNewGroup" text="➕ Nouveau Groupe"
+                onAction="#onNewGroup"
+                styleClass="send-btn" maxWidth="Infinity"/>
+
+        <ListView fx:id="groupListView" styleClass="contact-list"
+                  VBox.vgrow="ALWAYS"/>
+    </VBox>
+
+    <!-- ── Panneau droit : chat de groupe ── -->
+    <VBox styleClass="chat-area" minWidth="400">
+
+        <!-- Top bar -->
+        <HBox styleClass="chat-top-bar" alignment="CENTER_LEFT" spacing="10">
+            <padding><Insets top="10" right="16" bottom="10" left="16"/></padding>
+            <Label fx:id="lblGroupName" text="Sélectionnez un groupe"
+                   styleClass="chat-contact-name" HBox.hgrow="ALWAYS"/>
+            <Button fx:id="btnAddMember" text="👤+"
+                    onAction="#onAddMember"
+                    styleClass="call-btn">
+                <tooltip><Tooltip text="Ajouter un membre"/></tooltip>
+            </Button>
+            <Button fx:id="btnStartMeeting" text="📹 Réunion"
+                    onAction="#onStartMeeting"
+                    styleClass="call-btn"
+                    visible="false" managed="false">
+                <tooltip><Tooltip text="Démarrer une réunion"/></tooltip>
+            </Button>
+        </HBox>
+
+        <!-- Zone messages -->
+        <ScrollPane fx:id="chatScroll" fitToWidth="true"
+                    styleClass="messages-list" VBox.vgrow="ALWAYS"/>
+
+        <!-- Barre de saisie -->
+        <HBox styleClass="input-bar" alignment="CENTER" spacing="10">
+            <padding><Insets top="10" right="16" bottom="10" left="16"/></padding>
+            <TextField fx:id="txtGroupMsg"
+                       promptText="Message au groupe..."
+                       styleClass="message-input"
+                       onAction="#onSendMessage"
+                       HBox.hgrow="ALWAYS"/>
+            <Button text="➤" styleClass="send-btn" onAction="#onSendMessage">
+                <tooltip><Tooltip text="Envoyer"/></tooltip>
+            </Button>
+        </HBox>
+    </VBox>
+
+</SplitPane>

@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="org.example.tpchatjavafx.client.controller.GroupMenuController"
+      spacing="16" style="-fx-background-color: #ffffff; -fx-padding: 24; -fx-background-radius: 12;"
+      prefWidth="350">
+
+    <VBox alignment="CENTER" spacing="8">
+        <StackPane styleClass="avatar-circle" style="-fx-background-color:#38bdf8; -fx-background-radius:50%; -fx-min-width:64px; -fx-min-height:64px; -fx-max-width:64px; -fx-max-height:64px;">
+            <Label fx:id="groupAvatarLabel" text="G" styleClass="avatar-letter" style="-fx-font-size: 28px;"/>
+        </StackPane>
+        <Label fx:id="groupNameLabel" text="Nom du Groupe" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #0f172a;"/>
+    </VBox>
+
+    <Separator/>
+
+    <ScrollPane fitToWidth="true" style="-fx-background-color: transparent;" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED">
+        <VBox spacing="4" style="-fx-background-color: transparent;">
+            
+            <Label text="OPTIONS" style="-fx-font-size: 11px; -fx-text-fill: #64748b; -fx-font-weight: bold;">
+                <VBox.margin><Insets top="8" bottom="4"/></VBox.margin>
+            </Label>
+            
+            <!-- Mute Option (Tache 6) -->
+            <HBox alignment="CENTER_LEFT" spacing="12" styleClass="menu-item" onMouseClicked="#onToggleMute" style="-fx-padding: 8 12; -fx-background-radius: 8; -fx-cursor: hand;">
+                <Label text="🔇" style="-fx-font-size: 16px;"/>
+                <Label text="Mode Sourdine (Mute)" style="-fx-font-size: 14px; -fx-text-fill: #334155;" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+                <CheckBox fx:id="muteCheckBox" mouseTransparent="true" focusTraversable="false"/>
+            </HBox>
+            
+            <!-- Favorite Option (Tache 6) -->
+            <HBox alignment="CENTER_LEFT" spacing="12" styleClass="menu-item" onMouseClicked="#onToggleFavorite" style="-fx-padding: 8 12; -fx-background-radius: 8; -fx-cursor: hand;">
+                <Label text="⭐" style="-fx-font-size: 16px;"/>
+                <Label text="Mettre en favori" style="-fx-font-size: 14px; -fx-text-fill: #334155;" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+                <CheckBox fx:id="favoriteCheckBox" mouseTransparent="true" focusTraversable="false"/>
+            </HBox>
+
+            <!-- Ephemeral Messages (Tache 3) -->
+            <HBox alignment="CENTER_LEFT" spacing="12" styleClass="menu-item" onMouseClicked="#onSetupEphemeral" style="-fx-padding: 8 12; -fx-background-radius: 8; -fx-cursor: hand;">
+                <Label text="⏱" style="-fx-font-size: 16px;"/>
+                <VBox>
+                    <Label text="Messages Ephemeres" style="-fx-font-size: 14px; -fx-text-fill: #334155;"/>
+                    <Label fx:id="ephemeralStatusLabel" text="Desactive" style="-fx-font-size: 11px; -fx-text-fill: #64748b;"/>
+                </VBox>
+            </HBox>
+            
+            <!-- Schedule Call (Tache 4) -->
+            <HBox alignment="CENTER_LEFT" spacing="12" styleClass="menu-item" onMouseClicked="#onScheduleCall" style="-fx-padding: 8 12; -fx-background-radius: 8; -fx-cursor: hand;">
+                <Label text="📅" style="-fx-font-size: 16px;"/>
+                <Label text="Planifier un appel" style="-fx-font-size: 14px; -fx-text-fill: #334155;" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+            </HBox>
+
+            <!-- Call Link (Tache 5) -->
+            <HBox alignment="CENTER_LEFT" spacing="12" styleClass="menu-item" onMouseClicked="#onGenerateCallLink" style="-fx-padding: 8 12; -fx-background-radius: 8; -fx-cursor: hand;">
+                <Label text="🔗" style="-fx-font-size: 16px;"/>
+                <Label text="Lien d'appel du groupe" style="-fx-font-size: 14px; -fx-text-fill: #334155;" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+            </HBox>
+            
+            <Label text="AUTRES" style="-fx-font-size: 11px; -fx-text-fill: #64748b; -fx-font-weight: bold;">
+                <VBox.margin><Insets top="16" bottom="4"/></VBox.margin>
+            </Label>
+            
+            <HBox alignment="CENTER_LEFT" spacing="12" styleClass="menu-item" onMouseClicked="#onShowMembers" style="-fx-padding: 8 12; -fx-background-radius: 8; -fx-cursor: hand;">
+                <Label text="👥" style="-fx-font-size: 16px;"/>
+                <Label text="Membres" style="-fx-font-size: 14px; -fx-text-fill: #334155;" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+            </HBox>
+
+            <HBox alignment="CENTER_LEFT" spacing="12" styleClass="menu-item" onMouseClicked="#onLeaveGroup" style="-fx-padding: 8 12; -fx-background-radius: 8; -fx-cursor: hand; -fx-background-color: #fef2f2;">
+                <Label text="🚪" style="-fx-font-size: 16px;"/>
+                <Label text="Quitter le groupe" style="-fx-font-size: 14px; -fx-text-fill: #ef4444;" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+            </HBox>
+
+        </VBox>
+    </ScrollPane>
+
+    <HBox alignment="CENTER_RIGHT" spacing="10">
+        <Button text="Fermer" onAction="#onClose" styleClass="group-create-btn" style="-fx-background-color: #f1f5f9; -fx-text-fill: #475569; -fx-border-color: #cbd5e1;"/>
+    </HBox>
+
+</VBox>

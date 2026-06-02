@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.geometry.Pos?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+
+<StackPane xmlns="http://javafx.com/javafx"
+           xmlns:fx="http://javafx.com/fxml"
+           fx:controller="org.example.tpchatjavafx.client.video.VideoCallController"
+           style="-fx-background-color: #0b141a;">
+
+    <BorderPane prefWidth="860" prefHeight="560" style="-fx-background-color: #0b141a;">
+
+        <center>
+            <StackPane>
+                <ImageView fx:id="remoteVideo"
+                           fitWidth="1280"
+                           fitHeight="720"
+                           preserveRatio="true" />
+
+                <VBox fx:id="remotePlaceholder"
+                      alignment="CENTER"
+                      spacing="14"
+                      style="-fx-background-color: linear-gradient(to bottom, #111b21, #0b141a);">
+                    <StackPane minWidth="108" minHeight="108" maxWidth="108" maxHeight="108"
+                               style="-fx-background-color: #233138; -fx-background-radius: 54;">
+                        <Label text="Cam"
+                               style="-fx-text-fill: #d1d7db; -fx-font-size: 24px; -fx-font-weight: bold;" />
+                    </StackPane>
+                    <Label fx:id="remoteNameLabel"
+                           text="Contact"
+                           style="-fx-text-fill: white; -fx-font-size: 24px; -fx-font-weight: bold;" />
+                    <Label text="Connexion video en cours"
+                           style="-fx-text-fill: #aebac1; -fx-font-size: 13px;" />
+                </VBox>
+
+                <BorderPane pickOnBounds="false">
+                    <top>
+                        <HBox alignment="CENTER_LEFT" spacing="12"
+                              style="-fx-background-color: rgba(17, 27, 33, 0.82); -fx-padding: 14 18 14 18;">
+                            <VBox spacing="2">
+                                <Label fx:id="callTypeLabel"
+                                       text="Appel video"
+                                       style="-fx-text-fill: #25d366; -fx-font-size: 12px; -fx-font-weight: bold;" />
+                                <Label text="Contact"
+                                       fx:id="remoteNameOverlayLabel"
+                                       style="-fx-text-fill: white; -fx-font-size: 18px; -fx-font-weight: bold;" />
+                            </VBox>
+                            <Region HBox.hgrow="ALWAYS" />
+                            <VBox alignment="CENTER_RIGHT" spacing="2">
+                                <Label fx:id="statusLabel"
+                                       text="Connexion video active"
+                                       style="-fx-text-fill: #d1d7db; -fx-font-size: 12px;" />
+                                <Label fx:id="timerLabel"
+                                       text="00:00"
+                                       style="-fx-text-fill: white; -fx-font-size: 15px; -fx-font-weight: bold;" />
+                            </VBox>
+                        </HBox>
+                    </top>
+
+                    <bottom>
+                        <HBox alignment="BOTTOM_CENTER" spacing="16" BorderPane.alignment="CENTER"
+                              style="-fx-padding: 0 0 18 0;">
+                            <Button fx:id="videoButton" text="Cam" onAction="#onToggleVideo" />
+                            <Button fx:id="speakerButton" text="HP" onAction="#onToggleSpeaker" />
+                            <Button fx:id="micButton" text="Mic" onAction="#onToggleMic" />
+                            <Button fx:id="endCallButton" text="Fin" onAction="#onEndCall" />
+                        </HBox>
+                    </bottom>
+
+                    <right>
+                        <VBox alignment="BOTTOM_RIGHT" BorderPane.alignment="BOTTOM_RIGHT"
+                              style="-fx-padding: 0 16 88 0;">
+                            <StackPane maxWidth="168" maxHeight="118"
+                                       style="-fx-background-color: rgba(17, 27, 33, 0.92); -fx-background-radius: 16; -fx-border-color: rgba(255,255,255,0.12); -fx-border-width: 1; -fx-border-radius: 16;">
+                                <VBox fx:id="localPlaceholder"
+                                      alignment="CENTER"
+                                      spacing="6"
+                                      prefWidth="168"
+                                      prefHeight="118"
+                                      style="-fx-background-color: rgba(17, 27, 33, 0.92); -fx-background-radius: 16;">
+                                    <Label text="Votre camera"
+                                           style="-fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: bold;" />
+                                    <Label text="Desactivee"
+                                           style="-fx-text-fill: #aebac1; -fx-font-size: 11px;" />
+                                </VBox>
+                                <ImageView fx:id="localVideo"
+                                           fitWidth="168"
+                                           fitHeight="118"
+                                           preserveRatio="true" />
+                            </StackPane>
+                        </VBox>
+                    </right>
+                </BorderPane>
+            </StackPane>
+        </center>
+    </BorderPane>
+
+    <padding>
+        <Insets top="0" right="0" bottom="0" left="0" />
+    </padding>
+</StackPane>

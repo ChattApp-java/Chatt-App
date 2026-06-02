@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="org.example.tpchatjavafx.client.controller.IncomingMeetingDialogController"
+            prefWidth="1020" prefHeight="620"
+            style="-fx-background-color: linear-gradient(to bottom, #ffffff, #eef6ff);">
+    <center>
+        <VBox spacing="22" BorderPane.alignment="CENTER" style="-fx-padding: 28;">
+            <VBox alignment="CENTER" spacing="8">
+                <Label fx:id="titleLabel" text="Invitation de Contact"
+                       style="-fx-text-fill: #11407d; -fx-font-size: 28; -fx-font-weight: bold;"/>
+                <Label fx:id="sectionStatusLabel" text="En attente de votre reponse"
+                       style="-fx-text-fill: #5f7fa8; -fx-font-size: 14;"/>
+            </VBox>
+
+            <StackPane prefWidth="900" prefHeight="400" maxWidth="900" maxHeight="400"
+                       style="-fx-background-color: white; -fx-background-radius: 24; -fx-border-color: rgba(47,123,224,0.16); -fx-border-radius: 24; -fx-border-width: 1;">
+                <ImageView fx:id="cameraPreview" fitWidth="860" fitHeight="360" preserveRatio="true"/>
+                <StackPane fx:id="previewPlaceholder" style="-fx-background-color: linear-gradient(to bottom right, #8ac3ff, #2c7be5); -fx-background-radius: 18;"
+                           maxWidth="860" maxHeight="360" prefWidth="860" prefHeight="360">
+                    <Label text="Camera en cours de detection"
+                           style="-fx-text-fill: white; -fx-font-size: 24; -fx-font-weight: bold;"/>
+                </StackPane>
+            </StackPane>
+
+            <HBox alignment="CENTER" spacing="14">
+                <Button style="-fx-background-color: #edf5ff; -fx-background-radius: 22; -fx-min-width: 84; -fx-min-height: 52; -fx-cursor: hand;">
+                    <graphic><FontIcon iconLiteral="fas-video" iconSize="20" iconColor="#2c7be5"/></graphic>
+                </Button>
+                <Button style="-fx-background-color: #edf5ff; -fx-background-radius: 22; -fx-min-width: 84; -fx-min-height: 52; -fx-cursor: hand;">
+                    <graphic><FontIcon iconLiteral="fas-microphone" iconSize="20" iconColor="#2c7be5"/></graphic>
+                </Button>
+            </HBox>
+
+            <VBox alignment="CENTER" spacing="4">
+                <Label fx:id="initiatorLabel" text="Contact"
+                       style="-fx-text-fill: #11407d; -fx-font-size: 18; -fx-font-weight: bold;"/>
+                <Label fx:id="meetingTypeLabel" text="Appel video"
+                       style="-fx-text-fill: #6b89af; -fx-font-size: 13;"/>
+                <Label fx:id="previewStatusLabel" text="Recherche camera..."
+                       style="-fx-text-fill: #2c7be5; -fx-font-size: 12; -fx-font-weight: bold;"/>
+            </VBox>
+        </VBox>
+    </center>
+
+    <bottom>
+        <HBox alignment="CENTER" spacing="14" style="-fx-background-color: rgba(255,255,255,0.92); -fx-padding: 18 24 18 24; -fx-border-color: rgba(47,123,224,0.10); -fx-border-width: 1 0 0 0;">
+            <Button fx:id="rejectButton" onAction="#onRejectMeeting"
+                    text="Ignorer"
+                    style="-fx-background-color: #eef4fb; -fx-text-fill: #2d4768; -fx-font-size: 16; -fx-font-weight: bold; -fx-background-radius: 22; -fx-min-width: 190; -fx-min-height: 54; -fx-cursor: hand;" />
+            <Button fx:id="joinButton" onAction="#onJoinMeeting"
+                    text="Rejoindre"
+                    style="-fx-background-color: #2c7be5; -fx-text-fill: white; -fx-font-size: 16; -fx-font-weight: bold; -fx-background-radius: 22; -fx-min-width: 190; -fx-min-height: 54; -fx-cursor: hand;" />
+        </HBox>
+    </bottom>
+</BorderPane>
