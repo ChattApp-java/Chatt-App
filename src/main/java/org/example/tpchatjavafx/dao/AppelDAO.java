@@ -67,9 +67,6 @@ public class AppelDAO {
         return list;
     }
 
-    /**
-     * P2 : Retourne les appels liés à une réunion spécifique.
-     */
     public List<Appel> getAppelsByReunionId(int reunionId) throws SQLException {
         List<Appel> list = new ArrayList<>();
         String sql = "SELECT * FROM appel WHERE reunion_id = ? ORDER BY date_heure DESC";

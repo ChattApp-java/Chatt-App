@@ -10,9 +10,6 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.util.function.Consumer;
 
-/**
- * Capture vidéo de la webcam avec JavaCV.
- */
 public class VideoCaptureService {
 
     private FrameGrabber grabber;
@@ -28,14 +25,13 @@ public class VideoCaptureService {
         if (isRunning) return;
 
         try {
-            grabber = new OpenCVFrameGrabber(0); // Webcam par défaut
+            grabber = new OpenCVFrameGrabber(0); 
             grabber.setImageWidth(640);
             grabber.setImageHeight(480);
             grabber.start();
             converter = new Java2DFrameConverter();
             isRunning = true;
 
-            // Thread de capture
             new Thread(this::captureLoop, "VideoCapture").start();
 
         } catch (FrameGrabber.Exception e) {
@@ -52,7 +48,6 @@ public class VideoCaptureService {
                 if (frame != null && frame.image != null) {
                     BufferedImage bufferedImage = converter.convert(frame);
 
-                    // Envoyer 1 frame tous les 3 (3-4 FPS)
                     if (frameSkip++ % 3 == 0) {
                         byte[] jpegData = convertToJPEG(bufferedImage);
                         if (onFrameCaptured != null) {
@@ -66,7 +61,7 @@ public class VideoCaptureService {
             }
 
             try {
-                Thread.sleep(30); // ~33 FPS capture, skip 2/3
+                Thread.sleep(30); 
             } catch (InterruptedException e) {
                 break;
             }
@@ -75,7 +70,7 @@ public class VideoCaptureService {
 
     private byte[] convertToJPEG(BufferedImage image) {
         try {
-            // Redimensionner pour réduire bande passante
+
             BufferedImage resized = new BufferedImage(
                     320, 240, BufferedImage.TYPE_INT_RGB
             );
@@ -83,7 +78,6 @@ public class VideoCaptureService {
             g2d.drawImage(image, 0, 0, 320, 240, null);
             g2d.dispose();
 
-            // Convertir en JPEG
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             ImageIO.write(resized, "jpg", baos);
             return baos.toByteArray();
@@ -109,7 +103,7 @@ public class VideoCaptureService {
                 grabber.stop();
                 grabber.release();
             } catch (FrameGrabber.Exception e) {
-                System.err.println("Erreur arrêt webcam: " + e.getMessage());
+                System.err.println("Erreur arrÃƒÂªt webcam: " + e.getMessage());
             }
         }
         if (converter != null) {

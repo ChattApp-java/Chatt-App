@@ -23,7 +23,6 @@ public class DbMigration {
             System.err.println("Could not ensure database exists: " + e.getMessage());
         }
 
-        // Apply base schema
         try (Connection conn = DatabaseConnection.getInstance().getConnection();
              Statement stmt = conn.createStatement()) {
             String content = new String(java.nio.file.Files.readAllBytes(java.nio.file.Paths.get("chattapp_db.sql")));
@@ -43,20 +42,18 @@ public class DbMigration {
         }
 
         String[] statements = {
-            // Tâche 1: Citations
+
             "ALTER TABLE message ADD COLUMN message_parent_id INT NULL",
             "ALTER TABLE message ADD COLUMN reply_preview_text VARCHAR(255) NULL",
             "ALTER TABLE message ADD COLUMN reply_to_user_id INT NULL",
             "ALTER TABLE message ADD CONSTRAINT fk_msg_parent FOREIGN KEY (message_parent_id) REFERENCES message(id) ON DELETE SET NULL",
             "ALTER TABLE message ADD CONSTRAINT fk_reply_to_user FOREIGN KEY (reply_to_user_id) REFERENCES utilisateur(id) ON DELETE SET NULL",
 
-            // Tâche 2: Options de groupe
             "ALTER TABLE groupe ADD COLUMN ephemeral_timer INT DEFAULT 0",
             "ALTER TABLE groupe_membre ADD COLUMN is_muted BOOLEAN DEFAULT FALSE",
             "ALTER TABLE groupe_membre ADD COLUMN muted_until DATETIME NULL",
             "ALTER TABLE groupe_membre ADD COLUMN is_favorite BOOLEAN DEFAULT FALSE",
 
-            // Tâche 4: Planification d'appels
             "CREATE TABLE IF NOT EXISTS appel_planifie (" +
             "  id INT AUTO_INCREMENT PRIMARY KEY," +
             "  groupe_id INT NOT NULL," +

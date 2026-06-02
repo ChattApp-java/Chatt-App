@@ -17,9 +17,6 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Consumer;
 
-/**
- * Client TCP — gère la connexion au serveur, l'auth et la réception de messages.
- */
 public class NetworkClient {
 
     private final String serverHost;
@@ -30,10 +27,9 @@ public class NetworkClient {
     private String      username;
     private int         userId;
 
-    // ── Callbacks ────────────────────────────────────────────
     private Consumer<ChatMessage>  onMessageReceived;
-    private Consumer<ChatMessage>  onAuthSuccess;   // reçoit le message complet
-    private Consumer<String>       onAuthFail;      // reçoit la raison
+    private Consumer<ChatMessage>  onAuthSuccess;   
+    private Consumer<String>       onAuthFail;      
     private Consumer<List<String>> onUserListReceived;
     private Consumer<List<String>> onContactListReceived;
     private Consumer<ChatMessage>  onHistoryReceived;
@@ -61,7 +57,6 @@ public class NetworkClient {
         this.serverPort = serverPort;
     }
 
-    // ── Setters callbacks ────────────────────────────────────
     public void setOnMessageReceived(Consumer<ChatMessage> cb)   { onMessageReceived   = cb; }
     public void setOnAuthSuccess(Consumer<ChatMessage> cb)        { onAuthSuccess        = cb; }
     public void setOnAuthFail(Consumer<String> cb)                { onAuthFail           = cb; }
@@ -84,7 +79,7 @@ public class NetworkClient {
     private Consumer<ChatMessage> onMeetingInfo;
     private Consumer<ChatMessage> onMeetingParticipants;
     private Consumer<ChatMessage> onMeetingNonParticipantsResponse;
-    // ── Callbacks Groupes ─────────────────────────────────────
+
     private Consumer<ChatMessage> onGroupCreated;
     private Consumer<ChatMessage> onGroupListResponse;
     private Consumer<ChatMessage> onGroupMessage;
@@ -170,23 +165,18 @@ public class NetworkClient {
     public void setOnGroupMemberRemoved(Consumer<ChatMessage> cb)   { this.onGroupMemberRemoved = cb; }
     public void setOnGroupMembersResponse(Consumer<ChatMessage> cb) { this.onGroupMembersResponse = cb; }
     public void setOnGroupHistoryResponse(Consumer<ChatMessage> cb) { this.onGroupHistoryResponse = cb; }
-    // ── Connexion ─────────────────────────────────────────────
 
-    /** Ouvre la socket TCP et démarre le thread d'écoute. Ne se logue PAS encore. */
     public void connect() throws IOException {
         socket = new Socket(serverHost, serverPort);
         out    = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()), true);
         startListenerThread();
     }
 
-    // ── Auth ─────────────────────────────────────────────────
-
     public void login(String username, String password) {
         this.username = username;
         send(new ChatMessage(MessageType.LOGIN, username, null, null, password));
     }
 
-    /** content = "password|email" */
     public void register(String username, String password, String email) {
         this.username = username;
         String content = password + "|" + (email == null ? "" : email);
@@ -301,7 +291,6 @@ public class NetworkClient {
         syncedMeetingMediaPorts.add(meetingId);
         sendMeetingJoin(meetingId);
     }
-
 
     public void leaveMeeting(int meetingId) {
         System.out.println("[NET_CLIENT] leaveMeeting: meeting=" + meetingId);
@@ -478,15 +467,10 @@ public class NetworkClient {
         return normalized;
     }
 
-    // ── Envoi ────────────────────────────────────────────────
     public void createGroup(String nom, String description) {
         createGroup(nom, description, java.util.List.of());
     }
 
-    /**
-     * Crée un groupe avec une liste initiale de membres (IDs séparés par virgule).
-     * Format serveur : "nom;description;id1,id2,id3"
-     */
     public void createGroup(String name, String description, java.util.List<String> members) {
         String membersCsv = (members == null) ? "" : String.join(",", members);
         String content = name + ";" + (description == null ? "" : description) + ";" + membersCsv;
@@ -563,8 +547,6 @@ public class NetworkClient {
         }
     }
 
-    // ── Getters ──────────────────────────────────────────────
-
     private int parseIntSafe(String value, int defaultValue) {
         try {
             return value == null || value.isBlank() ? defaultValue : Integer.parseInt(value);
@@ -580,8 +562,6 @@ public class NetworkClient {
         try { if (socket != null) socket.close(); }
         catch (IOException ignored) {}
     }
-
-    // ── Thread d'écoute ───────────────────────────────────────
 
     private void startListenerThread() {
         Thread t = new Thread(() -> {
@@ -602,7 +582,6 @@ public class NetworkClient {
         t.start();
     }
 
-    /** Dispatch d'un message reçu vers le bon callback. */
     private void dispatch(ChatMessage msg) {
         if (msg == null) return;
         Platform.runLater(() -> {
@@ -775,6 +754,5 @@ public class NetworkClient {
             }
         });
     }
-
 
 }

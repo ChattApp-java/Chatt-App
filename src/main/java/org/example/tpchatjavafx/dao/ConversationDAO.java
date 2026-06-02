@@ -9,7 +9,7 @@ import java.util.List;
 public class ConversationDAO {
 
     public Conversation createConversation(int user1Id, int user2Id) throws SQLException {
-        // Vérifier si la conversation existe déjà
+
         Conversation existing = findConversationBetween(user1Id, user2Id);
         if (existing != null) {
             return existing;
@@ -18,7 +18,7 @@ public class ConversationDAO {
         Connection conn = DatabaseConnection.getInstance().getConnection();
         conn.setAutoCommit(false);
         try {
-            // Créer la conversation (type INDIVIDUEL par défaut)
+
             String sqlConv = "INSERT INTO conversation (type) VALUES (?)";
             int convId = -1;
             try (PreparedStatement stmt = conn.prepareStatement(sqlConv, Statement.RETURN_GENERATED_KEYS)) {
@@ -29,7 +29,6 @@ public class ConversationDAO {
                 }
             }
 
-            // Ajouter les participants
             String sqlPart = "INSERT INTO participant_conversation (conversation_id, utilisateur_id) VALUES (?, ?)";
             try (PreparedStatement stmt = conn.prepareStatement(sqlPart)) {
                 stmt.setInt(1, convId);
@@ -74,9 +73,6 @@ public class ConversationDAO {
         return null;
     }
 
-    /**
-     * P2 : Retourne les conversations liées à un groupe spécifique.
-     */
     public List<Conversation> getConversationsByGroupeId(int groupeId) throws SQLException {
         List<Conversation> list = new ArrayList<>();
         String sql = "SELECT id, type, groupe_id FROM conversation WHERE groupe_id = ? ORDER BY id DESC";
@@ -111,11 +107,11 @@ public class ConversationDAO {
         try {
             String type = rs.getString("type");
             conv.setType(type != null ? type : Conversation.TYPE_INDIVIDUEL);
-        } catch (SQLException ignored) { /* colonne absente dans ancien schéma */ }
+        } catch (SQLException ignored) {  }
         try {
             int gid = rs.getInt("groupe_id");
             if (!rs.wasNull()) conv.setGroupeId(gid);
-        } catch (SQLException ignored) { /* colonne absente dans ancien schéma */ }
+        } catch (SQLException ignored) {  }
         return conv;
     }
 }

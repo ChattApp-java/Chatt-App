@@ -19,10 +19,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-/**
- * GÃ¨re la connexion d'UN client (thread dÃ©diÃ©).
- * ResponsabilitÃ©s : auth, persistance messages, routage.
- */
 public class ClientHandler implements Runnable {
 
     private final Socket     socket;
@@ -48,16 +44,12 @@ public class ClientHandler implements Runnable {
     public String getSocketId() { return socketId; }
     public Socket getSocket() { return socket; }
 
-    // â”€â”€ Envoi â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
     public void send(ChatMessage msg) {
         if (out != null) {
             out.println(msg.serialize());
             out.flush();
         }
     }
-
-    // â”€â”€ Boucle principale â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @Override
     public void run() {
@@ -75,8 +67,6 @@ public class ClientHandler implements Runnable {
             cleanup();
         }
     }
-
-    // â”€â”€ Traitement d'une ligne â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private void processLine(String line) {
         if (line.isBlank()) return;
@@ -121,7 +111,6 @@ public class ClientHandler implements Runnable {
             }
             case LOGOUT   -> cleanup();
 
-            // ===== APPELS =====
             case CALL_REQUEST -> {
                 if (username != null) handleCallRequest(msg);
             }
@@ -199,13 +188,11 @@ public class ClientHandler implements Runnable {
             }
 
             default       -> {
-                // N'autoriser que les utilisateurs authentifiÃ©s
+
                 if (username != null) persistAndRoute(msg);
             }
         }
     }
-
-    // â”€â”€ Auth â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private void handleLogin(ChatMessage msg) {
         String uname    = msg.getFrom();
@@ -252,15 +239,15 @@ public class ClientHandler implements Runnable {
             }
 
             if (contact.getId() == userId) {
-                send(new ChatMessage(MessageType.ERROR, "SERVER", username, null, "Vous ne pouvez pas vous ajouter vous-mÃªme."));
+                send(new ChatMessage(MessageType.ERROR, "SERVER", username, null, "Vous ne pouvez pas vous ajouter vous-mÃƒÆ’Ã‚Âªme."));
                 return;
             }
 
             boolean added = contactDAO.addContact(userId, contact.getId());
             if (added) {
-                handleContactLoad(); // Envoyer la liste mise Ã  jour
+                handleContactLoad(); 
             } else {
-                send(new ChatMessage(MessageType.ERROR, "SERVER", username, null, "L'utilisateur est dÃ©jÃ  dans vos contacts."));
+                send(new ChatMessage(MessageType.ERROR, "SERVER", username, null, "L'utilisateur est dÃƒÆ’Ã‚Â©jÃƒÆ’Ã‚Â  dans vos contacts."));
             }
         } catch (Exception e) {
             send(new ChatMessage(MessageType.ERROR, "SERVER", username, null, "Erreur lors de l'ajout du contact : " + e.getMessage()));
@@ -296,7 +283,7 @@ public class ClientHandler implements Runnable {
                 sendError("Ce contact n'existe pas dans votre liste.");
                 return;
             }
-            
+
             org.example.tpchatjavafx.model.Conversation conv = convDAO.findConversationBetween(userId, contact.getId());
             if (conv != null) {
                 messageDAO.deleteConversationMessages(conv.getId());
@@ -316,7 +303,7 @@ public class ClientHandler implements Runnable {
                 sendError("Ce contact n'existe pas dans votre liste.");
                 return;
             }
-            
+
             org.example.tpchatjavafx.model.Conversation conv = convDAO.findConversationBetween(userId, contactId);
             if (conv != null) {
                 messageDAO.deleteConversationMessages(conv.getId());
@@ -335,11 +322,9 @@ public class ClientHandler implements Runnable {
         this.userId = user.getId();
         ChatServer.registerClient(username, userId, this);
 
-        // Envoi auth success avec l'ID
         send(new ChatMessage(MessageType.AUTH_SUCCESS, "SERVER", String.valueOf(userId), null, username));
-        System.out.println("[Auth] ConnectÃ© : " + username);
+        System.out.println("[Auth] ConnectÃƒÆ’Ã‚Â© : " + username);
 
-        // Push messages non lus
         try {
             List<Message> unread = messageDAO.getUnreadMessages(userId);
             for (Message m : unread) {
@@ -356,7 +341,6 @@ public class ClientHandler implements Runnable {
                 }
                 cmsg.setRead(m.isEstLu());
 
-                // Load binary data if it's a media message
                 if (m.getType().contains("PRIVATE_AUDIO") || m.getType().contains("PRIVATE_IMAGE") || m.getType().contains("PRIVATE_FILE")) {
                     try {
                         org.example.tpchatjavafx.model.FichierMedia fm = fichierMediaDAO.findByMessageId(m.getId());
@@ -367,12 +351,12 @@ public class ClientHandler implements Runnable {
                             }
                         }
                     } catch (Exception e) {
-                        System.err.println("Erreur chargement mÃ©dia offline: " + e.getMessage());
+                        System.err.println("Erreur chargement mÃƒÆ’Ã‚Â©dia offline: " + e.getMessage());
                     }
                 }
 
                 send(cmsg);
-                // Marquer lu ? Si le client l'affiche, oui
+
                 messageDAO.markAsRead(m.getId());
             }
         } catch (Exception e) {
@@ -381,8 +365,6 @@ public class ClientHandler implements Runnable {
     }
 
     private final org.example.tpchatjavafx.dao.FichierMediaDAO fichierMediaDAO = new org.example.tpchatjavafx.dao.FichierMediaDAO();
-
-    // â”€â”€ Persistance + routage â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private void persistAndRoute(ChatMessage msg) {
         msg.setTimestamp(LocalDateTime.now().format(timeFormatter));
@@ -409,7 +391,6 @@ public class ClientHandler implements Runnable {
                     Message saved = messageDAO.create(m);
                     msg.setMessageId(saved.getId());
 
-                    // Handling FichierMedia
                     if (msg.getBinaryData() != null && msg.getBinaryData().length > 0) {
                         String uploadDir = "server_uploads";
                         File dir = new File(uploadDir);
@@ -426,7 +407,7 @@ public class ClientHandler implements Runnable {
                         org.example.tpchatjavafx.model.FichierMedia fm;
                         if (msg.getType() == MessageType.PRIVATE_AUDIO) {
                             org.example.tpchatjavafx.model.Vocal vocal = new org.example.tpchatjavafx.model.Vocal();
-                            vocal.setDuree(0); // To compute or pass via msg later
+                            vocal.setDuree(0); 
                             fm = vocal;
                         } else {
                             fm = new org.example.tpchatjavafx.model.FichierMedia();
@@ -450,7 +431,7 @@ public class ClientHandler implements Runnable {
                     }
                 }
             } catch (Exception e) {
-                System.err.println("[Handler] Persistance Ã©chouÃ©e : " + e.getMessage());
+                System.err.println("[Handler] Persistance ÃƒÆ’Ã‚Â©chouÃƒÆ’Ã‚Â©e : " + e.getMessage());
                 e.printStackTrace();
             }
         }
@@ -894,7 +875,7 @@ public class ClientHandler implements Runnable {
             try {
                 ids.add(Integer.parseInt(t));
             } catch (NumberFormatException e) {
-                // RÃ©solution par pseudo
+
                 try {
                     org.example.tpchatjavafx.model.Utilisateur u = userDAO.findByUsername(t);
                     if (u != null) ids.add(u.getId());
@@ -912,7 +893,7 @@ public class ClientHandler implements Runnable {
         try {
             return Integer.parseInt(content.trim());
         } catch (NumberFormatException e) {
-            // Tentative de rÃ©solution par pseudo
+
             try {
                 org.example.tpchatjavafx.model.Utilisateur u = userDAO.findByUsername(content.trim());
                 if (u != null) return u.getId();
@@ -931,8 +912,6 @@ public class ClientHandler implements Runnable {
     private void sendError(String message) {
         send(new ChatMessage(MessageType.ERROR, "SERVER", username, null, message));
     }
-
-    // â”€â”€ Nettoyage â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private void sendGroupListToUser(int targetUserId) {
         try {
@@ -981,20 +960,20 @@ public class ClientHandler implements Runnable {
 
         Set<ClientHandler> targetHandlers = ChatServer.clients.get(targetUser);
         if (targetHandlers != null && !targetHandlers.isEmpty()) {
-            // Utilisateur en ligne - envoyer notification
+
             ChatMessage notification = new ChatMessage();
             notification.setType(MessageType.CALL_INCOMING);
             notification.setFrom(username);
             notification.setTo(targetUser);
             notification.setCallType(callType);
             notification.setRemoteHost(socket.getInetAddress().getHostAddress());
-            notification.setRemotePort(9999); // Port local pour rÃ©ception
+            notification.setRemotePort(9999); 
 
             for (ClientHandler handler : targetHandlers) {
                 handler.send(notification);
             }
         } else {
-            // Utilisateur non connectÃ©
+
             ChatMessage response = new ChatMessage();
             response.setType(MessageType.ERROR);
             response.setContent("Utilisateur hors ligne");
@@ -1016,7 +995,7 @@ public class ClientHandler implements Runnable {
             answer.setTo(callerId);
             answer.setCallType(msg.getCallType());
             answer.setRemoteHost(socket.getInetAddress().getHostAddress());
-            answer.setRemotePort(10000); // Port local pour rÃ©ception
+            answer.setRemotePort(10000); 
 
             for (ClientHandler handler : callerHandlers) {
                 handler.send(answer);
@@ -1044,7 +1023,7 @@ public class ClientHandler implements Runnable {
 
     private void handleCallEnd(ChatMessage msg) {
         System.out.println("[Server] " + username + " termine appel");
-        // Notification au client distant (optionnel)
+
     }
 
     private void handleHistoryRequest(ChatMessage msg) {
@@ -1064,7 +1043,7 @@ public class ClientHandler implements Runnable {
                             MessageType.SYNC_HISTORY,
                             senderName,
                             recipientName,
-                            m.getType(), // Pass original type (PRIVATE_AUDIO, etc.)
+                            m.getType(), 
                         m.getContenu()
                 );
                 syncMsg.setMessageId(m.getId());
@@ -1073,7 +1052,6 @@ public class ClientHandler implements Runnable {
                     syncMsg.setTimestamp(m.getDateEnvoi().format(timeFormatter));
                 }
 
-                    // Charger les donnÃ©es binaires si c'est un mÃ©dia
                     if (m.getType().contains("AUDIO") || m.getType().contains("IMAGE") || m.getType().contains("FILE")) {
                         try {
                             org.example.tpchatjavafx.model.FichierMedia fm = fichierMediaDAO.findByMessageId(m.getId());
@@ -1084,7 +1062,7 @@ public class ClientHandler implements Runnable {
                                 }
                             }
                         } catch (Exception e) {
-                            System.err.println("Erreur chargement mÃ©dia historique: " + e.getMessage());
+                            System.err.println("Erreur chargement mÃƒÆ’Ã‚Â©dia historique: " + e.getMessage());
                         }
                     }
                     send(syncMsg);
@@ -1180,4 +1158,3 @@ public class ClientHandler implements Runnable {
         }
     }
 }
-

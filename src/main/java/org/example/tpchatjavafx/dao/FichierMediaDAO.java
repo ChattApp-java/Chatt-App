@@ -12,13 +12,13 @@ public class FichierMediaDAO {
         String sql = "INSERT INTO fichier_media (message_id, nom_fichier, chemin_acces, taille, type) VALUES (?, ?, ?, ?, ?)";
         try (Connection conn = DatabaseConnection.getInstance().getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            
+
             pstmt.setInt(1, f.getMessageId());
             pstmt.setString(2, f.getNomFichier());
             pstmt.setString(3, f.getCheminAcces());
             pstmt.setLong(4, f.getTaille());
             pstmt.setString(5, f.getType());
-            
+
             int affectedRows = pstmt.executeUpdate();
             if (affectedRows == 0) {
                 throw new SQLException("Creating fichier_media failed, no rows affected.");
@@ -31,8 +31,7 @@ public class FichierMediaDAO {
                     throw new SQLException("Creating fichier_media failed, no ID obtained.");
                 }
             }
-            
-            // Gestion de l'héritage
+
             if (f instanceof Vocal vocal) {
                 String sqlVocal = "INSERT INTO vocal (id, duree) VALUES (?, ?)";
                 try (PreparedStatement pstVocal = conn.prepareStatement(sqlVocal)) {
@@ -49,7 +48,7 @@ public class FichierMediaDAO {
                     pstVideo.executeUpdate();
                 }
             }
-            
+
             return f;
         }
     }

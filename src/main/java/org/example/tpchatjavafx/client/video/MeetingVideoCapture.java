@@ -8,11 +8,6 @@ import java.net.SocketTimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 
-/**
- * Relais vidéo UDP pour les réunions (réception + envoi).
- * La capture locale est gérée par {@link org.example.tpchatjavafx.client.controller.MeetingController}
- * via webcam-capture (sarxos), pas JavaCV/FFmpeg.
- */
 public class MeetingVideoCapture {
 
     private DatagramSocket socket;

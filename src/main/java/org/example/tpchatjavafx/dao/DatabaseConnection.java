@@ -13,18 +13,12 @@ public class DatabaseConnection {
     private DatabaseConnection() {
         HikariConfig config = new HikariConfig();
 
-        // ============================================
-        // CONFIGURATION TIDB CLOUD (ONLINE)
-        // ============================================
-
-        // Vos informations TiDB Cloud
         String host = "gateway01.eu-central-1.prod.aws.tidbcloud.com";
         String port = "4000";
-        String database = "wechat";  // ← Votre base créée dans SQL Editor
+        String database = "wechat";  
         String user = "43jvDrD7MyYUkLK.root";
-        String password = "MtY04UxKcRkHvHxR";  // ← Votre password
+        String password = "MtY04UxKcRkHvHxR";  
 
-        // Si erreur SSL, ajoutez le chemin du certificat
         config.setJdbcUrl("jdbc:mysql://" + host + ":" + port + "/" + database
                 + "?sslMode=VERIFY_IDENTITY"
                 + "&serverTimezone=UTC"
@@ -34,17 +28,12 @@ public class DatabaseConnection {
         config.setUsername(user);
         config.setPassword(password);
 
-        // ============================================
-        // CONFIGURATION HIKARI (optimisée pour cloud)
-        // ============================================
-
         config.setMaximumPoolSize(10);
         config.setMinimumIdle(2);
         config.setConnectionTimeout(30000);
         config.setIdleTimeout(600000);
         config.setMaxLifetime(1800000);
 
-        // Optimisations requêtes
         config.addDataSourceProperty("cachePrepStmts", "true");
         config.addDataSourceProperty("prepStmtCacheSize", "250");
         config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
@@ -52,7 +41,7 @@ public class DatabaseConnection {
 
         dataSource = new HikariDataSource(config);
 
-        System.out.println("✅ Connexion TiDB Cloud initialisée !");
+        System.out.println("Ã¢Å“â€¦ Connexion TiDB Cloud initialisÃƒÂ©e !");
     }
 
     public static DatabaseConnection getInstance() {
@@ -73,7 +62,7 @@ public class DatabaseConnection {
     public void close() {
         if (dataSource != null) {
             dataSource.close();
-            System.out.println("🔒 Pool de connexions fermé.");
+            System.out.println("Ã°Å¸â€â€™ Pool de connexions fermÃƒÂ©.");
         }
     }
 }

@@ -6,9 +6,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.function.IntConsumer;
 
-/**
- * Joue l'audio recu du reseau.
- */
 public class AudioPlaybackService {
     private static final int MAX_QUEUE_PACKETS = 24;
     private static final int PREBUFFER_PACKETS = 3;
@@ -27,9 +24,6 @@ public class AudioPlaybackService {
         this.onProgress = onProgress;
     }
 
-    /**
-     * Demarre la lecture audio avec un format supporte par les haut-parleurs.
-     */
     public void start() throws LineUnavailableException {
         start(null);
     }

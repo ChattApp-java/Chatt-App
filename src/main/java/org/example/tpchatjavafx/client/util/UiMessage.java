@@ -7,13 +7,13 @@ public class UiMessage {
         SYSTEM,
         AUDIO,
         IMAGE,
-        LOCATION, FILE ,       // ðŸ‘ˆ new for generic LOCATION, FILEs
+        LOCATION, FILE ,       
     }
 
     private final Kind kind;
     private final boolean own;
-    private final String text;      // message text OR filename / label
-    private final String filePath;  // local path for audio / image / file
+    private final String text;      
+    private final String filePath;  
     private final String timestamp;
     private final int messageId;
     private boolean read;
@@ -72,5 +72,3 @@ public class UiMessage {
         this.selected = selected;
     }
 }
-
-

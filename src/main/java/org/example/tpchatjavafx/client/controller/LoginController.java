@@ -6,9 +6,6 @@ import javafx.scene.control.*;
 import org.example.tpchatjavafx.client.ChatClientApp;
 import org.example.tpchatjavafx.client.NetworkClient;
 
-/**
- * Controleur de l'ecran de connexion / inscription.
- */
 public class LoginController {
 
     @FXML private TextField loginHostField;

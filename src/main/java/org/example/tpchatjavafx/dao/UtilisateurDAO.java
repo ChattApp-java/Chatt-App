@@ -81,9 +81,6 @@ public class UtilisateurDAO {
         return list;
     }
 
-    /**
-     * P2 : Retourne les utilisateurs correspondant à une liste d'IDs.
-     */
     public List<Utilisateur> getUsersByIds(List<Integer> ids) throws SQLException {
         List<Utilisateur> list = new ArrayList<>();
         if (ids == null || ids.isEmpty()) return list;
@@ -122,7 +119,7 @@ public class UtilisateurDAO {
             try {
                 Timestamp ts = rs.getTimestamp("derniere_connexion");
                 if (ts != null) u.setDerniereConnexion(ts.toLocalDateTime());
-            } catch (SQLException ignored2) { /* colonne absente */ }
+            } catch (SQLException ignored2) {  }
         }
         return u;
     }

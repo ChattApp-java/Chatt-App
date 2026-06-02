@@ -4,7 +4,7 @@ import java.util.Date;
 
 public class FichierMedia {
     private int id;
-    private String type; // AUDIO, VIDEO, IMAGE, FILE
+    private String type; 
     private String nomFichier;
     private String cheminAcces;
     private long taille;

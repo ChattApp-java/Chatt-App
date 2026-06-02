@@ -2,20 +2,17 @@ package org.example.tpchatjavafx.model;
 
 import java.util.Date;
 
-/**
- * Modèle d'un appel (vocal ou vidéo), individuel ou lié à une réunion.
- */
 public class Appel {
 
     private int id;
-    private String statut;     // EN_COURS, TERMINE, MANQUE, REJETE
+    private String statut;     
     private Date dateHeure;
-    private int duree;         // en secondes
-    private String typeAppel;  // VOCAL, VIDEO
+    private int duree;         
+    private String typeAppel;  
     private int expediteurId;
     private Integer destinataireId;
-    private Integer reunionId;        // P2 : nullable, lié à Reunion si c'est une réunion
-    private boolean estReunion = false; // P2 : true si l'appel est une réunion multi-utilisateurs
+    private Integer reunionId;        
+    private boolean estReunion = false; 
 
     public Appel() {}
 

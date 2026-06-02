@@ -72,7 +72,7 @@ public class ConnexionDAO {
     }
 
     private String resolveDateDeconnexionColumn(Connection conn) throws SQLException {
-        // En cas de doute, on tente le nom défini dans schema.sql
+
         return "dateDeconnexion";
     }
 

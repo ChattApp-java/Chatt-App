@@ -64,7 +64,6 @@ public class VideoCallController {
     private String otherUser;
     private Timer cameraTimer;
 
-    // ========== JAVACV - Remplacement de Webcam ==========
     private VideoCapture videoCapture;
 
     private TargetDataLine mic;
@@ -110,7 +109,6 @@ public class VideoCallController {
         updateVideoButton();
         startTimer();
 
-        // ========== JAVACV - Ouverture webcam ==========
         videoCapture = new VideoCapture(0);
         if (videoCapture.isOpened()) {
             configureCamera(videoCapture);
@@ -132,7 +130,6 @@ public class VideoCallController {
         }
     }
 
-    // ========== JAVACV - Capture et envoi ==========
     private void startSendingCameraFrames() {
         cameraTimer = new Timer(true);
         cameraTimer.scheduleAtFixedRate(new TimerTask() {
@@ -148,7 +145,6 @@ public class VideoCallController {
                         return;
                     }
 
-                    // OpenCV fournit deja les pixels en BGR, ce format est attendu par TYPE_3BYTE_BGR.
                     BufferedImage img = matToBufferedImage(frame);
                     if (img == null) {
                         frame.release();
@@ -168,7 +164,6 @@ public class VideoCallController {
                         return;
                     }
 
-                    // ENVOI TCP (inchangé)
                     ChatMessage msg = new ChatMessage(
                             MessageType.VIDEO_FRAME,
                             username,
@@ -202,7 +197,6 @@ public class VideoCallController {
         capture.set(org.bytedeco.opencv.global.opencv_videoio.CAP_PROP_FPS, 15);
     }
 
-    // ========== JAVACV - Conversion Mat -> BufferedImage ==========
     private BufferedImage matToBufferedImage(Mat mat) {
         int width = mat.cols();
         int height = mat.rows();
@@ -398,7 +392,6 @@ public class VideoCallController {
             cameraTimer = null;
         }
 
-        // ========== JAVACV - Fermeture ==========
         if (videoCapture != null && videoCapture.isOpened()) {
             videoCapture.release();
         }

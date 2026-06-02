@@ -12,13 +12,13 @@ public class NotificationDAO {
         String sql = "INSERT INTO notification (utilisateur_id, contenu, type, est_lue, date_creation) VALUES (?, ?, ?, ?, ?)";
         try (Connection conn = DatabaseConnection.getInstance().getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            
+
             pstmt.setInt(1, notif.getUtilisateurId());
             pstmt.setString(2, notif.getContenu());
             pstmt.setString(3, notif.getType());
             pstmt.setBoolean(4, notif.isEstLue());
             pstmt.setTimestamp(5, notif.getDateCreation() != null ? new Timestamp(notif.getDateCreation().getTime()) : new Timestamp(System.currentTimeMillis()));
-            
+
             int affectedRows = pstmt.executeUpdate();
             if (affectedRows == 0) {
                 throw new SQLException("Creating notification failed, no rows affected.");

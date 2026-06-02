@@ -3,18 +3,14 @@ package org.example.tpchatjavafx.model;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
-/**
- * Modèle d'une conversation (individuelle ou de groupe).
- * P2 : ajout du type (INDIVIDUEL/GROUPE) et groupeId nullable.
- */
 public class Conversation {
 
     public static final String TYPE_INDIVIDUEL = "INDIVIDUEL";
     public static final String TYPE_GROUPE     = "GROUPE";
 
     private int id;
-    private String type = TYPE_INDIVIDUEL;  // P2 : INDIVIDUEL ou GROUPE
-    private Integer groupeId;               // P2 : nullable, lié à Groupe si type=GROUPE
+    private String type = TYPE_INDIVIDUEL;  
+    private Integer groupeId;               
     private LocalDateTime dateCreation;
     private LocalDateTime derniereModification;
 
