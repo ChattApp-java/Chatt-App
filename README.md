@@ -79,12 +79,17 @@ Lancer serveur + client avec le lanceur principal :
 mvn -Dexec.mainClass=org.example.tpchatjavafx.AppLauncher exec:java
 ```
 
-## Points d'entree
+## Option 1 Points d'entree
 
 - `org.example.tpchatjavafx.client.MainLauncher` : client
 - `org.example.tpchatjavafx.server.ServerLauncher` : serveur
 - `org.example.tpchatjavafx.AppLauncher` : serveur + client
-
+- 
+##Option 2 – Avec les scripts batch (JAR pré-construit)
+Ouvrez un terminal PowerShell (ou cmd) et exécutez :
+cd out\artifacts\TPchatJavaFX_jar
+.\LANCER.bat                 # Lance le serveur + un client
+.\LANCER_CLIENT_SEUL.bat     # Lance uniquement un client supplémentaire (le serveur doit déjà tourner)
 ## Notes
 
 - Le projet contient deja des dossiers generes comme `target/` et `out/`.
